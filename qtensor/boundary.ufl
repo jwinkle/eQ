@@ -1,0 +1,33 @@
+
+# element 	= FiniteElement("Lagrange", triangle, 2)
+# velement 	= VectorElement("Lagrange", triangle, 2)
+# telement 	= TensorElement("Lagrange", triangle, 2)
+element 	= FiniteElement("Lagrange", triangle, 1)
+# velement 	= VectorElement("Lagrange", triangle, 1)
+# telement 	= TensorElement("Lagrange", triangle, 1)
+
+u 	= Coefficient(element) # Trial Function
+
+k = Constant(triangle)
+n = FacetNormal(triangle)
+
+flux = -k*dot(grad(u), n)*ds
+# total_flux = assemble(flux)
+
+# energy = 0.5*dot(grad(u), grad(u))*dx
+# energy = u*dx
+
+forms = [flux]
+
+# how to use this in C++:
+
+    # auto G1      = std::make_shared<energy::Functional>(newMesh);
+    # auto G2      = std::make_shared<energy::CoefficientSpace_u>(newMesh);
+    # auto fone   = std::make_shared<Function>(G2);
+    # auto en      = dolfin::Assembler();
+    # auto one    = dolfin::Constant(2.0);
+    # auto ans    = dolfin::Scalar();
+    # fone->interpolate(one);
+    # G1->u = fone ;
+    # en.assemble(ans, *G1);
+    # std::cout<<"assemble reslut: "<<ans.str(true)<<std::endl;

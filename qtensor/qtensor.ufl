@@ -1,0 +1,28 @@
+
+# scalar = FiniteElement("Lagrange", triangle, 2)
+# vector = VectorElement("Lagrange", triangle, 2)
+scalar = FiniteElement("Lagrange", triangle, 1)
+vector = VectorElement("Lagrange", triangle, 1)
+
+
+q0 = Coefficient(scalar) #previous solution
+q = TrialFunction(scalar) #solution
+w  = TestFunction(scalar) #test function
+
+f  = Coefficient(scalar) # =q_ij*B*(1-q^2)
+g  = Coefficient(scalar) # =q_ij*B*(1-q^2)
+v  = Coefficient(vector) # =velocity
+dt = Constant(triangle) # =dt
+qs = Constant(triangle) # =dt
+
+
+# TOTAL DERIVATIVE OF u (with )
+#  (u-u0)/dt + v \dot grad((u+u0)/2) = f
+#  (u-u0)/dt = -v \dot grad((u+u0)/2) + f
+
+a = q*w*dx + 0.5*dt*(dot(v, grad(q)*w)*dx ) 
+L = q0*w*dx - 0.5*dt*(dot(v, grad(q0)*w)*dx ) \
+	+ dt*(1.0-qs*qs)*f*w*dx # with throttling of q by (1-q^2)
+	# + dt*(1.0-qs*qs)*f*w*dx + dt*(1.0-qs*qs)*g*w*ds # with throttling of q by (1-q^2)
+	# + dt*f*w*dx # no throttling
+

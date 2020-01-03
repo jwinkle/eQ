@@ -1,0 +1,38 @@
+
+
+
+element = FiniteElement("Lagrange", triangle, 1)
+
+v       = TestFunction(element)  # Test Function
+u       = TrialFunction(element) # Trial Function
+
+u0 = Coefficient(element)
+# g = Coefficient(element)
+
+D   = Constant(triangle)
+dt  = Constant(triangle)
+f   = Constant(triangle)
+
+# F = u*v*dx + dt*dot(grad(u), grad(v))*dx - (u0 + dt*f)*v*dx
+
+# No g function:
+# F = (u-u0)*v*dx - dt*f*v*dx + dt*D*dot(grad(u), grad(v))*dx 
+#Robin BC:
+r0 = Constant(triangle) #rate
+s0 = Constant(triangle) #external concentration
+r1 = Constant(triangle) #rate
+s1 = Constant(triangle) #external concentration
+
+F = (u-u0)*v*dx \
+\
+		- dt*f*v*dx + dt*D*dot(grad(u), grad(v))*dx  \
+\
+		+ dt*r0*(u - s0)*v*ds(0) \
+\
+		+ dt*r1*(u - s1)*v*ds(1) \
+
+# F = (u-u0)*v*dx - dt*(f*v*dx + g*v*ds) + dt*D*dot(grad(u), grad(v))*dx 
+
+# ds(0)  is left boundary
+# ds(1)  is right boundary
+a, L = lhs(F), rhs(F)

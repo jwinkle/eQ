@@ -1,0 +1,21 @@
+#  ignore all .txt files in the root directory, except CMakeLists.txt
+
+/*.txt
+
+!/CMakeLists.txt
+
+
+#  ignore the build directory in the root directory
+/build/
+
+
+#  ignore Chipmunk dir
+/Chipmunk*/
+
+#  ignore chipmunk build dirs:
+/lib/
+/obj_c99/
+
+#  ignore histogram directory 
+/histogram-develop/
+

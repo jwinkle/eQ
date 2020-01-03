@@ -1,0 +1,66 @@
+
+# element 	= FiniteElement("Lagrange", triangle, 2)
+# velement 	= VectorElement("Lagrange", triangle, 2)
+# telement 	= TensorElement("Lagrange", triangle, 2)
+element 	= FiniteElement("Lagrange", triangle, 1)
+# velement 	= VectorElement("Lagrange", triangle, 1)
+# telement 	= TensorElement("Lagrange", triangle, 1)
+
+u 	= Coefficient(element) # Trial Function
+n = FacetNormal(triangle)
+flux = -dot(grad(u), n)*ds
+forms = [flux]
+
+# k = Constant(triangle)
+
+# flux = -k*dot(grad(u), n)*ds(3)
+# total_flux = assemble(flux)
+
+# energy = 0.5*dot(grad(u), grad(u))*dx
+# energy = u*dx
+#forms = [flux]
+
+
+# how to use this in C++:
+
+## USING ENERGY NORM ASSEMBLY AND FUNCTIONAL:
+    # auto G1      = std::make_shared<energy::Functional>(newMesh);
+    # auto G2      = std::make_shared<energy::CoefficientSpace_u>(newMesh);
+    # auto fone   = std::make_shared<Function>(G2);
+    # auto en      = dolfin::Assembler();
+    # auto one    = dolfin::Constant(2.0);
+    # auto ans    = dolfin::Scalar();
+    # fone->interpolate(one);
+    # G1->u = fone ;
+    # en.assemble(ans, *G1);
+    # std::cout<<"assemble reslut: "<<ans.str(true)<<std::endl;
+
+## USING FLUX ASSEMBLY AND FUNCTIONAL:
+    # auto V0      = std::make_shared<boundary::Functional>(mesh);
+    # auto VU      = std::make_shared<boundary::CoefficientSpace_u>(mesh);
+    # auto VK      = std::make_shared<boundary::CoefficientSpace_k>(mesh);
+
+    # auto u   = std::make_shared<Function>(VU);
+    # auto k   = std::make_shared<Function>(VK);
+    # auto one    = dolfin::Constant(1.0);
+    # auto ans    = dolfin::Scalar();
+
+    # auto ufunc = std::make_shared<plane>();
+    # u->interpolate(*ufunc);
+    # k->interpolate(one);
+    # V0->u = u ;
+    # V0->k = k ;
+
+
+    # RightBoundary right_boundary;
+    # auto triangleFacetDimension = 1;
+
+    # auto right_boundary_function
+    #   = std::make_shared<MeshFunction<std::size_t>>(mesh, triangleFacetDimension);
+    # right_boundary.mark(*right_boundary_function, 3);//mark with arbitrary number '3' for now
+
+    # V0->ds = right_boundary_function;
+
+    # auto flux      = dolfin::Assembler();
+    # flux.assemble(ans, *V0);
+    # std::cout<<"assemble result: "<<ans.str(true)<<std::endl;

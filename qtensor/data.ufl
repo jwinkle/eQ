@@ -1,0 +1,5 @@
+###############
+
+element 	= FiniteElement("Lagrange", triangle, 1)
+# element 	= FiniteElement("Lagrange", triangle, 4)
+

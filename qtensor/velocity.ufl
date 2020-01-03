@@ -1,0 +1,14 @@
+###############
+
+element 	= FiniteElement("Lagrange", triangle, 2)
+velement 	= VectorElement("Lagrange", triangle, 2)
+
+solution 	= Coefficient(element)
+gamma_rho 	= Coefficient(element) #reduced to to one constant
+w  			= TestFunction(velement)  # Test Function
+u 			= TrialFunction(velement) # Trial Function
+
+# flow = as_vector([0.0,-0.05])
+
+a = inner(u, w)*dx 
+L = inner(-(1.0/gamma_rho)*grad(solution), w)*dx

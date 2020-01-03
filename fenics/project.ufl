@@ -1,0 +1,11 @@
+###############
+
+element 	= FiniteElement("Lagrange", triangle, 1)
+
+solution 	= Coefficient(element)
+v  			= TestFunction(element)  # Test Function
+u 			= TrialFunction(element) # Trial Function
+
+
+a = inner(v, u)*dx 
+L = inner(v, solution)*dx

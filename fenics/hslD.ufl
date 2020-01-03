@@ -1,0 +1,49 @@
+
+
+
+element = FiniteElement("Lagrange", triangle, 1)
+scalar = FiniteElement("Lagrange", interval, 1)
+
+v       = TestFunction(element)  # Test Function
+u       = TrialFunction(element) # Trial Function
+
+
+
+u0 = Coefficient(element)
+# g = Coefficient(element)
+
+D11 = Coefficient(element)
+D22 = Coefficient(element)
+D12 = Coefficient(element)
+D   = Constant(triangle)
+dt  = Constant(triangle)
+f   = Constant(triangle)
+
+#Robin BC:
+r1 = Constant(triangle) #rate
+s1 = Constant(triangle) #external concentration
+r2 = Constant(triangle) #rate
+s2 = Constant(triangle) #external concentration
+
+ds = Measure('ds')
+# ds = Measure('exterior_facet')
+
+A = as_matrix([ [D*D11, D*D12], [D*D12, D*D22] ])
+
+# F = u*v*dx + dt*dot(grad(u), grad(v))*dx - (u0 + dt*f)*v*dx
+
+# No g function:
+F = (u-u0)*v*dx \
+\
+		- dt*f*v*dx + dt*dot(A*grad(u), grad(v))*dx  \
+\
+		+ dt*r1*(u - s1)*v*ds(1) \
+\
+		+ dt*r2*(u - s2)*v*ds(2) \
+
+# F = (u-u0)*v*dx - dt*f*v*dx + dt*dot(D*grad(u), grad(v))*dx 
+ 
+# F = (u-u0)*v*dx - dt*(f*v*dx + g*v*ds) + dt*D*dot(grad(u), grad(v))*dx 
+
+
+a, L = lhs(F), rhs(F)
