@@ -94,8 +94,6 @@ struct dso_parameters
 class Strain
 {
   public:
-
-
 	Strain(eQ::strainType strainType, const struct dso_parameters *p, const double timestep, const double nodesPerMicronScale);
 
 	virtual ~Strain();
@@ -113,6 +111,7 @@ class Strain
 		divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter);
 
     void computeConcentrations(const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons);
+    void pushConcentrations();
 
 	eQ::strainType  getStrainType(void){return whichType;}
 	void			loadParams(eQ::strainType which);
@@ -165,22 +164,47 @@ class Strain
 	double 	delta[numConcentrations];
 	double  dC4HSL, dC14HSL;
 	double  degradationProtein, degradationHSL;
-    double nanoMolarPerProtein;
+    double nanoMolarPerMolecule;
 
     friend std::ostream &operator<<(std::ostream &os, const eQ::strainType &type);
 };
 
 class sendRecvStrain : public Strain
 {
+private:
+    enum  qProteins
+    {
+        FP = 0,
+        NUM_QUEUES
+    };
 public:
-    sendRecvStrain(eQ::strainType strainType, const struct dso_parameters *p,
-                   const double timestep, const double nodesPerMicronScale)
-        : Strain(strainType, p, timestep, nodesPerMicronScale) {}
-    std::vector<double>
-    computeProteins( double C4ext, double C14ext, double lengthMicrons);
+//    sendRecvStrain(eQ::strainType strainType, const struct dso_parameters *p,
+//                   const double timestep, const double nodesPerMicron)
+//        : Strain(strainType, p, timestep, nodesPerMicron) {}
 
-//    std::vector<double>
-//        computeProteins(const std::vector<double> eHSL, const std::vector<double> membraneD, const double lengthMicrons);
+    //CONSTRUCTOR: (called for initial seed cells only)
+    sendRecvStrain(eQ::strainType strainType, const double timestep, const double nodesPerMicron, const size_t numHSL)
+        : Strain(strainType, nullptr, timestep, nodesPerMicron)
+    {
+        iHSL.assign(numHSL, 0.0);
+        tHSL.assign(numHSL, 0.0);//per timestep value of popped queue value for convenience
+        dHSL.assign(numHSL, 0.0);
+        deltaHSL.assign(numHSL, 0.0);
+            iPROTEIN.assign(qProteins::NUM_QUEUES, 0.0);
+            tPROTEIN.assign(qProteins::NUM_QUEUES, 0.0);//per timestep value of popped queue value for convenience
+            deltaPROTEIN.assign(qProteins::NUM_QUEUES, 0.0);
+
+        std::queue<double> q;
+        for(size_t j=0; j<queueDepth; j++) {q.push(0.0);}
+        HSL_tau.assign(numHSL, q);
+        PROTEIN_tau.assign(sendRecvStrain::qProteins::NUM_QUEUES, q);
+
+    }
+    //calls default copy constructor for derived class:
+    std::shared_ptr<Strain>
+        clone() const {return std::make_shared<sendRecvStrain>(*this);}  // requires C++ 14
+    std::vector<double>
+        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons);
 
 };
 class aspectRatioInvasionStrain : public Strain
@@ -231,7 +255,8 @@ private:
         NUM_QUEUES
     };
 public:
-    MODULUSmodule(const struct dso_parameters *p, const double timestep, const double nodesPerMicron)
+    MODULUSmodule(const struct dso_parameters *p,
+                  const double timestep, const double nodesPerMicron)
 		: Strain(eQ::strainType::ACTIVATOR, p, timestep, nodesPerMicron)
 	{
         //sample the K50 parameters for promoters
@@ -249,8 +274,8 @@ public:
 	}
 
     //CONSTRUCTOR: (called for initial seed cells only)
-    MODULUSmodule(const double timestep, const double nodesPerMicronScale, const size_t numHSL)
-          : MODULUSmodule(nullptr, timestep, nodesPerMicronScale)
+    MODULUSmodule(const double timestep, const double nodesPerMicron, const size_t numHSL)
+          : MODULUSmodule(nullptr, timestep, nodesPerMicron)
     {
         iHSL.assign(numHSL, 0.0);
         tHSL.assign(numHSL, 0.0);//per timestep value of popped queue value for convenience
@@ -266,11 +291,9 @@ public:
         PROTEIN_tau.assign(MODULUSmodule::qProteins::NUM_QUEUES, q);
 
     }
-
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
         clone() const {return std::make_shared<MODULUSmodule>(*this);}  // requires C++ 14
-
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons);
 
