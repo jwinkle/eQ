@@ -178,6 +178,8 @@ private:
         NUM_QUEUES
     };
 public:
+    double			getProteinNumber(sendRecvStrain::qProteins which) {return iPROTEIN[which];}
+
 //    sendRecvStrain(eQ::strainType strainType, const struct dso_parameters *p,
 //                   const double timestep, const double nodesPerMicron)
 //        : Strain(strainType, p, timestep, nodesPerMicron) {}

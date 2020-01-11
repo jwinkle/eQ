@@ -938,7 +938,7 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 else
                 {
                     std::vector<double> hslData;
-                    std::vector<double> membraneDiffusion;
+                    std::vector<double> membraneDiffusionRates;
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
@@ -946,8 +946,8 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
-                    membraneDiffusion.push_back(3.0);
-                    auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
+                    membraneDiffusionRates = std::vector<double>(eQ::parameters["membraneDiffusionRates"].get<std::vector<double>>());
+                    auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusionRates, cellLength);
                     //HSL WRITE:
                     writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
                     setDiffusionTensor(thisCell->getAngle(), cellPoints);

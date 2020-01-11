@@ -210,7 +210,6 @@ Strain::computeProteins
 }
 
 
-//TODO:  this could probably use class variables (avoid passing)
 void Strain::computeConcentrations(const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
     //COMMON CODE TO INITIALIZE DATA, COMPUTE CONVERSIONS FROM # TO CONC., POP DELAY QUEUES, COMPUTE MEMBRANE FLUX:
