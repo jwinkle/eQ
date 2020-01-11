@@ -19,7 +19,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
 {
     staticBody = cpSpaceGetStaticBody(myParams.space);
 
-    if("NOWALLED" == eQ::parameters["trapType"])
+    if("NOTRAP" == eQ::parameters["trapType"])
         return;
 
     w = double(eQ::parameters["simulationTrapWidthMicrons"]);

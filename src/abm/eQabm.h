@@ -33,6 +33,7 @@ public:
         std::vector<eQabm::HSLgrid>                 dofLookupTable;
         std::vector<eQabm::HSLsolution>             hslSolutionVector;
         std::vector<eQabm::channelHSLsolution>      channelSolutionVector;
+        std::vector<double>                         membraneDiffusionRates;
 
         //these should be vectors:
 //        eQabm::HSLgrid c4lookup;
