@@ -327,13 +327,13 @@ int main(int argc, char* argv[])
     {
 //        double trapFlowRate = 1.0;//um/sec
 //        double trapFlowRate = 5.0;//um/sec
-        double trapFlowRate = 10.0;//um/sec
-//        double trapFlowRate = 25.0;//um/sec
+//        double trapFlowRate = 10.0;//um/sec
+        double trapFlowRate = 25.0;//um/sec
 //        double trapFlowRate = 50.0;//um/sec
 //        double trapFlowRate = 100.0;//um/sec
 //        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
-//        eQ::parameters["channelSolverNumberIterations"] = 20;
+        eQ::parameters["channelSolverNumberIterations"] = 20;
 
         eQ::parameters["channelLengthMicronsLeft"] = 100;
         eQ::parameters["channelLengthMicronsRight"] = 100;
@@ -355,13 +355,12 @@ int main(int argc, char* argv[])
 //        eQ::parameters["trapType"]      = "NOWALLED";
         eQ::parameters["trapType"]      = "TWOWALLED";
 
-        eQ::parameters["boundaryType"]  = "DIRICHLET_0";
-//        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
+//        eQ::parameters["boundaryType"]  = "DIRICHLET_0";
+        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
 
 //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 50;
         eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
         eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
-        eQ::parameters["channelSolverNumberIterations"] = 1;
 
 
 //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
@@ -370,8 +369,8 @@ int main(int argc, char* argv[])
 //        eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
 
 
-        eQ::parameters["lengthScaling"] = 2.0;//150mins
-//        eQ::parameters["lengthScaling"] = 5.0;//150mins
+//        eQ::parameters["lengthScaling"] = 2.0;//150mins
+        eQ::parameters["lengthScaling"] = 5.0;//150mins
 //        eQ::parameters["lengthScaling"] = 4.0;//150mins
 
         eQ::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025

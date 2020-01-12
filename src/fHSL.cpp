@@ -44,6 +44,7 @@ void fenicsInterface::initDiffusion(eQ::diffusionSolver::params &initParams)
     fenicsClassInit();
     initHSLFiles();
 
+    //NOTE:  h is in simulation units (not physical units)
     h = 1.0/double(eQ::parameters["nodesPerMicronSignaling"]);
     //compute volume of flow channel node: 10um z-height, 25um y-height, h wide
     wellScaling = 10.0 * (25.0/double(eQ::parameters["lengthScaling"])) * h;
@@ -471,10 +472,11 @@ void fenicsInterface::createHSL()
         //Robin BC for left/right walls:
         data.s_left     = std::make_shared<dolfin::Constant>(0.0);
         data.s_right     = std::make_shared<dolfin::Constant>(0.0);
-//        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
-//        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
-        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
-        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
+        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
+        //FOR H-TRAP:
+//        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+//        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
         //over-ride and set to left/right reflecting BC by setting rates to zero:
 //        data.r_left     = std::make_shared<dolfin::Constant>(0.0);
 //        data.r_right     = std::make_shared<dolfin::Constant>(0.0);

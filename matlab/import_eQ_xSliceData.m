@@ -1,4 +1,4 @@
-function xSlice = import_eQ_xSliceData(filename, dataLines)
+function xSlice = import_eQ_xSliceData(filename, whichVar, dataLines)
 %IMPORTFILE Import data from a text file
 %  XSLICE = IMPORTFILE(FILENAME) reads data from text file FILENAME for
 %  the default selection.  Returns the numeric data.
@@ -18,7 +18,7 @@ function xSlice = import_eQ_xSliceData(filename, dataLines)
 %% Input handling
 
 % If dataLines is not specified, define defaults
-if nargin < 2
+if nargin < 3
     dataLines = [1, Inf];
 end
 
@@ -30,9 +30,15 @@ opts.DataLines = dataLines;
 opts.Delimiter = ",";
 
 % Specify column names and types
-opts.VariableNames = ["u", "Var2", "Var3", "Points0", "Var5", "Var6"];
+if(whichVar == "x")    
+    opts.VariableNames = ["u", "Var2", "Var3", "Points0", "Var5", "Var6"];
+    opts.VariableTypes = ["double", "string", "string", "double", "string", "string"];
+elseif(whichVar == "y")
+    opts.VariableNames = ["u", "Var2", "Var3", "Var5", "Points0", "Var6"];
+    opts.VariableTypes = ["double", "string", "string", "string", "double", "string"];
+end    
+    
 opts.SelectedVariableNames = ["u", "Points0"];
-opts.VariableTypes = ["double", "string", "string", "double", "string", "string"];
 
 % Specify file level properties
 opts.ExtraColumnsRule = "ignore";
