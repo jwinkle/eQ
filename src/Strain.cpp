@@ -336,82 +336,74 @@ aspectRatioInvasionStrain::computeProteins
 
     double gamma_d = (log(2)/20.0);
 
-    double pHinThresh           = 1000.0;
+//    double pHinThresh           = 200.0;
+    double pHinThresh           = double(eQ::parameters["aspectRatioThresholdHSL"]);
+
     double pHControlThresh      = 1200.0;
     double pLacControlThresh    = 1000.0;
-    double placThresh           = 0.25;
+//    double placThresh           = 0.25;
+    double placThresh           = 0.5;
 
-    double ratio_L = pow(L_tau/placThresh, 10.0);
+//    double ratio_L = pow(L_tau/placThresh, 10.0);
 
     double responseScale = 30.0;
+    //for using just 2 HSLs:
+    const size_t    Ain = 1;
+    const size_t    Rin = 0;
+
 
     if(eQ::strainType::ACTIVATOR == whichType)
     {
-        //HSL production from other strain "priming signal" (want high sensitivity and output)
-        double ratio_Hcontrol   = pow(tHSL[2]/pHControlThresh, 10.0);
-        //intra-strain signal
-        deltaHSL[3] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
-                - dHSL[3];
+//        //HSL production from other strain "priming signal" (want high sensitivity and output)
+//        double ratio_Hcontrol   = pow(tHSL[2]/pHControlThresh, 10.0);
+//        //intra-strain signal
+//        deltaHSL[3] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
+//                - dHSL[3];
 //        //LacI
-        double ratio_Hin        = pow(tHSL[2]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(tHSL[Ain]/pHinThresh, 10.0);
         delta[L] = dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[3]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
         //HSL signal to other strain (inhibited by other strain via toggle switch topology)
-        deltaHSL[0] = dt * (double(eQ::parameters["hslProductionRate_C4"]))
+        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        deltaHSL[Rin] = dt * (double(eQ::parameters["hslProductionRate_C4"]))
                 *  1.0/(1.0 + ratio_L)
-                - dHSL[0];
+                - dHSL[Rin];
 
         //report HSL from receiver cells:
-        deltaHSL[1] = - dHSL[1];                                         //MEMBRANE DIFFUSION
-        deltaHSL[2] = - dHSL[2];                                         //MEMBRANE DIFFUSION
+        deltaHSL[Ain] = - dHSL[Ain];                                         //MEMBRANE DIFFUSION
+//        deltaHSL[2] = - dHSL[2];                                         //MEMBRANE DIFFUSION
     }
     else if(eQ::strainType::REPRESSOR == whichType)
     {
-        double ratio_Hcontrol = pow(tHSL[0]/pHControlThresh, 10.0);
-        //intra-strain signal
-        deltaHSL[1] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
-                - dHSL[1];
+//        double ratio_Hcontrol = pow(tHSL[0]/pHControlThresh, 10.0);
+//        //intra-strain signal
+//        deltaHSL[1] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
+//                - dHSL[1];
         //LacI
-        double ratio_Hin        = pow(tHSL[0]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(tHSL[Rin]/pHinThresh, 10.0);
         delta[L] = dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[1]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
 
         //priming signal output to other strain:
-        deltaHSL[2] = dt * (double(eQ::parameters["hslProductionRate_C4"]))
+        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        deltaHSL[Ain] = dt * (double(eQ::parameters["hslProductionRate_C14"]))
                 *  1.0/(1.0 + ratio_L)
-                - dHSL[2];
+                - dHSL[Ain];
 
         //report HSL from receiver cells:
-        deltaHSL[0] = - dHSL[0];                                         //MEMBRANE DIFFUSION
-        deltaHSL[3] = - dHSL[3];                                         //MEMBRANE DIFFUSION
+        deltaHSL[Rin] = - dHSL[Rin];                                         //MEMBRANE DIFFUSION
+//        deltaHSL[3] = - dHSL[3];                                         //MEMBRANE DIFFUSION
     }
 
     //for recording into existing data files:
-    conc[H] = iHSL[0];
-    conc[I] = iHSL[1];
+    conc[H] = tHSL[Rin];
+    conc[I] = tHSL[Ain];
 
-    for(int i=0;i<numConcentrations;i++)
-    {
-        conc[i] += delta[i];
-        if (conc[i] < 0.0)  conc[i] = 0.0;
-        conc[i] /= nanoMolarPerMolecule;//store as protein #
-    }
-    for(size_t i(0); i< iHSL.size(); i++)
-    {
-        iHSL[i] += deltaHSL[i];
-        if (iHSL[i] < 0.0)
-        {
-            iHSL[i] = 0.0;
-        }
-        HSL_tau[i].push(iHSL[i]);//store as concentration
-        iHSL[i] /= nanoMolarPerMolecule;//store as protein #
-    }
-    qL_tau.push(conc[L] * nanoMolarPerMolecule);
-
+    pushConcentrations();
     return dHSL;
 }
 

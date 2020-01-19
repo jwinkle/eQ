@@ -1,4 +1,4 @@
-#include <dolfin.h>
+    #include <dolfin.h>
 
 #include "eQ.h"
 #include "simulation.h"
@@ -86,18 +86,6 @@ public:
         {
             thisCell.clear();
             std::shared_ptr<eColi> cell = (*icells);
-            double lnk = 0.0;
-            double readout = 0.0;
-            if( ("MODULUS_1" == eQ::parameters["simType"]) ||
-                ("MODULUS_2" == eQ::parameters["simType"]))
-            {
-                auto pmodulus = std::dynamic_pointer_cast<MODULUSmodule>(cell->strain);
-//                readout = pmodulus->computeAverageCellLength();
-//                auto thisLength = pmodulus->filteredCellLength;
-//                readout = eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(FP),  thisLength);
-                readout = eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(FP),  cell->getLengthMicrons());
-                lnk = pmodulus->lnKH;
-            }
             std::vector<double> cellData ={
                 cell->getCenter_x()
                 , cell->getCenter_y()
@@ -105,8 +93,8 @@ public:
                 , cell->getLengthMicrons()
                 , cell->getSpringCompression()
                 , eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(H),  cell->getLengthMicrons())
-                , readout
-                , lnk
+                , eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(I),  cell->getLengthMicrons())
+                , eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(L),  cell->getLengthMicrons())
             };
             thisCell["i"] =  cell->getCellID();
             thisCell["d"] =  cellData;
@@ -343,8 +331,8 @@ int main(int argc, char* argv[])
 //        eQ::parameters["physicalTrapWidth_X_Microns"]     = 640;
 
 //        eQ::parameters["lengthScaling"] = 10.0;
-        eQ::parameters["lengthScaling"] = 5.0;
-//        eQ::parameters["lengthScaling"] = 4.0;
+//        eQ::parameters["lengthScaling"] = 5.0;
+        eQ::parameters["lengthScaling"] = 4.0;
 
         computeSimulationScalings();
 
@@ -367,122 +355,33 @@ int main(int argc, char* argv[])
 
         simulationStepsMax = 1 * stepsPerHour;//default value;  changed when setting sim. parameters, below
 
-//****************************************************************************************
-    //VARIOUS INITIALIZATION TEMPLATES:
-//****************************************************************************************
 
-//****************************************************************************************
-//                              //DUALSTRAIN_OSCILLATOR
-//****************************************************************************************
-//        eQ::parameters["hslSignaling"]  = true;
-//        eQ::parameters["D_HSL"]			= {
-//                        0.1 * 30.0e3*diffusionScaling,//C4
-//                        0.1 * 16.0e3*diffusionScaling};//C14
-//        eQ::parameters["simType"]       = "DUALSTRAIN_OSCILLATOR";
-//        eQ::parameters["dso_hslThresh"] = 3000.0;
-//        eQ::parameters["cellInitType"] = "RANDOM";
-//        eQ::parameters["numberSeedCells"] = 12;
-//        eQ::parameters["trapChannelLinearFlowRate"] = 20.0 * 60.0;//microns/sec * 60sec/min;
-
-
-//****************************************************************************************
-                                //SENDER_RECEIVER
-//****************************************************************************************
-    if(false){
-//        if(true){
-        eQ::parameters["simType"]       = "SENDER_RECEIVER";
-        eQ::parameters["modelType"]       = "OFF_LATTICE_ABM";
-        eQ::parameters["nodesPerMicronSignaling"] = 2;
-
-//        eQ::parameters["trapType"]      = "TWOWALLED";
-
-        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 200;
-        eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
-//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
-//        eQ::parameters["lengthScaling"] = 5.0;//150mins
-        eQ::parameters["lengthScaling"] = 4.0;//150mins
-
-        eQ::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
-//        eQ::parameters["divisionNoiseScale"] = 0.0;
-
-
-        computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
-
-
-        //SET SIMULATION TIME HERE:
-        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
-//        simulationStepsMax = 5*stepsPerHour/2;//150 mins
-//        simulationStepsMax = 10*stepsPerHour/2;//300 mins
-//        simulationStepsMax = 10*stepsPerHour;//600 mins
-//        simulationStepsMax = 30*stepsPerHour;//1800 mins
-        simulationStepsMax = 60*stepsPerHour;//1800 mins
-
-
-
-        eQ::parameters["hslSignaling"]  = true;
-        std::map<std::string, double> physicalDiffusionRates = {
-            {"C4", 3.0e4}, {"C14", 1.6e4}
-        };
-        eQ::parameters["physicalDiffusionRates"] = physicalDiffusionRates;
-
-        eQ::parameters["D_HSL"]			= {
-                physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
-                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
-        };
-
-
-        eQ::parameters["AnisotropicDiffusion_Axial"] = 1.0;
-        //    eQ::parameters["AnisotropicDiffusion_Axial"] = 0.1;
-        //        eQ::parameters["AnisotropicDiffusion_Transverse"] = 0.01;
-//        eQ::parameters["AnisotropicDiffusion_Transverse"] = 0.2;
-                eQ::parameters["AnisotropicDiffusion_Transverse"] = 1.0;
-
-
-
-
-        computeEffectiveDegradationRates(physicalDiffusionRates);
-
-        double hslPeakValue = 1.0e4;
-
-        eQ::parameters["hslProductionRate_C4"]
-                = (hslPeakValue * double(eQ::parameters["gammaT_C4"]));//
-        eQ::parameters["hslProductionRate_C14"]
-                = (hslPeakValue * double(eQ::parameters["gammaT_C14"]));//
-
-
-
-//        eQ::parameters["hslThresh"]       = 1000.0;//nM concentration
-        eQ::parameters["hslThresh"]       = 3000.0;//nM concentration
-        eQ::parameters["numberSeedCells"] = 16;
-        eQ::parameters["cellInitType"] = "AB_HALF";
-
-        eQ::parameters["rhlRValue"] = 1.0e5;
-        eQ::parameters["senderScale"] = 64.0;
-}//end if
 //****************************************************************************************
                                 //ASPECTRATIO_INVASION
 //****************************************************************************************
-    if(false){
-//    if(true){
+
         eQ::parameters["simType"]       = "ASPECTRATIO_INVASION";
         eQ::parameters["modelType"]       = "OFF_LATTICE_ABM";
         eQ::parameters["nodesPerMicronSignaling"] = 2;
 
-        eQ::parameters["trapChannelLinearFlowRate"] = 100.0 * 60.0;//microns/sec * 60sec/min;
+//        eQ::parameters["trapChannelLinearFlowRate"] =    100.0 * 60.0;//microns/sec * 60sec/min;
+//        eQ::parameters["trapChannelLinearFlowRate"] = 10.0 * 60.0;//microns/sec * 60sec/min;
+        eQ::parameters["trapChannelLinearFlowRate"] = 5.0 * 60.0;//microns/sec * 60sec/min;
         eQ::parameters["boundaryType"] = "DIRICHLET_UPDATE";
 
 //        eQ::parameters["trapType"]      = "TWOWALLED";
 
-        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 200;
+//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
+//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
+
+        //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 200;
 //        eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
 //        eQ::parameters["physicalTrapWidth_X_Microns"]     = 1000;
-        eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
 //        eQ::parameters["physicalTrapWidth_X_Microns"]     = 300;
 
+
+        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
+        eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
         eQ::parameters["lengthScaling"] = 5.0;//150mins
 //        eQ::parameters["lengthScaling"] = 4.0;//150mins
 
@@ -497,8 +396,8 @@ int main(int argc, char* argv[])
 
         //SET SIMULATION TIME HERE:
 //        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
-        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
+        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
+//        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
 //        simulationStepsMax = 5*stepsPerHour/2;//150 mins
 //        simulationStepsMax = 10*stepsPerHour/2;//300 mins
 //        simulationStepsMax = 10*stepsPerHour;//600 mins
@@ -518,8 +417,12 @@ int main(int argc, char* argv[])
         eQ::parameters["D_HSL"]			= {
                 physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
                 , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
-                , physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
-                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
+//                , physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
+//                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
+        };
+        eQ::parameters["membraneDiffusionRates"] = {//for C4, C14 HSL and E.coli membrane diff. rates, see Pai and You (2009)
+                3.0
+                , 2.1
         };
 
 
@@ -547,285 +450,18 @@ int main(int argc, char* argv[])
 //        eQ::parameters["numberSeedCells"] = 20;
         eQ::parameters["cellInitType"] = "AB_HALF";
 
-        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
+        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
         eQ::parameters["defaultAspectRatioFactor"]      = 1.0;
+
 //        eQ::parameters["aspectRatioThresholdHSL"]       = 800.0;
-        eQ::parameters["aspectRatioThresholdHSL"]       = 500.0;
+//        eQ::parameters["aspectRatioThresholdHSL"]       = 500.0;
+        eQ::parameters["aspectRatioThresholdHSL"]       = 220.0;
+//        eQ::parameters["aspectRatioThresholdHSL"]       = 150.0;
 
         //convert to simulation units here:
         eQ::parameters["channelLengthMicronsLeft"] = 1000/double(eQ::parameters["lengthScaling"]);
         eQ::parameters["channelLengthMicronsRight"] = 1000/double(eQ::parameters["lengthScaling"]);
-
-}//end if
-//****************************************************************************************
-//                              //DUAL SENDER_RECEIVER
-/*
-//        double diffusionScaling =
-//                1.0/(double(eQ::parameters["lengthScaling"])*double(eQ::parameters["lengthScaling"]));
-
-
-////        eQ::parameters["simType"]       = "NO_SIGNALING";
-////        eQ::parameters["simType"]       = "DUAL_SENDER_RECEIVER";
-//        eQ::parameters["simType"]       = "INDUCED_SENDER_RECEIVER";
-////        eQ::parameters["hslSignaling"]  = false;
-//        eQ::parameters["hslSignaling"]  = true;
-//        eQ::parameters["D_HSL"]			= {
-//                0.1 * 30.0e3*diffusionScaling//C4
-////                , 0.1 * 30.0e3*diffusionScaling//C4
-////                        ,0.1 * 16.0e3*diffusionScaling//C14
-//                        };
-////        eQ::parameters["hslThresh"]       = 1000.0;//nM concentration
-//        eQ::parameters["hslThresh"]       = 2000.0;//nM concentration
-////        eQ::parameters["hslThresh"]       = 4000.0;//nM concentration
-//        eQ::parameters["cellInitType"] = "RANDOM";
-//        eQ::parameters["numberSeedCells"] = 32;
-
-
-////        eQ::parameters["trapChannelLinearFlowRate"] = 400.0 * 60.0;//microns/sec * 60sec/min;
-////        eQ::parameters["trapType"]      = "TWOWALLED";
-////        eQ::parameters["trapType"]      = "ONEWALLED";
-////        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-*/
-//****************************************************************************************
-                                //MODULUS_1
-//****************************************************************************************
-//    if(false)
-        if(true)
-        {
-//            eQ::parameters["simType"]       = "MODULUS_1";
-            eQ::parameters["simType"]       = "MODULUS_2";
-            eQ::parameters["modelType"]     = "OFF_LATTICE_ABM";
-            eQ::parameters["nodesPerMicronSignaling"] = 2;
-
-//            eQ::parameters["trapType"]      = "TWOWALLED";
-            eQ::parameters["trapType"]      = "H_TRAP";//TOP+BOTTOM WALLS (OPEN LEFT/RIGHT)
-            eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-
-        //note:  I need to separate the data recording use of fenics AND the use of the ABM for data recording of the cells
-        //for the first, a node needs to be able to be both a fenics node and a data recording node (e.g. for just one processor with HSL)
-        //for the second, the data recording needs to be factored out of the abm so it  can be accessed by abm or on-lattice grid.
-//        eQ::parameters["modelType"]       = "ON_LATTICE_STATIC";
-
-
-
-//13 august; 4x order:  150 Df, DF...75 Df, DF
-
-//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 30;
-//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 90;
-//        eQ::parameters["lengthScaling"] = 1.0;
-//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 60;
-//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 180;
-//        eQ::parameters["lengthScaling"] = 2.0;
-//                eQ::parameters["physicalTrapHeight_Y_Microns"]    = 150;//140/4=35
-//                eQ::parameters["physicalTrapWidth_X_Microns"]     = 350;//340/2=170 ==> 5950 cells init
-//                eQ::parameters["lengthScaling"] = 5.0;//150mins         // by 25 = 240 ish
-
-//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 15;
-//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 90;
-//        eQ::parameters["lengthScaling"] = 1.0;
-
-//                eQ::parameters["physicalTrapHeight_Y_Microns"]    = 75;//140/4=35
-//                eQ::parameters["physicalTrapWidth_X_Microns"]     = 350;//340/2=170 ==> 5950 cells init
-//                eQ::parameters["lengthScaling"] = 5.0;//150mins         // by 25 = 240 ish
-
-
-//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 200;
-//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 150;
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 50;
-//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 600;
-            eQ::parameters["physicalTrapWidth_X_Microns"]     = 2000;
-//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 1000;
-//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
-
-
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 30;
-            eQ::parameters["physicalTrapWidth_X_Microns"]     = 300;
-
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 60;
-//            eQ::parameters["lengthScaling"] = 10.0;//150mins
-//            eQ::parameters["lengthScaling"] = 5.0;//150mins
-            eQ::parameters["lengthScaling"] = 3.0;//150mins
-//        eQ::parameters["lengthScaling"] = 4.0;//150mins
-
-        double channelOneEighth = 0.125 * double(eQ::parameters["physicalTrapWidth_X_Microns"]);
-
-        eQ::parameters["channelLengthMicronsLeft"] = channelOneEighth/double(eQ::parameters["lengthScaling"]);
-        eQ::parameters["channelLengthMicronsRight"] = channelOneEighth/double(eQ::parameters["lengthScaling"]);
-
-//        double trapFlowMicronsPerSecond = 10.0;
-//        double trapFlowMicronsPerSecond = 5.0;
-//        double trapFlowMicronsPerSecond = 1.0;
-        double trapFlowMicronsPerSecond = 0.5;
-//        double trapFlowMicronsPerSecond = 1.0e-3;//don't set to 0.0 to avoid dividing by 0
-
-        eQ::parameters["trapChannelLinearFlowRate"] = trapFlowMicronsPerSecond * 60.0;//microns/sec * 60sec/min;
-
-        computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
-
-
-
-        eQ::parameters["hslSignaling"]  = true;
-        std::map<std::string, double> physicalDiffusionRates = {
-            {"C4", 3.0e4}, {"C14", 1.6e4}
-        };
-        eQ::parameters["physicalDiffusionRates"] = physicalDiffusionRates;
-
-        if ("MODULUS_1" == eQ::parameters["simType"])
-        {
-            eQ::parameters["D_HSL"]			= {
-                    physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
-            };
-        }
-        else
-        {
-            eQ::parameters["D_HSL"]			= {
-                    physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
-//                    , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
-            };
-        }
-
-
-
-
-    eQ::parameters["AnisotropicDiffusion_Axial"] = 1.0;
-//    eQ::parameters["AnisotropicDiffusion_Axial"] = 0.1;
-//        eQ::parameters["AnisotropicDiffusion_Transverse"] = 0.01;
-//        eQ::parameters["AnisotropicDiffusion_Transverse"] = 0.1;
-        eQ::parameters["AnisotropicDiffusion_Transverse"] = 1.0;
-
-//****************************************************************************************
-        //SET SIMULATION TIME HERE:
-//****************************************************************************************
-
-//        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
-        //        setSimulationTimeStep(0.005);//updates parameters and stepsPerHour multiplier
-        //        setSimulationTimeStep(0.004);//updates parameters and stepsPerHour multiplier
-//                        setSimulationTimeStep(0.0025);//updates parameters and stepsPerHour multiplier
-                        setSimulationTimeStep(0.001);//updates parameters and stepsPerHour multiplier
-        //        simulationStepsMax = 5*stepsPerHour/2;//5*60/2 = 150 mins
-        //        simulationStepsMax = 4*stepsPerHour;
-                simulationStepsMax = 5*stepsPerHour;
-        //        simulationStepsMax = 6*stepsPerHour;
-
-
-
-
-
-        //DIVISION NOISE SCALE:  sets scale for uniform rand. number \in [-.5, +.5] for:
-          //division fraction to daughter cells
-          //division length of seed cells
-
-        eQ::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
-//        eQ::parameters["divisionNoiseScale"] = 0.0;
-
-
-
-        eQ::parameters["MODULUS_option"]       = "-D-F";//no diffusion, no feedback
-//        eQ::parameters["MODULUS_option"]       = "-D+F";//no diffusion, feedback
-
-//        eQ  ::parameters["MODULUS_option"]       = "+D-F";//with diffusion, no feedback
-//        eQ::parameters["MODULUS_option"]       = "+D+F";//with diffusion, feedback
-
-
-        //over-ride if was passed as parameter
-        if(!fileIO.launchData.empty())
-        {
-            auto s = fileIO.launchData;
-            //check for sanity:
-            if ( (s=="-D-F") || (s=="-D+F") || (s=="+D-F") || (s=="+D+F") )
-            {
-                eQ::parameters["MODULUS_option"]       = fileIO.launchData;
-                std::cout<<"fileIO.launchData over-ride with passed option: "<<fileIO.launchData<<std::endl;
-            }
-            else
-                std::cout<<"ERROR: fileIO.launchData unexpected value: "<<fileIO.launchData<<std::endl;
-        }
-
-
-
-
-        //set target LacI value by setting IPTG signal "c" in nanoMolar
-        eQ::parameters["MODULUS_IPTG"]       = 30.0;//set to a default value
-//        std::vector<double> iptgValues = {10., 15., 20., 30., 40., 50., 60., 100., 300., 1000., 3000., 11., 12., 16., 22., 25.};
-//        std::vector<double> iptgValues = {1., 2., 5., 6., 10., 12., 15., 16., 20., 22., 25., 30., 40., 50., 60., 100.};
-
-//        MATLAB CODE:
-        //        >> power(10, 0:0.1:2)
-//        std::vector<double> iptgValues = {
-//            1.0000    ,1.2589    ,1.5849    ,1.9953    ,2.5119    ,3.1623    ,3.9811    ,5.0119    ,6.3096    ,7.9433
-//            ,10.0000   ,12.5893   ,15.8489   ,19.9526   ,25.1189   ,31.6228   ,39.8107   ,50.1187   ,63.0957   ,79.4328
-//            ,100.0000
-//        };
-        //        >> power(10, 0.5:0.1:2.5)
-//        std::vector<double> iptgValues = {
-//            3.1623    ,3.9811    ,5.0119    ,6.3096    ,7.9433   ,10.0000   ,12.5893   ,15.8489   ,19.9526   ,25.1189
-//            ,31.6228   ,39.8107   ,50.1187   ,63.0957   ,79.4328  ,100.0000  ,125.8925  ,158.4893  ,199.5262  ,251.1886
-//            ,316.2278
-//        };
-        std::vector<double> iptgValues = {//MATLAB CODE:  power(10, linspace(0.5, 2, 20))
-            3.16228, 3.79269, 4.54878, 5.45559, 6.54319, 7.8476, 9.41205, 11.2884, 13.5388, 16.2378, 19.4748,
-            23.3572, 28.0136, 33.5982, 40.2961, 48.3293, 57.9639, 69.5193, 83.3782, 100
-        };
-
-        if(fileIO.isArrayLocal)//set if sim number is sequenced
-        {
-            if(fileIO.localArrayIndex < iptgValues.size())
-            {
-                eQ::parameters["MODULUS_IPTG"] = iptgValues[fileIO.localArrayIndex];
-            }
-        }
-        if(fileIO.isOpuntiaCluster)
-        {
-            if(fileIO.slurmArrayIndex < iptgValues.size())
-            {
-                eQ::parameters["MODULUS_IPTG"] = iptgValues[fileIO.slurmArrayIndex];
-            }
-        }
-
-
-        //lognormal mean, stdev from modulus proposal (normalized to 1):
-        double xmu = 0.5;
-//        double xs = 0.3;
-        double xs = 0.4;
-//        double xs = 0.0;
-        double xr = xs/xmu;//scale using the ratio of stdev/mean (to convert to nM values below)
-
-        //average values for target distribution:
-//        const double pL = 30.0;//nM for K50 for Plac input
-        const double pL = double(eQ::parameters["MODULUS_IPTG"]);
-//        const double pX = 1.0e4;//UNITS: nM
-        const double pX = 1.0e3;//UNITS: nM
-
-        //compute variances by squaring scaled std.dev (relative to mean)
-        std::vector<std::pair<double,double>> logNormals = {
-             {pL, pL*xr*pL*xr},//for PL_lac promoter K50 (from proposal)
-            {pX, pX*xr*pX*xr}//for Prhl or Pbad
-        };
-        eQ::initLogNormalGenerators(logNormals);
-
-
-        computeEffectiveDegradationRates(physicalDiffusionRates);
-
-        eQ::parameters["iptgValues"] = iptgValues;
-        eQ::parameters["lnmean"]    = pX;
-        eQ::parameters["lnvar"]     = pX*xr*pX*xr;
-        eQ::parameters["hslProductionRate_C4"]
-                = (3.0 * pX * double(eQ::parameters["gammaT_C4"]));//
-        eQ::parameters["hslProductionRate_C14"]
-                = (3.0 * pX * double(eQ::parameters["gammaT_C14"]));//
-
-
-        //use a special init function for modulus;  set max. number of cells here (will truncate if needed)
-        eQ::parameters["numberSeedCells"] = 1000;
-        eQ::parameters["MODULUS_TIME_AVERAGE_MINS"] = 1.0;
-        eQ::parameters["K50_correlationScale"] = 0.0;
-        eQ::parameters["MODULUS_FEEDBACK_FRACTION"] = 0.5;
-        eQ::parameters["MODULUS_FEEDBACK_STRENGTH"] = 1.0;
-
-    }//end if(false/true) switch
-
 
 
 
@@ -843,17 +479,17 @@ int main(int argc, char* argv[])
 //                eQ::dataParameter::DTENSOR_12,
 
 //                eQ::dataParameter::MODULUS_S,
-                eQ::dataParameter::MODULUS_H,
+//                eQ::dataParameter::MODULUS_H,
 //                eQ::dataParameter::MODULUS_R
 ////                eQ::dataParameter::SPRING_COMPRESSION,
                 eQ::dataParameter::C4,
 //                eQ::dataParameter::C4RHL,//transcription factor
 //                eQ::dataParameter::RHL_T,//total rhlR
 //                eQ::dataParameter::SYN,
-//                eQ::dataParameter::C14,
+                eQ::dataParameter::C14,
 ////                eQ::dataParameter::MFP,
 //                eQ::dataParameter::LACI,
-                eQ::dataParameter::FP,
+//                eQ::dataParameter::FP,
 //                eQ::dataParameter::C4,
 //                eQ::dataParameter::C14,
             };

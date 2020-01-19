@@ -493,6 +493,7 @@ public:
 
     std::shared_ptr<updatingDirchletBoundary> boundaryChannelLeft;
     std::shared_ptr<updatingDirchletBoundary> boundaryChannelRight;
+    std::shared_ptr<updatingDirchletBoundary> boundaryCompartment;
 
     std::shared_ptr<std::vector<double>> D11, D22, D12;
 

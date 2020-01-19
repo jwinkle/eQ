@@ -3,9 +3,10 @@
 /*.txt*
 # /CMakeLists.txt.user
 
-
+# don't ignore the cmake file:
 !/CMakeLists.txt
 
+/matlab/*.*~
 
 #  ignore the build directory in the root directory
 /build/

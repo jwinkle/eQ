@@ -44,6 +44,7 @@ void fenicsInterface::initDiffusion(eQ::diffusionSolver::params &initParams)
     fenicsClassInit();
     initHSLFiles();
 
+    //NOTE:  h is in simulation units (not physical units)
     h = 1.0/double(eQ::parameters["nodesPerMicronSignaling"]);
     //compute volume of flow channel node: 10um z-height, 25um y-height, h wide
     wellScaling = 10.0 * (25.0/double(eQ::parameters["lengthScaling"])) * h;
@@ -54,7 +55,9 @@ void fenicsInterface::initDiffusion(eQ::diffusionSolver::params &initParams)
 
 }
 void fenicsInterface::setBoundaryValues(const eQ::parametersType &bvals)
-{}
+{
+    boundaryCompartment->updateBoundary(double(bvals["boundaryValue"]));
+}
 
 void fenicsInterface::computeBoundaryFlux()
 {
@@ -458,23 +461,34 @@ void fenicsInterface::createHSL()
         //GENERATE THE DIRICHLET BOUNDARY CONDITION OBJECT (space, values, subdomain)
         //use the channel solutions to populate the BC for the trap
         shell->dbc.clear();
+
+        //COMPARTMENT IMPLEMENTATION:
+        boundaryCompartment =  std::make_shared<updatingDirchletBoundary>(0.0);
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, leftWall));//update value each timestep
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, rightWall));
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, topWall));//update value each timestep
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, bottomWall));
+
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, leftWall));//set to zero always
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, rightWall));
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryChannelLeft, leftWall));//update value each timestep
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryChannelRight, rightWall));
 
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
+//        //TOP/BOTTOM FLOW-CHANNEL BOUNDARIES:
+//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
+//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
+        //DIRICHLET=0
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, topWall));
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, bottomWall));
 
         //Robin BC for left/right walls:
         data.s_left     = std::make_shared<dolfin::Constant>(0.0);
         data.s_right     = std::make_shared<dolfin::Constant>(0.0);
-//        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
-//        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
-        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
-        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
+        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
+        //FOR H-TRAP:
+//        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+//        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
         //over-ride and set to left/right reflecting BC by setting rates to zero:
 //        data.r_left     = std::make_shared<dolfin::Constant>(0.0);
 //        data.r_right     = std::make_shared<dolfin::Constant>(0.0);

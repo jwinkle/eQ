@@ -154,8 +154,9 @@ void eQabm::initCells(int numCellsToInit)
             {
                 double halfWidth = trapWidthMicrons/2.0;
                 cellParams.strainType = (cellParams.x > halfWidth)
-//                        ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
-                        ? eQ::strainType::ACTIVATOR : eQ::strainType::ACTIVATOR;
+//                cellParams.strainType = (rn() > 0.5)
+                        ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
+//                        ? eQ::strainType::ACTIVATOR : eQ::strainType::ACTIVATOR;
             }
             else
             {
@@ -643,16 +644,16 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 break;
                 case eQ::dataParameter::C4:
                     dataFile.first->dataGrid->grid[i][j]
-//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(H), cellLength);
+                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(H), cellLength);
 //                            = eQ::proteinNumberToNanoMolar(100.0, cellLength);
-                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[0], cellLength);
+//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[0], cellLength);
 //                            = (*cell)->strain->tHSL[0];
                     break;
                 case eQ::dataParameter::C14:
                     dataFile.first->dataGrid->grid[i][j]
-//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(I), cellLength);
+                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(I), cellLength);
 //                            = eQ::proteinNumberToNanoMolar(200.0, cellLength);
-                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[1], cellLength);
+//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[1], cellLength);
 //                            = (*cell)->strain->tHSL[2];
                 break;
                 case eQ::dataParameter::FP:
@@ -861,8 +862,12 @@ void eQabm::updateCells(fli_t begin, fli_t end)
 
                 if(aspectRatioInduction)
                 {
+                    //for using just 2 HSLs:
+                    const size_t    Ain = 1;
+                    const size_t    Rin = 0;
                     double hslValue = (eQ::strainType::REPRESSOR == thisCell->Params.strainType)
-                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
+//                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
+                            ? thisCell->strain->iHSL[Rin] : thisCell->strain->iHSL[Ain];
 
                     if(hslValue > aspectRatioThresh)
                         aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
@@ -885,7 +890,7 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 membraneDiffusion.push_back(2.1);
                 membraneDiffusion.push_back(3.0);
                 membraneDiffusion.push_back(2.1);
-
+///*
                 auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
 
                 //HSL WRITE:
@@ -894,7 +899,7 @@ void eQabm::updateCells(fli_t begin, fli_t end)
 //                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints);
                     writeHSL(deltaHSL[i], Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints);
                 }
-
+//*/
                 setDiffusionTensor(thisCell->getAngle(), cellPoints);
 
             }

@@ -589,7 +589,8 @@ void Simulation::stepSimulation()
 
             //COMPUTE TRAP CHANNEL CONCENTRATION:
             boundaryWellConcentration
-                    += 0.1*double(flux["totalFlux"])/wellScaling;//scale #c from flux integral
+//                    += 0.1*double(flux["totalFlux"])/wellScaling;//scale #c from flux integral
+                    += double(flux["totalFlux"])/wellScaling;//scale #c from flux integral
             boundaryWellConcentration
                     -= double(eQ::parameters["dt"])*boundaryDecayRate*boundaryWellConcentration;
 
