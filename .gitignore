@@ -3,6 +3,8 @@
 /*.txt*
 # /CMakeLists.txt.user
 
+#ignore temp matlab files
+/matlab/*.m~
 
 !/CMakeLists.txt
 
