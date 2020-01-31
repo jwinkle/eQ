@@ -100,6 +100,8 @@ public:
         eQ::parameters["aspectRatioThresholdHSL"]       = 1000.0;
 
         eQ::parameters["trapChannelLinearFlowRate"] = 100.0 * 60.0;//microns/sec * 60sec/min;
+        eQ::parameters["channelSolverNumberIterations"] = 1;
+
         eQ::parameters["hslSignaling"]  = false;
         eQ::parameters["D_HSL"]			= {};
 

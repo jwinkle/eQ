@@ -110,7 +110,7 @@ void fenicsInterface::stepDiffusion()
 
     //copy the updated values into u0 and solve the next advection-diffusion timestep for both channels:
 
-    size_t numIterations = 1;
+    size_t numIterations = size_t(eQ::parameters["channelSolverNumberIterations"]);
 //    size_t numIterations = 10;
     auto dtx = std::make_shared<dolfin::Constant>(myParams.dt/double(numIterations));
     topChannel->L->dt = dtx;
@@ -353,24 +353,24 @@ void fenicsInterface::createHSL()
 //    double trapFlowMicronsPerSecond = 1.0;
 //    double trapFlowMicronsPerSecond = 1.0e-10;
 
-        double trapVelocity = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
+        double channelFlowVelocity = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
 //    double trapVelocity = (trapFlowMicronsPerSecond * 60.0)/double(eQ::parameters["lengthScaling"]);//microns/sec * 60sec/min;
-    data.v     = std::make_shared<dolfin::Constant>(trapVelocity);//units: um/min
+    data.v     = std::make_shared<dolfin::Constant>(channelFlowVelocity);//units: um/min
 
 
     double channelLengthLeft    = double(eQ::parameters["channelLengthMicronsLeft"]);//channel length is in simulation units
     double channelLengthRight    = double(eQ::parameters["channelLengthMicronsRight"]);//channel length is in simulation units
-    double lvdl        = (channelLengthLeft * trapVelocity)/myDiffusionConstant;
-    double lvdr        = (channelLengthRight * trapVelocity)/myDiffusionConstant;
+    double lvdl        = (channelLengthLeft * channelFlowVelocity)/myDiffusionConstant;
+    double lvdr        = (channelLengthRight * channelFlowVelocity)/myDiffusionConstant;
 
     double rightRate = 0.0;
     double leftRate = 0.0;
 
 
-    if(trapVelocity > 1.0e-6)
+    if(channelFlowVelocity > 1.0e-6)
     {
-        leftRate = trapVelocity * (1.0/(1.0 - exp(-lvdl)));
-        rightRate = trapVelocity * (1.0/(exp(lvdr) - 1.0));
+        leftRate = channelFlowVelocity * (1.0/(1.0 - exp(-lvdl)));
+        rightRate = channelFlowVelocity * (1.0/(exp(lvdr) - 1.0));
     }
     else
     {//set to a linear slope to the channel left/right boundary:
@@ -469,12 +469,16 @@ void fenicsInterface::createHSL()
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, bottomWall));
 
         //Robin BC for left/right walls:
+        //MODULUS-2:
         data.s_left     = std::make_shared<dolfin::Constant>(0.0);
         data.s_right     = std::make_shared<dolfin::Constant>(0.0);
+        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+
 //        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
 //        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
-        data.r_left     = std::make_shared<dolfin::Constant>(trapVelocity);
-        data.r_right     = std::make_shared<dolfin::Constant>(trapVelocity);
+//        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
+//        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
         //over-ride and set to left/right reflecting BC by setting rates to zero:
 //        data.r_left     = std::make_shared<dolfin::Constant>(0.0);
 //        data.r_right     = std::make_shared<dolfin::Constant>(0.0);
