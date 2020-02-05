@@ -173,6 +173,10 @@ void eQabm::initCells(int numCellsToInit)
                 || ("INDUCED_DYNAMIC_ASPECTRATIO" == eQ::parameters["simType"])
            )
         {
+            if("ACTIVATOR_ONLY" == eQ::parameters["cellInitType"])
+            {
+                cellParams.strainType = eQ::strainType::ACTIVATOR;
+            }
             if("RANDOM" == eQ::parameters["cellInitType"])
             {
                 if(rn() > 0.5)
@@ -643,9 +647,9 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 break;
                 case eQ::dataParameter::C4:
                     dataFile.first->dataGrid->grid[i][j]
-                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(H), cellLength);
+//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(H), cellLength);
 //                            = eQ::proteinNumberToNanoMolar(100.0, cellLength);
-//                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[0], cellLength);
+                            = eQ::proteinNumberToNanoMolar((*cell)->strain->iHSL[0], cellLength);
 //                            = (*cell)->strain->tHSL[0];
                     break;
                 case eQ::dataParameter::C14:
@@ -732,68 +736,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             }//end for
         };//end lambda recordCelldata
 
-        if(false)
-        {
-        //BIN RECORDING (Primitive for now):
-            //search i,j for match with
-            const double xr = trapHeightMicrons;
-            const double yr = trapHeightMicrons/2.0;
-    //        const double xr2 = Params.simData.trapWidthMicrons/2.0;
-    //        const double yr2 = Params.simData.trapHeightMicrons*0.75;
-            const double xr2 = trapWidthMicrons/2.0;
-            const double yr2 = trapHeightMicrons*0.75;
-            size_t ir,jr;
-            index = eQ::ij_from_xy(xr,yr,nodesPerMicronData);//uses data scaling
-            ir = index.first;  jr = index.second;
-            if ((i==ir) && (j==jr))
-            {
-                //cell angle:
-                double a = (*cell)->cpmCell->angle;
-                while(a<0.0)
-                    a += 2.0*M_PI;
-                a *= 2.0;  a = fmod(a, 2.0*M_PI);
-
-                size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                binBuffer.at(thisBin)++;
-            }
-            else
-            {
-                index = eQ::ij_from_xy(xr2,yr2,nodesPerMicronData);//uses data scaling
-                ir = index.first;  jr = index.second;
-                if ((i==ir) && (j==jr))
-                {
-                    //cell angle:
-                    double a = (*cell)->cpmCell->angle;
-                    while(a<0.0)
-                        a += 2.0*M_PI;
-                    a *= 2.0;  a = fmod(a, 2.0*M_PI);
-
-                    size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                    binBuffer2.at(thisBin)++;
-                }
-            }
-        }
-
-/*
-        //        if(mutantTriggerFlag)
-        //        {
-        //            if(mutantCellNumber == counter++)
-        //            {
-        //                mutantTriggerFlag = false;
-        //                (*cell)->Params.strainType = eQ::strainType::ACTIVATOR;
-        //                //note:  aspectRatio factor has been set on init, above, in the cell params
-
-        //                (*cell)->Params.meanDivisionLength *= double( eQ::parameters["mutantAspectRatioScale"]);
-        ////                (*cell)->Params.meanDivisionLength *= (*cell)->Params.simData.aspectRatioFactor_A;
-        //                auto x = (*cell)->getCenter_x();
-        //                auto y = (*cell)->getCenter_y();
-        //                std::cout<<"Mutant strain asserted at (x,y): "<<x<<", "<<y
-        //                        <<" cell number: "<<mutantCellNumber<<std::endl;
-        //                mutant_xpos = x;
-        //                mutant_ypos = y;
-        //            }
-        //        }
-*/
 
         if("NOTRAP" == eQ::parameters["trapType"])                  {}
         if("NO_SIGNALING" == eQ::parameters["simType"])             {}
@@ -937,6 +879,9 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 }
                 else
                 {
+                    double iptg = (x/trapWidthMicrons);
+                    eQ::parameters["MODULUS_IPTG"] = iptg;
+
                     std::vector<double> hslData;
                     std::vector<double> membraneDiffusionRates;
                     //HSL READ:

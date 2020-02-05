@@ -325,15 +325,19 @@ int main(int argc, char* argv[])
 
     auto assignSimulationParameters = [&](size_t simNum)
     {
-//        double trapFlowRate = 1.0;//um/sec
+//                double trapFlowRate = 0.0;//um/sec
+        //        double trapFlowRate = 1.0;//um/sec
 //        double trapFlowRate = 5.0;//um/sec
-//        double trapFlowRate = 10.0;//um/sec
-        double trapFlowRate = 25.0;//um/sec
+
+        double trapFlowRate = 10.0;//um/sec
+
+//        double trapFlowRate = 25.0;//um/sec
 //        double trapFlowRate = 50.0;//um/sec
 //        double trapFlowRate = 100.0;//um/sec
 //        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
         eQ::parameters["channelSolverNumberIterations"] = 20;
+//        eQ::parameters["channelSolverNumberIterations"] = 40;
 
         eQ::parameters["channelLengthMicronsLeft"] = 100;
         eQ::parameters["channelLengthMicronsRight"] = 100;
@@ -355,8 +359,8 @@ int main(int argc, char* argv[])
 //        eQ::parameters["trapType"]      = "NOWALLED";
         eQ::parameters["trapType"]      = "TWOWALLED";
 
-//        eQ::parameters["boundaryType"]  = "DIRICHLET_0";
-        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
+        eQ::parameters["boundaryType"]  = "DIRICHLET_0";
+//        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
 
 //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 50;
         eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
@@ -430,8 +434,10 @@ int main(int argc, char* argv[])
 
         //migrated to aspect ratio branch:
 //        eQ::parameters["hslThresh"]       = 3000.0;//nM concentration
-        eQ::parameters["numberSeedCells"] = 16;
-        eQ::parameters["cellInitType"] = "AB_HALF";
+//        eQ::parameters["numberSeedCells"] = 16;
+        eQ::parameters["numberSeedCells"] = 32;
+//        eQ::parameters["cellInitType"] = "AB_HALF";
+        eQ::parameters["cellInitType"] = "ACTIVATOR_ONLY";
 
         eQ::parameters["rhlRValue"] = 1.0e5;
         eQ::parameters["senderScale"] = 64.0;

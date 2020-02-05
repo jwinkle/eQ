@@ -289,8 +289,17 @@ sendRecvStrain::computeProteins
 
     if(eQ::strainType::ACTIVATOR == whichType)
     {
+        double offset = 0.0;
+//        double offset = 0.25;
+//        double offset = 0.5;
+        double scale = double(eQ::parameters["MODULUS_IPTG"]) + offset;
+        //over-ride
+        scale = 1.0;
+        double alpha = scale * double(eQ::parameters["hslProductionRate_C4"]);
+
         //Sender cells produce C4HSL at maximum rate:
-        deltaHSL[0]  = dt * (double(eQ::parameters["hslProductionRate_C4"]) * 1.0)//PRODUCTION maximum=1.0
+//        deltaHSL[0]  = dt * (double(eQ::parameters["hslProductionRate_C4"]) * 1.0)//PRODUCTION maximum=1.0
+        deltaHSL[0]  = dt * (alpha)//PRODUCTION maximum=1.0
                 - dHSL[0];                                               //MEMBRANE DIFFUSION
     }
     else if(eQ::strainType::REPRESSOR == whichType)
