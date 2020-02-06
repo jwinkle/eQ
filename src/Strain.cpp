@@ -333,6 +333,10 @@ aspectRatioInvasionStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
     computeConcentrations(eHSL, membraneRate, lengthMicrons);
+        conc[H] = double(whichType);
+        pushConcentrations();
+        return dHSL;
+
 
     double gamma_d = (log(2)/20.0);
 

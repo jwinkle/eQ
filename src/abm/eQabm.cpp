@@ -116,7 +116,7 @@ void eQabm::initCells(int numCellsToInit)
             initColumns = (int(trapWidthMicrons) - 0)/4;
         }
         std::cout<<"initRows initColumns: "<<initRows<<", "<<initColumns<<std::endl;
-    }    
+    }
 
     std::cout<<"void eQabm::initCells(int numCellsToInit)"<<std::endl;
 
@@ -153,8 +153,8 @@ void eQabm::initCells(int numCellsToInit)
             if("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
             {
                 double halfWidth = trapWidthMicrons/2.0;
-                cellParams.strainType = (cellParams.x > halfWidth)
-//                cellParams.strainType = (rn() > 0.5)
+//                cellParams.strainType = (cellParams.x > halfWidth)
+                cellParams.strainType = (rn() > 0.5)
                         ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
 //                        ? eQ::strainType::ACTIVATOR : eQ::strainType::ACTIVATOR;
             }
@@ -869,9 +869,10 @@ void eQabm::updateCells(fli_t begin, fli_t end)
 //                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
                             ? thisCell->strain->iHSL[Rin] : thisCell->strain->iHSL[Ain];
 
-                    if(hslValue > aspectRatioThresh)
-                        aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
-                }                
+//                    if(hslValue > aspectRatioThresh)
+                        if(eQ::strainType::REPRESSOR == thisCell->Params.strainType)
+                            aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
+                }
 
                 thisCell->Params.meanDivisionLength = aspectRatioScaling * DEFAULT_DIVISION_LENGTH_MICRONS;
 //                    (*cell)->Params.divisionLength = (*cell)->Params.meanDivisionLength;//set to divde at this length immediately

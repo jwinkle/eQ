@@ -396,8 +396,8 @@ int main(int argc, char* argv[])
 
         //SET SIMULATION TIME HERE:
 //        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
-        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
+//        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
+        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
 //        simulationStepsMax = 5*stepsPerHour/2;//150 mins
 //        simulationStepsMax = 10*stepsPerHour/2;//300 mins
 //        simulationStepsMax = 10*stepsPerHour;//600 mins
@@ -450,8 +450,9 @@ int main(int argc, char* argv[])
 //        eQ::parameters["numberSeedCells"] = 20;
         eQ::parameters["cellInitType"] = "AB_HALF";
 
-        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
+        eQ::parameters["mutantAspectRatioScale"]        = 0.7;
         eQ::parameters["defaultAspectRatioFactor"]      = 1.0;
 
 //        eQ::parameters["aspectRatioThresholdHSL"]       = 800.0;
