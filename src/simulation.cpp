@@ -105,6 +105,7 @@ Simulation::Simulation(MPI_Comm commWorld, const struct Simulation::params &init
     physicsTimer = 0.0;
     waitTimer = 0.0;
     simTime = 0.0;
+    petscTimer = 0.0;
 
 
         MPI_Barrier(world);
@@ -208,11 +209,12 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
     //**************************************************************
         //CREATE MAIN FENICS CLASS:
         //create diffusion interface class instance (subclass of template defined in fHSL.h)
-//        diffusionSolver = std::make_shared<fenics_HSL<hslD::FunctionSpace, hslD::LinearForm, hslD::BilinearForm>>();//create instance
         diffusionSolver = std::make_shared<fenicsInterface>();//create instance
 
-//        diffusionSolver = std::make_shared<fenicsClass>();//create instance
-//        diffusionSolver2 = std::make_shared<diffusionPETSc>();//create instance
+        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+        {
+            diffusionSolver2 = std::make_shared<diffusionPETSc>();//create instance
+        }
         std::cout<<"\nDiffusion solver created...\n";
 
         MPI_Barrier(workers);
@@ -249,6 +251,12 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
         diffusionSolver->initDiffusion(fenicsParams);
 //        diffusionSolver->initDiffusion(whichHSLNode, thisComm, thisPath, thisD,  dt, argc, argv);
 //        diffusionSolver2->initDiffusion(workers, hslFilePaths, argc, argv);
+        fenicsParams.argc = argc;
+        fenicsParams.argv = argv;
+        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+        {
+            diffusionSolver2->initDiffusion(fenicsParams);
+        }
 
         std::cout<<"Diffusion solver "<<whichHSLNode<<" initialized..."<<std::endl;
 
@@ -259,8 +267,6 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
         {
             std::cout<<"ERROR VERTICES VS. numNodes!"<<std::endl;
         }
-//        workerNodeID = diffusionSolver->myRankMPI;
-
 
             //  INITIAL MPI DATA TRANSFER
             MPI_Status mpiStatus;
@@ -378,18 +384,9 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
         for(size_t grid(0); grid<numHSLGrids; grid++)
         {
             //this will be the solution vector buffer, in dof order (for fenics)
-//            HSLGrids.push_back(
-//                        std::vector<double>(globalNodes));
             //CREATE THE SOLUTION VECTOR FOR THIS DIFFUSION LAYER:
-            //write directly to the ABM parameters data structure:
-//            paramsABM.hslSolutionVector.push_back(std::make_shared<std::vector<double>>(globalNodes));
-            paramsABM.hslSolutionVector.push_back(std::vector<double>(globalNodes));
-
-
-
+            paramsABM.hslSolutionVector.push_back(std::vector<double>(globalNodes));            
             //this will map x,y position directly to dof
-//            dof_from_grid.push_back(
-//                        std::make_shared<eQ::gridFunction<size_t>>(globalNodesH, globalNodesW));
             //CREATE THE LOOKUP TABLE FOR THIS DIFFUSION LAYER:
             paramsABM.dofLookupTable.push_back(std::make_shared<eQ::gridFunction<size_t>>(globalNodesH, globalNodesW));
 
@@ -416,6 +413,18 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
                 //WRITE THE DOF LOOKUP TABLE:
                 //write directly to the ABM parameters data structure:
                 paramsABM.dofLookupTable[grid]->grid[iy][jx] = size_t(gridDofs[grid][i]);
+            }
+
+            if(bool(eQ::parameters["PETSC_SIMULATION"]))
+            {
+                paramsABM.petscSolutionVector.push_back(std::vector<double>(globalNodes));
+                paramsABM.petscLookupTable.push_back(std::make_shared<eQ::gridFunction<size_t>>(globalNodesH, globalNodesW));
+                for (size_t i(0); i < globalNodes; i++)
+                {
+                    unsigned jx = i%globalNodesW;
+                    unsigned iy = i/globalNodesW;
+                    paramsABM.petscLookupTable[grid]->grid[iy][jx] = i;
+                }
             }
         }
         //to verify the dof are as expected (for small grids to test):
@@ -559,13 +568,16 @@ void Simulation::stepSimulation()
             for(size_t i(0); i<numHSLGrids; i++)
             {
                 sourceNode = int(i)+1;//controller is node 0 (destination of Irecv), workers are nodes 1,2,...(matching Isend is below)
-//                MPI_Irecv(HSLGrids[i].data(), int(globalNodes), MPI_DOUBLE,
-//                          sourceNode, mpiTag, world, &mpiRequest[i]);
-
-//                MPI_Irecv( (*ABM->Params.hslSolutionVector[i].get()).data(), int(globalNodes), MPI_DOUBLE,
                 MPI_Irecv(ABM->Params.hslSolutionVector[i].data(), int(globalNodes), MPI_DOUBLE,
                           sourceNode, mpiTag, world, &mpiRequest[i]);
                 //matching wait is in waitMPI below
+                if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                {
+                    petscRequest.clear();
+                    petscRequest.assign(size_t(numHSLGrids), nullptr);
+                    MPI_Irecv(ABM->Params.petscSolutionVector[i].data(), int(globalNodes), MPI_DOUBLE,
+                              sourceNode, mpiTag, world, &petscRequest[i]);
+                }
             }
         }
     }
@@ -573,19 +585,22 @@ void Simulation::stepSimulation()
     {
         if(HSL_signalingTrue)
         {
-            double tare = MPI_Wtime();
             //==========================
             // SOLVE HSL DIFFUSION:
             //==========================
-            //if Robin system:
-//            diffusionSolver->myParams.fenForms->setRobinBoundaryValue(diffusionSolver->boundaryWellConcentration);
-
             //diffusion template methods:
+            double tare = MPI_Wtime();
             diffusionSolver->stepDiffusion();
-//            diffusionSolver2->stepDiffusion();
+            diffusionTimer += (MPI_Wtime() - tare);
+
+            if(bool(eQ::parameters["PETSC_SIMULATION"]))
+            {
+                double ptare = MPI_Wtime();
+                diffusionSolver2->stepDiffusion();
+                petscTimer += (MPI_Wtime() - ptare);
+            }
 
             eQ::parametersType flux    = diffusionSolver->getBoundaryFlux();
-//            auto diffusionConstant     = diffusionSolver->getDiffusionConstant();
 
             //COMPUTE TRAP CHANNEL CONCENTRATION:
             boundaryWellConcentration
@@ -607,7 +622,7 @@ void Simulation::stepSimulation()
                 diffusionSolver->setBoundaryValues(bvals);
             }
 
-            diffusionTimer += (MPI_Wtime() - tare);
+//            diffusionTimer += (MPI_Wtime() - tare);
             //ship the new HSL grids to the controller node:
             mpiRequest.clear();
             mpiRequest.push_back(nullptr);
@@ -616,6 +631,14 @@ void Simulation::stepSimulation()
             MPI_Isend(diffusionSolver->solution_vector.data(), int(globalNodes), MPI_DOUBLE,
                       destNode, mpiTag, world, &mpiRequest[0]);
             //matching wait is in waitMPI below
+            if(bool(eQ::parameters["PETSC_SIMULATION"]))
+            {
+                petscRequest.clear();
+                petscRequest.push_back(nullptr);
+                MPI_Isend(diffusionSolver2->solution_vector.data(), int(globalNodes), MPI_DOUBLE,
+                          destNode, mpiTag, world, &petscRequest[0]);
+            }
+
         }
     }
     simTime += double(eQ::parameters["dt"]);
@@ -691,6 +714,8 @@ void Simulation::writebackGridData()
         {
             mpiRequest.clear();
             mpiRequest.assign(size_t(numHSLGrids), nullptr);
+            petscRequest.clear();
+            petscRequest.assign(size_t(numHSLGrids), nullptr);
             int mpiTag=0; int destNode;
 
             mpiRequestA.assign(size_t(numHSLGrids), nullptr);
@@ -704,14 +729,15 @@ void Simulation::writebackGridData()
             for(size_t i(0); i<numHSLGrids; i++)
             {
                 destNode = int(i)+1;
-//                MPI_Isend(HSLGrids[i].data(), int(globalNodes), MPI_DOUBLE,
-//                          destNode, mpiTag, world, &mpiRequest[i]);
-//                MPI_Isend((*ABM->Params.hslSolutionVector[i].get()).data(), int(globalNodes), MPI_DOUBLE,
+
                 MPI_Isend(ABM->Params.hslSolutionVector[i].data(), int(globalNodes), MPI_DOUBLE,
                           destNode, mpiTag, world, &mpiRequest[i]);
 
-                //JW:  petsc Isend here (use unique mpiRequest vector)...
-                //...
+                if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                {
+                    MPI_Isend(ABM->Params.petscSolutionVector[i].data(), int(globalNodes), MPI_DOUBLE,
+                              destNode, mpiTag, world, &petscRequest[i]);
+                }
                 //matching wait is in waitMPI below
 
                 if(true)//todo: switch on a flag to send
@@ -736,8 +762,13 @@ void Simulation::writebackGridData()
             int sourceNode=0;  int mpiTag=0;
             MPI_Irecv(diffusionSolver->solution_vector.data(), int(globalNodes), MPI_DOUBLE,
                       sourceNode, mpiTag, world, &mpiRequest[0]);
-            //JW:  petsc Irecv here (use unique mpiRequest vector)...
-            //...
+            if(bool(eQ::parameters["PETSC_SIMULATION"]))
+            {
+                petscRequest.clear();
+                petscRequest.push_back(nullptr);
+                MPI_Irecv(diffusionSolver2->solution_vector.data(), int(globalNodes), MPI_DOUBLE,
+                          sourceNode, mpiTag, world, &petscRequest[0]);
+            }
             //matching wait is in waitMPI below
 
             if(true)//todo: switch on a flag to send
@@ -774,8 +805,10 @@ void Simulation::waitMPI()
            {
                MPI_Status thisStaus;
                MPI_Wait(&mpiRequest[i], &thisStaus);
-               //JW: petsc wait here
-//               MPI_Wait(&mpiRequestPETSC[i], &thisStaus);
+               if(bool(eQ::parameters["PETSC_SIMULATION"]))
+               {
+                   MPI_Wait(&petscRequest[i], &thisStaus);
+               }
 
                if(!mpiRequestA.empty())
                {
@@ -792,8 +825,10 @@ void Simulation::waitMPI()
            MPI_Status thisStaus;
            MPI_Wait(&mpiRequest[0], &thisStaus);
 
-           //JW: petsc wait here
-//           MPI_Wait(&mpiRequestPETSC[0], &thisStaus);
+           if(bool(eQ::parameters["PETSC_SIMULATION"]))
+           {
+               MPI_Wait(&petscRequest[0], &thisStaus);
+           }
 
            if(!mpiRequestA.empty())
            {
@@ -812,9 +847,12 @@ void Simulation::writeHSLFiles()
     if((isDiffusionNode) && createdHSLgrid)
     {
 //        std::cout<<"writing hsl files..."<<std::endl;
-
         diffusionSolver->writeDiffusionFiles(simTime);
-//        diffusionSolver2->writeDiffusionFiles(simTime);
+
+        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+        {
+            diffusionSolver2->writeDiffusionFiles(simTime);
+        }
 
         //print the l2 norm and boundary flux of the HSL:
 //        auto thisNorm = diffusionSolver->u->vector()->norm("l2");
@@ -892,7 +930,10 @@ Simulation::~Simulation()
     if( (bool(eQ::parameters["hslSignaling"])) && !isControllerNode)
     {
         diffusionSolver->finalize();
-//        diffusionSolver2->finalize();
+        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+        {
+            diffusionSolver2->finalize();
+        }
     }
 //    diffusionSolver.reset();
 //    diffusionSolver2.reset();

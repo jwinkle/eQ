@@ -59,7 +59,7 @@ public:
 
     size_t nodesForChannels;
 
-    double diffusionTimer, physicsTimer, waitTimer;
+    double diffusionTimer, physicsTimer, waitTimer, petscTimer;
     bool HSL_signalingTrue;
 
 
@@ -116,6 +116,7 @@ private:
     MPI_Comm world, workers, controllerComm;
     MPI_Group world_group, worker_group, controller_group;
     std::vector<MPI_Request> mpiRequest;
+    std::vector<MPI_Request> petscRequest;
     std::vector<MPI_Request> mpiRequestA, mpiRequestB, mpiRequestC;
     int         npes;                // number of PEs
     int         my_PE_num;           // my PE number

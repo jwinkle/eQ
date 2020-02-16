@@ -43,7 +43,7 @@ typedef struct {
 //Class for simulating 2d diffusion
 class diffusionPETSc : public eQ::diffusionSolver
 {
-    diffusionPETSc() {}
+//    diffusionPETSc() {}
 
     PetscErrorCode  ierr;
     MPI_Comm        DIFFU_COMM;
@@ -71,10 +71,13 @@ class diffusionPETSc : public eQ::diffusionSolver
 	std::vector<double> allXCoordinates, allYCoordinates;
 
 	public:
+
+		diffusionPETSc() {}
 		//Vector for storing vector information
 		std::vector<double> solution_vector;
 
-		void initDiffusion(MPI_Comm, std::vector<std::string>, int, char**);
+//		void initDiffusion(MPI_Comm, std::vector<std::string>, int, char**);
+		void initDiffusion(eQ::diffusionSolver::params &initParams);
 		void stepDiffusion();
 		void setBoundaryValues(const eQ::parametersType &bvals);
 		eQ::parametersType getBoundaryFlux(void);

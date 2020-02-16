@@ -325,6 +325,8 @@ int main(int argc, char* argv[])
 
     auto assignSimulationParameters = [&](size_t simNum)
     {
+        eQ::parameters["PETSC_SIMULATION"] =  true;
+
 //                double trapFlowRate = 0.0;//um/sec
         //        double trapFlowRate = 1.0;//um/sec
 //        double trapFlowRate = 5.0;//um/sec
@@ -608,6 +610,7 @@ int main(int argc, char* argv[])
 
     double computeTimer = 0.0;
     simulation->diffusionTimer = 0.0;
+    simulation->petscTimer = 0.0;
     MPI_Barrier(world);
 //    simulation->writeHSLFiles();//initial t=0 data (will not write if no HSL created); switches on "isDiffusionNode"
 //    MPI_Barrier(world);
@@ -712,6 +715,7 @@ int main(int argc, char* argv[])
                     else
                     {
                         std::cout<<simulation->diffusionTimer<<", "<<simulation->waitTimer<<std::endl;
+                        std::cout<<"PETSC TIMER: "<<simulation->petscTimer<<", "<<simulation->waitTimer<<std::endl;
                     }
                 }
                 MPI_Barrier(world);
@@ -719,6 +723,8 @@ int main(int argc, char* argv[])
             simulation->diffusionTimer=0.0;
             simulation->physicsTimer=0.0;
             simulation->waitTimer=0.0;
+            simulation->petscTimer=0.0;
+
 
             simulation->writeHSLFiles();
             if(!params.dataFiles.empty())

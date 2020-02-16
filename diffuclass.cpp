@@ -15,8 +15,14 @@ PetscErrorCode MyMatMult(Mat,Vec,Vec);
 //							  Public Methods
 //------------------------------------------------------------------------------
 //TODO: include all boundary condition elements and individually parallelized grids 
-void diffusionPETSc::initDiffusion(MPI_Comm comm, std::vector<std::string> filePaths, int argc, char* argv[])
+void diffusionPETSc::initDiffusion(eQ::diffusionSolver::params &initParams)
+//void diffusionPETSc::initDiffusion(MPI_Comm comm, std::vector<std::string> filePaths, int argc, char* argv[])
 {
+    auto comm = initParams.comm;
+    auto filePaths = initParams.filePath;
+    auto argc = initParams.argc;
+    auto argv = initParams.argv;
+
 	//Split input communicator into subcommunicators for each desired diffusion grid
 	MPI_Comm subComm;
 	int 	 myRankMPI, commSize, i, j;
