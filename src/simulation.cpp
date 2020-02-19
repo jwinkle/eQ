@@ -251,11 +251,13 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
         diffusionSolver->initDiffusion(fenicsParams);
 //        diffusionSolver->initDiffusion(whichHSLNode, thisComm, thisPath, thisD,  dt, argc, argv);
 //        diffusionSolver2->initDiffusion(workers, hslFilePaths, argc, argv);
-        fenicsParams.argc = argc;
-        fenicsParams.argv = argv;
         if(bool(eQ::parameters["PETSC_SIMULATION"]))
         {
+            fenicsParams.argc = argc;
+            fenicsParams.argv = argv;
+            fenicsParams.filePath = Params.fileIO->fbase;
             diffusionSolver2->initDiffusion(fenicsParams);
+            std::cout<<"PETSc solver, path: "<<fenicsParams.filePath<<" initialized..."<<std::endl;
         }
 
         std::cout<<"Diffusion solver "<<whichHSLNode<<" initialized..."<<std::endl;

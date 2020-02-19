@@ -866,14 +866,24 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                            hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                        else
+                            hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
                     membraneDiffusionRates = std::vector<double>(eQ::parameters["membraneDiffusionRates"].get<std::vector<double>>());
+
                     auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusionRates, cellLength);
+
                     //HSL WRITE:
-                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+                    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                        writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+                    else
+                        writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+
+
                     setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 }
             }
@@ -930,7 +940,8 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+//                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                        hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
@@ -940,8 +951,10 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
 //                    auto deltaHSL =  std::vector<double>{0.0, 0.0};
                 //HSL WRITE:
-                writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                setDiffusionTensor(thisCell->getAngle(), cellPoints);
+//                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+                    writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+
+                    setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 if ("MODULUS_2" == eQ::parameters["simType"])
                 {//HSL WRITE:
 //                    writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
@@ -968,7 +981,8 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 {
                     auto f = Params.dofLookupTable[grid]->grid[i][j];
                     auto p = Params.petscLookupTable[grid]->grid[i][j];
-                    Params.petscSolutionVector[grid].at(p) =  Params.hslSolutionVector[grid].at(f);
+//                    Params.petscSolutionVector[grid].at(p) =  Params.hslSolutionVector[grid].at(f);
+                    Params.hslSolutionVector[grid].at(f) =  Params.petscSolutionVector[grid].at(p);
                 }
             }
         }

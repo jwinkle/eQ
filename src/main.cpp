@@ -367,6 +367,7 @@ int main(int argc, char* argv[])
 //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 50;
         eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
         eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
+//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 2000;
 
 
 //        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
@@ -376,8 +377,8 @@ int main(int argc, char* argv[])
 
 
 //        eQ::parameters["lengthScaling"] = 2.0;//150mins
-        eQ::parameters["lengthScaling"] = 5.0;//150mins
-//        eQ::parameters["lengthScaling"] = 4.0;//150mins
+//        eQ::parameters["lengthScaling"] = 5.0;//150mins
+        eQ::parameters["lengthScaling"] = 4.0;//150mins
 
         eQ::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
 //        eQ::parameters["divisionNoiseScale"] = 0.0;
