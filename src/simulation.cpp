@@ -49,7 +49,8 @@ Simulation::Simulation(MPI_Comm commWorld, const struct Simulation::params &init
         controllerComm = world;
         isControllerNode = true;
         //verify this is correct to do:
-        isDiffusionNode = true;
+//        isDiffusionNode = true;
+        isDiffusionNode = false;
         whichHSLNode=0;
     }
     else
@@ -432,9 +433,10 @@ void Simulation::init_ABM(int numSeedCells)
     {
         //set the seed value for the ABM random number generator (set to same value for repeatability)
         auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-//        auto seed = 0;
 
-        paramsABM.seedValue = size_t(seed);
+        //set seed value to fixed value if it is set non-zero, else use timestamp seed
+        paramsABM.seedValue = (0 == eQ::parameters["fixedSeedValue"])
+                ? size_t(seed) : size_t(eQ::parameters["fixedSeedValue"]);
 
         //COMMON CODE FOR HSL SIGNALING SETUP:
         if(createdHSLgrid)

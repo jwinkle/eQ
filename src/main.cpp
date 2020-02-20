@@ -364,6 +364,9 @@ int main(int argc, char* argv[])
         eQ::parameters["modelType"]       = "OFF_LATTICE_ABM";
         eQ::parameters["nodesPerMicronSignaling"] = 2;
 
+//        eQ::parameters["fixedSeedValue"] = 0;//0 means use a timestamp seed
+        eQ::parameters["fixedSeedValue"] = 100;//for repeatability
+
 //        eQ::parameters["trapChannelLinearFlowRate"] =    100.0 * 60.0;//microns/sec * 60sec/min;
 //        eQ::parameters["trapChannelLinearFlowRate"] = 10.0 * 60.0;//microns/sec * 60sec/min;
         eQ::parameters["trapChannelLinearFlowRate"] = 5.0 * 60.0;//microns/sec * 60sec/min;
@@ -382,7 +385,8 @@ int main(int argc, char* argv[])
 
         eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
         eQ::parameters["physicalTrapWidth_X_Microns"]     = 500;
-        eQ::parameters["lengthScaling"] = 5.0;//150mins
+        eQ::parameters["lengthScaling"] = 2.5;//150mins
+//        eQ::parameters["lengthScaling"] = 5.0;//150mins
 //        eQ::parameters["lengthScaling"] = 4.0;//150mins
 
 
@@ -395,9 +399,10 @@ int main(int argc, char* argv[])
 
 
         //SET SIMULATION TIME HERE:
-//        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
+        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
 //        setSimulationTimeStep(0.05);//updates parameters and stepsPerHour multiplier
-        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
+//        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
+
 //        simulationStepsMax = 5*stepsPerHour/2;//150 mins
 //        simulationStepsMax = 10*stepsPerHour/2;//300 mins
 //        simulationStepsMax = 10*stepsPerHour;//600 mins
@@ -408,15 +413,17 @@ int main(int argc, char* argv[])
 
 
 
-        eQ::parameters["hslSignaling"]  = true;
         std::map<std::string, double> physicalDiffusionRates = {
             {"C4", 3.0e4}, {"C14", 1.6e4}
         };
         eQ::parameters["physicalDiffusionRates"] = physicalDiffusionRates;
 
+
+//        eQ::parameters["hslSignaling"]  = true;
+        eQ::parameters["hslSignaling"]  = false;
         eQ::parameters["D_HSL"]			= {
-                physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
-                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
+//                physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
+//                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
 //                , physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
 //                , physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
         };
@@ -450,9 +457,11 @@ int main(int argc, char* argv[])
 //        eQ::parameters["numberSeedCells"] = 20;
         eQ::parameters["cellInitType"] = "AB_HALF";
 
+        eQ::parameters["mutantAspectRatioScale"]        = 1.0;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
-        eQ::parameters["mutantAspectRatioScale"]        = 0.7;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.7;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.6;
         eQ::parameters["defaultAspectRatioFactor"]      = 1.0;
 
 //        eQ::parameters["aspectRatioThresholdHSL"]       = 800.0;
@@ -474,7 +483,7 @@ int main(int argc, char* argv[])
         {
             //populate here the data to be recorded:
             std::vector<eQ::dataParameter> dataToRecord = {
-                eQ::dataParameter::LACI,
+//                eQ::dataParameter::LACI,
 //                eQ::dataParameter::DTENSOR_11,
 //                eQ::dataParameter::DTENSOR_22,
 //                eQ::dataParameter::DTENSOR_12,
@@ -483,11 +492,11 @@ int main(int argc, char* argv[])
 //                eQ::dataParameter::MODULUS_H,
 //                eQ::dataParameter::MODULUS_R
 ////                eQ::dataParameter::SPRING_COMPRESSION,
-                eQ::dataParameter::C4,
+//                eQ::dataParameter::C4,
 //                eQ::dataParameter::C4RHL,//transcription factor
 //                eQ::dataParameter::RHL_T,//total rhlR
 //                eQ::dataParameter::SYN,
-                eQ::dataParameter::C14,
+//                eQ::dataParameter::C14,
 ////                eQ::dataParameter::MFP,
 //                eQ::dataParameter::LACI,
 //                eQ::dataParameter::FP,
@@ -683,6 +692,12 @@ int main(int argc, char* argv[])
                     std::cout<<"Trigger of aspect ratio change to: "
                             <<eQ::parameters["mutantAspectRatioScale"]
                             <<" at simTime="<<simulation->simTime<<std::endl;
+                }
+                double sr = simulation->ABM->strainRatio;
+                if((0.0 == sr) || (1.0 == sr) )
+                {
+                    std::cout<<"Strain fixation of strain: "<<((1.0 == sr) ? "A" : "B")<<std::endl;
+                    break;
                 }
             }
 

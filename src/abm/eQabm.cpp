@@ -152,11 +152,17 @@ void eQabm::initCells(int numCellsToInit)
 
             if("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
             {
-                double halfWidth = trapWidthMicrons/2.0;
-//                cellParams.strainType = (cellParams.x > halfWidth)
-                cellParams.strainType = (rn() > 0.5)
-                        ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
-//                        ? eQ::strainType::ACTIVATOR : eQ::strainType::ACTIVATOR;
+                if("AB_HALF" == eQ::parameters["cellInitType"])
+                {
+                    double halfWidth = trapWidthMicrons/2.0;
+                    cellParams.strainType = (cellParams.x > halfWidth)
+                            ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
+                }
+                else
+                {
+                    cellParams.strainType = (rn() > 0.5)
+                            ? eQ::strainType::REPRESSOR : eQ::strainType::ACTIVATOR;
+                }
             }
             else
             {
@@ -733,69 +739,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             }//end for
         };//end lambda recordCelldata
 
-        if(false)
-        {
-        //BIN RECORDING (Primitive for now):
-            //search i,j for match with
-            const double xr = trapHeightMicrons;
-            const double yr = trapHeightMicrons/2.0;
-    //        const double xr2 = Params.simData.trapWidthMicrons/2.0;
-    //        const double yr2 = Params.simData.trapHeightMicrons*0.75;
-            const double xr2 = trapWidthMicrons/2.0;
-            const double yr2 = trapHeightMicrons*0.75;
-            size_t ir,jr;
-            index = eQ::ij_from_xy(xr,yr,nodesPerMicronData);//uses data scaling
-            ir = index.first;  jr = index.second;
-            if ((i==ir) && (j==jr))
-            {
-                //cell angle:
-                double a = (*cell)->cpmCell->angle;
-                while(a<0.0)
-                    a += 2.0*M_PI;
-                a *= 2.0;  a = fmod(a, 2.0*M_PI);
-
-                size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                binBuffer.at(thisBin)++;
-            }
-            else
-            {
-                index = eQ::ij_from_xy(xr2,yr2,nodesPerMicronData);//uses data scaling
-                ir = index.first;  jr = index.second;
-                if ((i==ir) && (j==jr))
-                {
-                    //cell angle:
-                    double a = (*cell)->cpmCell->angle;
-                    while(a<0.0)
-                        a += 2.0*M_PI;
-                    a *= 2.0;  a = fmod(a, 2.0*M_PI);
-
-                    size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                    binBuffer2.at(thisBin)++;
-                }
-            }
-        }
-
-/*
-        //        if(mutantTriggerFlag)
-        //        {
-        //            if(mutantCellNumber == counter++)
-        //            {
-        //                mutantTriggerFlag = false;
-        //                (*cell)->Params.strainType = eQ::strainType::ACTIVATOR;
-        //                //note:  aspectRatio factor has been set on init, above, in the cell params
-
-        //                (*cell)->Params.meanDivisionLength *= double( eQ::parameters["mutantAspectRatioScale"]);
-        ////                (*cell)->Params.meanDivisionLength *= (*cell)->Params.simData.aspectRatioFactor_A;
-        //                auto x = (*cell)->getCenter_x();
-        //                auto y = (*cell)->getCenter_y();
-        //                std::cout<<"Mutant strain asserted at (x,y): "<<x<<", "<<y
-        //                        <<" cell number: "<<mutantCellNumber<<std::endl;
-        //                mutant_xpos = x;
-        //                mutant_ypos = y;
-        //            }
-        //        }
-*/
-
         if("NOTRAP" == eQ::parameters["trapType"])                  {}
         if("NO_SIGNALING" == eQ::parameters["simType"])             {}
         else if("STATIC_ASPECTRATIO" == eQ::parameters["simType"])  {}
@@ -860,48 +803,59 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                 double aspectRatioThresh = double( eQ::parameters["aspectRatioThresholdHSL"]);
                 double aspectRatioScaling = double( eQ::parameters["defaultAspectRatioFactor"]);
 
-                if(aspectRatioInduction)
-                {
-                    //for using just 2 HSLs:
-                    const size_t    Ain = 1;
-                    const size_t    Rin = 0;
-                    double hslValue = (eQ::strainType::REPRESSOR == thisCell->Params.strainType)
-//                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
-                            ? thisCell->strain->iHSL[Rin] : thisCell->strain->iHSL[Ain];
-
-//                    if(hslValue > aspectRatioThresh)
-                        if(eQ::strainType::REPRESSOR == thisCell->Params.strainType)
-                            aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
+                if(0 == Params.hslSolutionVector.size())
+                {//IF NO SIGNALING, DON'T COMPUTE GENE CIRCUIT:
+                    if( (aspectRatioInduction) && (eQ::strainType::REPRESSOR == thisCell->Params.strainType) )
+                    {
+                        aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
+                        thisCell->Params.meanDivisionLength = aspectRatioScaling * DEFAULT_DIVISION_LENGTH_MICRONS;
+                    }
                 }
-
-                thisCell->Params.meanDivisionLength = aspectRatioScaling * DEFAULT_DIVISION_LENGTH_MICRONS;
-//                    (*cell)->Params.divisionLength = (*cell)->Params.meanDivisionLength;//set to divde at this length immediately
-
-
-                std::vector<double> hslData;
-                std::vector<double> membraneDiffusion;
-                //HSL READ:
-                for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
+                else
                 {
-//                    hslData.push_back(readHSL(Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints));
-                    hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
-                }
-                //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
-                membraneDiffusion.push_back(3.0);
-                membraneDiffusion.push_back(2.1);
-                membraneDiffusion.push_back(3.0);
-                membraneDiffusion.push_back(2.1);
-///*
-                auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
+                    if(aspectRatioInduction)
+                    {
+                        //for using just 2 HSLs:
+                        const size_t    Ain = 1;
+                        const size_t    Rin = 0;
+                        double hslValue = (eQ::strainType::REPRESSOR == thisCell->Params.strainType)
+    //                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
+                                ? thisCell->strain->iHSL[Rin] : thisCell->strain->iHSL[Ain];
 
-                //HSL WRITE:
-                for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
-                {
-//                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints);
-                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints);
+    //                    if(hslValue > aspectRatioThresh)
+                            if(eQ::strainType::REPRESSOR == thisCell->Params.strainType)
+                                aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
+                    }
+
+                    thisCell->Params.meanDivisionLength = aspectRatioScaling * DEFAULT_DIVISION_LENGTH_MICRONS;
+    //                    (*cell)->Params.divisionLength = (*cell)->Params.meanDivisionLength;//set to divde at this length immediately
+
+
+                    std::vector<double> hslData;
+                    std::vector<double> membraneDiffusion;
+                    //HSL READ:
+                    for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
+                    {
+    //                    hslData.push_back(readHSL(Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints));
+                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                    }
+                    //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
+                    membraneDiffusion.push_back(3.0);
+                    membraneDiffusion.push_back(2.1);
+                    membraneDiffusion.push_back(3.0);
+                    membraneDiffusion.push_back(2.1);
+    ///*
+                    auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
+
+                    //HSL WRITE:
+                    for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
+                    {
+    //                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints);
+                        writeHSL(deltaHSL[i], Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints);
+                    }
+    //*/
+                    setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 }
-//*/
-                setDiffusionTensor(thisCell->getAngle(), cellPoints);
 
             }
             else if (
