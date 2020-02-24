@@ -427,6 +427,8 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
                     unsigned iy = i/globalNodesW;
                     paramsABM.petscLookupTable[grid]->grid[iy][jx] = i;
                 }
+                diffusionSolver2->topBoundaryValue.assign(globalNodesW, 0.0);
+                diffusionSolver2->bottomBoundaryValue.assign(globalNodesW, 0.0);
             }
         }
         //to verify the dof are as expected (for small grids to test):
@@ -456,84 +458,6 @@ void Simulation::init_ABM(int numSeedCells)
             paramsABM.pA = &pA;
             paramsABM.pR = &pR;
         }
-
-        //SWITCH ON SIMULATION TYPE:
-/*
-        if("DUALSTRAIN_OSCILLATOR" == eQ::parameters["simType"])
-        {//need to check grids are init;  check size automatically, etc...
-            if(createdHSLgrid)
-            {//init rates and strain parameters:
-                init_kinetics_DSO();
-                params.pA = &pA;
-                params.pR = &pR;
-                params.c4grid = &HSLGrids[0];
-                params.c14grid = &HSLGrids[1];
-                //NOTE:  fenics specific;  need to switch on implementation or provide in template
-                params.c4lookup = dof_from_grid[0];
-                params.c14lookup = dof_from_grid[1];
-            }
-            else
-            {
-                eQ::parameters["simType"] = "NO_SIGNALING";
-                std::cout<<"HSL grid not init!  Over-write of simType to eQ::simType::NO_SIGNALING"<<std::endl;
-            }
-        }
-        else if(
-                ("SENDER_RECEIVER" == eQ::parameters["simType"])
-                || ("INDUCED_SENDER_RECEIVER" == eQ::parameters["simType"])
-                || ("DUAL_SENDER_RECEIVER" == eQ::parameters["simType"])
-                )
-        {//need to check grids are init;  check size automatically, etc...
-            if(createdHSLgrid)
-            {//init rates and strain parameters:
-                init_kinetics_DSO();
-                params.pA = &pA;
-                params.pR = &pR;
-                params.c4grid = &HSLGrids[0];
-                //NOTE:  fenics specific;  need to switch on implementation or provide in template
-                params.c4lookup = dof_from_grid[0];
-//                if ("DUAL_SENDER_RECEIVER" == eQ::parameters["simType"])
-                {
-                    params.c14grid = &HSLGrids[1];
-                    params.c14lookup = dof_from_grid[1];
-                }
-            }
-            else
-            {
-                eQ::parameters["simType"] = "NO_SIGNALING";
-                std::cout<<"HSL grid not init!  Over-write of simType to eQ::simType::NO_SIGNALING"<<std::endl;
-            }
-        }
-        else if("MODULUS_1" == eQ::parameters["simType"])
-        {//need to check grids are init;  check size automatically, etc...
-            if(createdHSLgrid)
-            {//init rates and strain parameters:
-                init_kinetics_DSO();
-                params.pA = &pA;
-//                params.pR = &pR;
-                params.c4grid = &HSLGrids[0];
-//                params.c14grid = &HSLGrids[1];
-                //NOTE:  fenics specific;  need to switch on implementation or provide in template
-                params.c4lookup = dof_from_grid[0];
-//                params.c14lookup = dof_from_grid[1];
-            }
-        }
-        else if("MODULUS_2" == eQ::parameters["simType"])
-        {//need to check grids are init;  check size automatically, etc...
-            if(createdHSLgrid)
-            {//init rates and strain parameters:
-                init_kinetics_DSO();
-                params.pA = &pA;
-                params.pR = &pR;
-                params.c4grid = &HSLGrids[0];
-                params.c14grid = &HSLGrids[1];
-                //NOTE:  fenics specific;  need to switch on implementation or provide in template
-                params.c4lookup = dof_from_grid[0];
-                params.c14lookup = dof_from_grid[1];
-            }
-        }
-
-*/
 
 //=============================================================================
     //CREATE ABM CLASS:
@@ -597,6 +521,15 @@ void Simulation::stepSimulation()
 
             if(bool(eQ::parameters["PETSC_SIMULATION"]))
             {
+                for(size_t j(0); j<globalNodesW; ++j)
+                {
+                    diffusionSolver2->topBoundaryValue[j] = diffusionSolver->topChannelData[j];
+                    diffusionSolver2->bottomBoundaryValue[j] = diffusionSolver->bottomChannelData[j];
+                }
+
+                //set petsc boundary conditions here:
+                diffusionSolver2->gridData->topDirichletCoefficient = 0.0;
+
                 double ptare = MPI_Wtime();
                 diffusionSolver2->stepDiffusion();
                 petscTimer += (MPI_Wtime() - ptare);

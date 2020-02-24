@@ -9,6 +9,7 @@
 //JJW mod:
 //#include "eQ.h"
 #include "./src/eQ.h"
+class simulation;
 
 using namespace std;
 
@@ -45,6 +46,9 @@ class diffusionPETSc : public eQ::diffusionSolver
 {
 //    diffusionPETSc() {}
 
+//    friend class simulation;
+
+private:
     PetscErrorCode  ierr;
     MPI_Comm        DIFFU_COMM;
     PetscInt        gridNodesX, gridNodesY, step;
@@ -56,7 +60,7 @@ class diffusionPETSc : public eQ::diffusionSolver
 	AO				appOrder;
     KSP             krylovSolver;
     PC              preconditioner;
-    DiffusionData   initData, *gridData;
+//    DiffusionData   initData, *gridData;
     PetscViewer     printViewer;
 
     PetscErrorCode  ApplyBoundaryConditions();
@@ -84,6 +88,23 @@ class diffusionPETSc : public eQ::diffusionSolver
 		double getDiffusionConstant(void);
 		void writeDiffusionFiles(double timestamp);
 		void finalize(void);
+
+        std::vector<double>topBoundaryValue;
+        std::vector<double>bottomBoundaryValue;
+        std::vector<double>leftBoundaryValue;
+        std::vector<double>rightBoundaryValue;
+
+        std::vector<double>topBoundaryNeumann;
+        std::vector<double>topBoundaryDirichlet;
+            std::vector<double>bottomBoundaryNeumann;
+            std::vector<double>bottomBoundaryDirichlet;
+        std::vector<double>leftBoundaryNeumann;
+        std::vector<double>leftBoundaryDirichlet;
+            std::vector<double>rightBoundaryNeumann;
+            std::vector<double>rightBoundaryDirichlet;
+
+            DiffusionData   initData, *gridData;
+
 };
 
 

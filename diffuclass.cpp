@@ -120,6 +120,9 @@ void diffusionPETSc::stepDiffusion(void)
 //TODO: implement each wall separately
 void diffusionPETSc::setBoundaryValues(const eQ::parametersType &bvals)
 {
+    //JW: over-ride for now: set boundaries explicitly by writing the data structures
+    return;
+
     if(bool(bvals["allBoundaries"]) == true){
         gridData->topBoundaryValue = double(bvals["boundaryValue"]);
         gridData->bottomBoundaryValue = double(bvals["boundaryValue"]);
@@ -198,10 +201,10 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
   //JW NOTE:  each node can check its range whether it has boundary points
   //  then, traverse the boundary explicitly, rather than traversing the entire i,j space
     double twoFh = 2 * gridData->fourierNumber * gridData->h;//
-    double topD = gridData->topDirichletCoefficient;
-    double bottomD = gridData->bottomDirichletCoefficient;
-    double leftD = gridData->leftDirichletCoefficient;
-    double rightD = gridData->rightDirichletCoefficient;
+//    double topD = gridData->topDirichletCoefficient;
+//    double bottomD = gridData->bottomDirichletCoefficient;
+//    double leftD = gridData->leftDirichletCoefficient;
+//    double rightD = gridData->rightDirichletCoefficient;
         double topN = gridData->topNeumannCoefficient;
         double bottomN = gridData->bottomNeumannCoefficient;
         double leftN = gridData->leftNeumannCoefficient;
@@ -211,9 +214,11 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
   for (j = ys; j < ys+ym; j++){
     for (i = xs; i < xs+xm; i++){
 //      if (i == 0 || i == gridNodesX-1 || j == 0 || j == gridNodesY-1){
+
+          //TOP WALL
           if(j == gridNodesY-1)
           {
-              double topBV = gridData->topBoundaryValue;
+              double topBV = topBoundaryValue[i];
               //Set non-Dirichlet for top wall
               if (topN != 0)
               {//if TL (TR) corner, only set to N if left (right) wall is N
@@ -221,12 +226,13 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
                         RHSarray[j][i] += (twoFh * topBV) / topN;
               }
               else
-                  //JW: is topD ever 0??
-                  RHSarray[j][i] = topBV / topD;
+//                  RHSarray[j][i] = topBV / topD;
+                  RHSarray[j][i] = topBV;//if N==0, then D must be 1
           }
+          //BOTTOM WALL
           else if(j == 0)
           {
-              double bottomBV = gridData->bottomBoundaryValue;
+              double bottomBV = bottomBoundaryValue[i];
               //Set non-Dirichlet for bottom wall
               if (bottomN != 0)
               {
@@ -234,8 +240,10 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
                         RHSarray[j][i] +=  (twoFh * bottomBV) / bottomN;
               }
               else
-                  RHSarray[j][i] = bottomBV / bottomD;
+//                  RHSarray[j][i] = bottomBV / bottomD;
+                  RHSarray[j][i] = bottomBV;//if N==0, then D must be 1
           }
+          //RIGHT WALL
           if(i == gridNodesX-1)
           {
               double rightBV = gridData->rightBoundaryValue;
@@ -246,8 +254,10 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
                       RHSarray[j][i] += (twoFh * rightBV) / rightN;
               }
               else
-                  RHSarray[j][i] = rightBV / rightD;
+//                  RHSarray[j][i] = rightBV / rightD;
+                  RHSarray[j][i] = rightBV;//if N==0, then D must be 1
           }
+          //LEFT WALL
           else if(i == 0)
           {
               double leftBV = gridData->leftBoundaryValue;
@@ -258,7 +268,8 @@ PetscErrorCode diffusionPETSc::ApplyBoundaryConditions()
                       RHSarray[j][i] += (twoFh * leftBV) / leftN;
               }
               else
-                  RHSarray[j][i] = leftBV / leftD;
+//                  RHSarray[j][i] = leftBV / leftD;
+                  RHSarray[j][i] = leftBV;//if N==0, then D must be 1
           }
 //      }
     }
@@ -659,83 +670,196 @@ PetscErrorCode MyMatMult(Mat A, Vec X, Vec Y){
     ierr = DMDAVecGetArrayRead(distributedArray, user->localVector, &xarray);CHKERRQ(ierr);
 
     //Compute product-------------------------------------------------------------
+
+    double h = user->h;
+    double F = user->fourierNumber;
+    double twoF = 2*user->fourierNumber;
+    double topD = user->topDirichletCoefficient;
+    double bottomD = user->bottomDirichletCoefficient;
+    double leftD = user->leftDirichletCoefficient;
+    double rightD = user->rightDirichletCoefficient;
+        double topN = user->topNeumannCoefficient;
+        double bottomN = user->bottomNeumannCoefficient;
+        double leftN = user->leftNeumannCoefficient;
+        double rightN = user->rightNeumannCoefficient;
+
     for (j=ys; j<ys+ym; j++) {
         for (i=xs; i<xs+xm; i++) {
             //Sets value for edge points
-            if (i == gxs || j == gys || i == gxs+gxm-1 || j == gys+gym-1){
-                //Evaluate in case where top wall is Neumann/Robin
-                if (user->topNeumannCoefficient != 0 && j == gys+gym-1){
+//            if (i == gxs || j == gys || i == gxs+gxm-1 || j == gys+gym-1){
+
+            //TOP WALL
+            if(j == gys+gym-1)
+            {
+                if (topN != 0)
+                {
                     //Evaluate left corner when left wall is Neumann/Robin
-                    if (i == gxs && user->leftNeumannCoefficient != 0){
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j][i+1]-2*user->fourierNumber*xarray[j-1][i]\
-                            +(1+(4 + (2*user->h*user->topDirichletCoefficient/user->topNeumannCoefficient)\
-                            +(2*user->h*user->leftDirichletCoefficient/user->leftNeumannCoefficient))*\
-                            user->fourierNumber)*xarray[j][i];
+                    if (i == gxs && leftN != 0)
+                    {
+                        yarray[j][i] =
+                                -twoF * (xarray[j][i+1] + xarray[j-1][i])
+                            + (1 + (2 + (h * topD/topN) + (h * leftD/leftN)) * twoF) * xarray[j][i];
                     }
                     //Evaluate right corner when right wall is Neumann/Robin
-                    else if (i == gxs+gxm-1 && user->rightNeumannCoefficient != 0){
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j][i-1]-2*user->fourierNumber*xarray[j-1][i]\
-                            +(1+(4 + (2*user->h*user->topDirichletCoefficient/user->topNeumannCoefficient)\
-                            +(2*user->h*user->rightDirichletCoefficient/user->rightNeumannCoefficient))*\
-                            user->fourierNumber)*xarray[j][i];
+                    else if (i == gxs+gxm-1 && rightN != 0)
+                    {
+                        yarray[j][i] =
+                                -twoF * (xarray[j][i-1] + xarray[j-1][i])
+                            + (1 + (2 + (h * topD/topN) + (h * rightD/rightN)) * twoF) * xarray[j][i];
                     }
                     //Evaluate all other edge points on top wall
                     else{
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j][i-1]\
-                            -user->fourierNumber*xarray[j][i+1]+(1 + (4 + 2*user->h*user->topDirichletCoefficient\
-                            /user->topNeumannCoefficient)*user->fourierNumber)*xarray[j][i];
+                        yarray[j][i] =
+                                -F * (2*xarray[j-1][i] + xarray[j][i-1] + xarray[j][i+1])
+                                + (1 + (2 + h*topD/topN) * twoF) * xarray[j][i];
                     }
                 }
-                //Evaluate in case where bottom wall is Neumann/Robin
-                else if (user->bottomNeumannCoefficient != 0 && j == gys){
+                //Evaluate wall in case of Dirichlet condition
+                else
+                    yarray[j][i] = xarray[j][i];
+            }
+            //BOTTOM WALL
+            else if(j == gys)
+            {
+                if (bottomN != 0)
+                {
                     //Evaluate left corner when left wall is Neumann/Robin
-                    if (i == gxs && user->leftNeumannCoefficient != 0){
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j][i+1]-2*user->fourierNumber*xarray[j+1][i]\
-                            +(1+(4 + (2*user->h*user->leftDirichletCoefficient/user->leftNeumannCoefficient) + \
-                            (2*user->h*user->bottomDirichletCoefficient/user->bottomNeumannCoefficient))*\
-                            user->fourierNumber)*xarray[j][i];
+                    if (i == gxs && leftN != 0){
+                        yarray[j][i] =
+                                -twoF * (xarray[j][i+1] + xarray[j+1][i])
+                            + (1 + (2 + (h * leftD/leftN) +  (h * bottomD/bottomN)) * twoF) * xarray[j][i];
                     }
                     //Evaluate right corner when right wall is Neumann/Robin
-                    else if (i == gxs+gxm-1 && user->rightNeumannCoefficient != 0){
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j][i-1]-2*user->fourierNumber*xarray[j+1][i]\
-                            +(1+(4 + (2*user->h*user->rightDirichletCoefficient/user->rightNeumannCoefficient) + \
-                            (2*user->h*user->bottomDirichletCoefficient/user->bottomNeumannCoefficient))*\
-                            user->fourierNumber)*xarray[j][i];
+                    else if (i == gxs+gxm-1 && rightN != 0){
+                        yarray[j][i] =
+                                -twoF * (xarray[j][i-1] + xarray[j+1][i])
+                            + ( 1 + (2 + (h * rightD/rightN) + (h * bottomD/bottomN)) * twoF) * xarray[j][i];
                     }
                     //Evaluate all other edge points on bottom wall
                     else{
-                        yarray[j][i] = -2*user->fourierNumber*xarray[j+1][i]-user->fourierNumber*xarray[j][i-1]\
-                            -user->fourierNumber*xarray[j][i+1]+(1+(4 + (2*user->h*user->bottomDirichletCoefficient\
-                            /user->bottomNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
+                        yarray[j][i] =
+                                -F * (2*xarray[j+1][i] + xarray[j][i-1] + xarray[j][i+1])
+                                + (1 + (2 + h*bottomD/bottomN) * twoF) * xarray[j][i];
                     }
                 }
-                //Evaluate in case where left wall is Neumann/Robin
-                else if ((user->leftNeumannCoefficient != 0 && i == gxs) && (j != gys && j != gys+gym-1)){
-                    yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
-                        2*user->fourierNumber*xarray[j][i+1]+(1+(4 + (2*user->h*user->leftDirichletCoefficient\
-                        /user->leftNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
-                }
-                //Evaluate in case where right wall is Neumann/Robin
-                else if ((user->rightNeumannCoefficient != 0 && i == gxs+gxm-1) && (j != gys && j != gys+gym-1)){
-                    yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
-                        2*user->fourierNumber*xarray[j][i-1]+(1+(4 + (2*user->h*user->rightDirichletCoefficient\
-                        /user->rightNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
-                }
                 //Evaluate wall in case of Dirichlet condition
-                else{
-                yarray[j][i] = xarray[j][i];
-                }
+                else
+                    yarray[j][i] = xarray[j][i];
             }
+            //LEFT WALL
+            else if(i == gxs)
+            {
+//                else if ((user->leftNeumannCoefficient != 0 && i == gxs) && (j != gys && j != gys+gym-1)){
+                if (leftN != 0)
+                    yarray[j][i] =
+                            -F * (xarray[j-1][i] + xarray[j+1][i] + 2*xarray[j][i+1])
+                            + (1 + (2 + (user->h*leftD/leftN)) * twoF) * xarray[j][i];
+                //Evaluate wall in case of Dirichlet condition
+                else
+                    yarray[j][i] = xarray[j][i];
+            }
+            //RIGHT WALL
+            else if(i == gxs+gxm-1)
+            {
+//                else if ((user->rightNeumannCoefficient != 0 && i == gxs+gxm-1) && (j != gys && j != gys+gym-1)){
+                if (rightN != 0)
+                    yarray[j][i] =
+                            -F * (xarray[j-1][i] + xarray[j+1][i] -  2*xarray[j][i-1])
+                            + (1 + (2 + (h*rightD/rightN)) * twoF) * xarray[j][i];
+                //Evaluate wall in case of Dirichlet condition
+                else
+                    yarray[j][i] = xarray[j][i];
+            }
+
             //Sets value for non-edge points
-            else{
-                yarray[j][i] = 1.0 - user->fourierNumber*(
+            else
+                yarray[j][i] = 1.0 - F*(
                         xarray[j-1][i] + xarray[j+1][i] + xarray[j][i-1] + xarray[j][i+1] - 4*xarray[j][i]);
                 //        yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
                 //            user->fourierNumber*xarray[j][i-1] -user->fourierNumber*xarray[j][i+1]+\
                 //            (1+4*user->fourierNumber)*xarray[j][i];
-            }
         }
     }
+
+
+/*
+        //Sets value for edge points
+//      if (i == gxs || j == gys || i == gxs+gxm-1 || j == gys+gym-1){
+            //Evaluate in case where top wall is Neumann/Robin
+            if (user->topNeumannCoefficient != 0 && j == gys+gym-1){
+                //Evaluate left corner when left wall is Neumann/Robin
+                if (i == gxs && user->leftNeumannCoefficient != 0){
+                    yarray[j][i] = -2*user->fourierNumber*xarray[j][i+1]-2*user->fourierNumber*xarray[j-1][i]\
+                        +(1+(4 + (2*user->h*user->topDirichletCoefficient/user->topNeumannCoefficient)\
+                        +(2*user->h*user->leftDirichletCoefficient/user->leftNeumannCoefficient))*\
+                        user->fourierNumber)*xarray[j][i];
+                }
+                //Evaluate right corner when right wall is Neumann/Robin
+                else if (i == gxs+gxm-1 && user->rightNeumannCoefficient != 0){
+                    yarray[j][i] = -2*user->fourierNumber*xarray[j][i-1]-2*user->fourierNumber*xarray[j-1][i]\
+                        +(1+(4 + (2*user->h*user->topDirichletCoefficient/user->topNeumannCoefficient)\
+                        +(2*user->h*user->rightDirichletCoefficient/user->rightNeumannCoefficient))*\
+                        user->fourierNumber)*xarray[j][i];
+                }
+                //Evaluate all other edge points on top wall
+                else{
+                    yarray[j][i] = -2*user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j][i-1]\
+                        -user->fourierNumber*xarray[j][i+1]+(1 + (4 + 2*user->h*user->topDirichletCoefficient\
+                        /user->topNeumannCoefficient)*user->fourierNumber)*xarray[j][i];
+                }
+            }
+            //Evaluate in case where bottom wall is Neumann/Robin
+            else if (user->bottomNeumannCoefficient != 0 && j == gys){
+                //Evaluate left corner when left wall is Neumann/Robin
+                if (i == gxs && user->leftNeumannCoefficient != 0){
+                    yarray[j][i] = -2*user->fourierNumber*xarray[j][i+1]-2*user->fourierNumber*xarray[j+1][i]\
+                        +(1+(4 + (2*user->h*user->leftDirichletCoefficient/user->leftNeumannCoefficient) + \
+                        (2*user->h*user->bottomDirichletCoefficient/user->bottomNeumannCoefficient))*\
+                        user->fourierNumber)*xarray[j][i];
+                }
+                //Evaluate right corner when right wall is Neumann/Robin
+                else if (i == gxs+gxm-1 && user->rightNeumannCoefficient != 0){
+                    yarray[j][i] = -2*user->fourierNumber*xarray[j][i-1]-2*user->fourierNumber*xarray[j+1][i]\
+                        +(1+(4 + (2*user->h*user->rightDirichletCoefficient/user->rightNeumannCoefficient) + \
+                        (2*user->h*user->bottomDirichletCoefficient/user->bottomNeumannCoefficient))*\
+                        user->fourierNumber)*xarray[j][i];
+                }
+                //Evaluate all other edge points on bottom wall
+                else{
+                    yarray[j][i] =
+                            -2*user->fourierNumber*xarray[j+1][i]
+                            -user->fourierNumber*xarray[j][i-1]
+                        -user->fourierNumber*xarray[j][i+1]
+                            +(1+(4 + (2*user->h*user->bottomDirichletCoefficient\
+                        /user->bottomNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
+                }
+            }
+            //Evaluate in case where left wall is Neumann/Robin
+            else if ((user->leftNeumannCoefficient != 0 && i == gxs) && (j != gys && j != gys+gym-1)){
+                yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
+                    2*user->fourierNumber*xarray[j][i+1]+(1+(4 + (2*user->h*user->leftDirichletCoefficient\
+                    /user->leftNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
+            }
+            //Evaluate in case where right wall is Neumann/Robin
+            else if ((user->rightNeumannCoefficient != 0 && i == gxs+gxm-1) && (j != gys && j != gys+gym-1)){
+                yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
+                    2*user->fourierNumber*xarray[j][i-1]+(1+(4 + (2*user->h*user->rightDirichletCoefficient\
+                    /user->rightNeumannCoefficient))*user->fourierNumber)*xarray[j][i];
+            }
+            //Evaluate wall in case of Dirichlet condition
+            else{
+                yarray[j][i] = xarray[j][i];
+            }
+        }
+        //Sets value for non-edge points
+        else
+            yarray[j][i] = 1.0 - F*(
+                    xarray[j-1][i] + xarray[j+1][i] + xarray[j][i-1] + xarray[j][i+1] - 4*xarray[j][i]);
+            //        yarray[j][i] = -user->fourierNumber*xarray[j-1][i]-user->fourierNumber*xarray[j+1][i]-\
+            //            user->fourierNumber*xarray[j][i-1] -user->fourierNumber*xarray[j][i+1]+\
+            //            (1+4*user->fourierNumber)*xarray[j][i];
+*/
+
     //Finish function-------------------------------------------------------------
     //Restore arrays
     ierr = DMDAVecRestoreArray(distributedArray, Y, &yarray);CHKERRQ(ierr);

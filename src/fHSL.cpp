@@ -139,6 +139,14 @@ void fenicsInterface::stepDiffusion()
             bottomChannel->LVS->solve();
             bottomChannel->u->vector()->get_local(solution_vectorBottomChannel);
     }
+    //copy vector to petsc exportable vector (grid ordering)
+    for(size_t j(0); j<nodesW; ++j)
+    {
+        auto dofc = topChannel->boundaryDofChannel[j];
+        topChannelData[j] = solution_vectorTopChannel[dofc];
+        dofc = bottomChannel->boundaryDofChannel[j];
+        bottomChannelData[j] = solution_vectorBottomChannel[dofc];
+    }
 
     //old boundary method:
     //compute boundary flux and scale to channel volume
@@ -422,6 +430,9 @@ void fenicsInterface::createHSL()
     solution_vectorTopChannel.assign(solution_vectorTopChannel.size(), 0.0);//initialize the vector to xfer data
         bottomChannel->u->vector()->get_local(solution_vectorBottomChannel);
         solution_vectorBottomChannel.assign(solution_vectorBottomChannel.size(), 0.0);//initialize the vector to xfer data
+    //set additional vector for grid-ordering of channels (for petsc use)
+    topChannelData.assign(solution_vectorTopChannel.size(), 0.0);
+    bottomChannelData.assign(solution_vectorBottomChannel.size(), 0.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 //                    BOUNDARY CONDITIONS
