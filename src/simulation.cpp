@@ -50,7 +50,7 @@ Simulation::Simulation(MPI_Comm commWorld, const struct Simulation::params &init
         isControllerNode = true;
         //verify this is correct to do:
         isDiffusionNode = true;
-        whichHSLNode=0;
+        whichHSL=0;
     }
     else
     {//SAME # PEs (>=1) FOR EACH DIFFUSION LAYER (ALWAYS ONE FOR CONTROLLER LAYER):
@@ -64,8 +64,8 @@ Simulation::Simulation(MPI_Comm commWorld, const struct Simulation::params &init
                 mpiRanks[i].push_back(++thisRank);//starts at rank=1 for grid=0
                 if(my_PE_num == thisRank)
                 {
-                    whichHSLNode = i;//index from 0; defines which HSL layer for each mpi process
-                    std::cout<<"Node "<<my_PE_num<<" belongs to HSL layer "<<whichHSLNode<<std::endl;
+                    whichHSL = i;//index from 0; defines which HSL layer for each mpi process
+                    std::cout<<"Node "<<my_PE_num<<" belongs to HSL layer "<<whichHSL<<std::endl;
                 }
             }
         }
@@ -214,6 +214,8 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
         if(bool(eQ::parameters["PETSC_SIMULATION"]))
         {
             diffusionSolver2 = std::make_shared<diffusionPETSc>();//create instance
+            diffusionSolver2->topBoundaryValue.assign(globalNodesW, 0.0);
+            diffusionSolver2->bottomBoundaryValue.assign(globalNodesW, 0.0);
         }
         std::cout<<"\nDiffusion solver created...\n";
 
@@ -230,17 +232,17 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
 
         auto vecD = std::vector<double>(eQ::parameters["D_HSL"].get<std::vector<double>>());
 
-        fenicsParams.uniqueID  = whichHSLNode;
-        fenicsParams.comm      = mpiComms[whichHSLNode];
-        fenicsParams.D_HSL     = vecD[whichHSLNode];
-        fenicsParams.filePath  = hslFilePaths[whichHSLNode];
+        fenicsParams.uniqueID  = whichHSL;
+        fenicsParams.comm      = mpiComms[whichHSL];
+        fenicsParams.D_HSL     = vecD[whichHSL];
+        fenicsParams.filePath  = hslFilePaths[whichHSL];
         fenicsParams.nodesPerMicron    = double(eQ::parameters["nodesPerMicronSignaling"]);
 
         //the following are unique to each HSL grid, but common among nodes per HSL grid
 
         int layerNodes;
-        MPI_Comm_size(mpiComms[whichHSLNode], &layerNodes);
-        std::cout<<"\ndiffusionSolver->initDiffusion("<<whichHSLNode<<") comm = "<<mpiComms[whichHSLNode]
+        MPI_Comm_size(mpiComms[whichHSL], &layerNodes);
+        std::cout<<"\ndiffusionSolver->initDiffusion("<<whichHSL<<") comm = "<<mpiComms[whichHSL]
                 <<"  with MPI_Comm_size = "<<layerNodes
                 <<std::endl;
 
@@ -249,18 +251,58 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
 
         //diffusion template initialization call
         diffusionSolver->initDiffusion(fenicsParams);
-//        diffusionSolver->initDiffusion(whichHSLNode, thisComm, thisPath, thisD,  dt, argc, argv);
-//        diffusionSolver2->initDiffusion(workers, hslFilePaths, argc, argv);
+
+
         if(bool(eQ::parameters["PETSC_SIMULATION"]))
         {
             fenicsParams.argc = argc;
             fenicsParams.argv = argv;
             fenicsParams.filePath = Params.fileIO->fbase;
+
             diffusionSolver2->initDiffusion(fenicsParams);
+
+            std::vector<double> thisData;
+
+            if("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"])
+            {//USE CHANNEL SOLUTION FOR TOP/BOTTOM:
+                //top channels are dirichlet (set N to 0)
+                diffusionSolver2->gridData->topNeumannCoefficient = 0.0;
+                diffusionSolver2->gridData->bottomNeumannCoefficient = 0.0;
+                diffusionSolver2->gridData->topDirichletCoefficient = 1.0;
+                diffusionSolver2->gridData->bottomDirichletCoefficient = 1.0;
+                diffusionSolver2->topBoundaryValue = diffusionSolver->topChannelData;
+                diffusionSolver2->bottomBoundaryValue = diffusionSolver->bottomChannelData;
+            }
+            else
+            {//USE FIXED BOUNDARY CONDITION FOR TOP/BOTTOM
+                thisData = std::vector<double>(eQ::parameters["boundaries"]["top"][1].get<std::vector<double>>());
+                    diffusionSolver2->gridData->topNeumannCoefficient = thisData[0];
+                    diffusionSolver2->gridData->topDirichletCoefficient = thisData[1];
+                    diffusionSolver2->topBoundaryValue.assign(globalNodesW, thisData[2]);
+                thisData = std::vector<double>(eQ::parameters["boundaries"]["bottom"][1].get<std::vector<double>>());
+                    diffusionSolver2->gridData->bottomNeumannCoefficient = thisData[0];
+                    diffusionSolver2->gridData->bottomDirichletCoefficient = thisData[1];
+                    diffusionSolver2->bottomBoundaryValue.assign(globalNodesW, thisData[2]);
+            }
+
+            //LEFT/RIGHT BOUNDARY CONDITIONS:
+            thisData = eQ::parameters["boundaries"]["left"][1].get<std::vector<double>>();
+                    diffusionSolver2->gridData->leftNeumannCoefficient = thisData[0];
+                    diffusionSolver2->gridData->leftDirichletCoefficient = thisData[1];
+                    diffusionSolver2->gridData->leftBoundaryValue = thisData[2];
+            thisData = eQ::parameters["boundaries"]["right"][1].get<std::vector<double>>();
+                    diffusionSolver2->gridData->rightNeumannCoefficient = thisData[0];
+                    diffusionSolver2->gridData->rightDirichletCoefficient = thisData[1];
+                    diffusionSolver2->gridData->rightBoundaryValue = thisData[2];
+
+            //set petsc boundary conditions here:
+            diffusionSolver2->gridData->topDirichletCoefficient = 0.0;
+
+
             std::cout<<"PETSc solver, path: "<<fenicsParams.filePath<<" initialized..."<<std::endl;
         }
 
-        std::cout<<"Diffusion solver "<<whichHSLNode<<" initialized..."<<std::endl;
+        std::cout<<"Diffusion solver "<<whichHSL<<" initialized..."<<std::endl;
 
         //NOTE:  Fenics specific verification and data transfer here
         //TODO:  switch on implementation and/or define common interface for translation of data sent in main loop
@@ -427,12 +469,11 @@ void Simulation::create_HSLgrid(int argc, char* argv[])
                     unsigned iy = i/globalNodesW;
                     paramsABM.petscLookupTable[grid]->grid[iy][jx] = i;
                 }
-                diffusionSolver2->topBoundaryValue.assign(globalNodesW, 0.0);
-                diffusionSolver2->bottomBoundaryValue.assign(globalNodesW, 0.0);
             }
         }
         //to verify the dof are as expected (for small grids to test):
 //        printData();
+        std::cout<<"\n\tController:  createdHSLgrid = true...\n\n";
     }
 
     createdHSLgrid = true;
@@ -521,14 +562,11 @@ void Simulation::stepSimulation()
 
             if(bool(eQ::parameters["PETSC_SIMULATION"]))
             {
-                for(size_t j(0); j<globalNodesW; ++j)
+                if("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"])
                 {
-                    diffusionSolver2->topBoundaryValue[j] = diffusionSolver->topChannelData[j];
-                    diffusionSolver2->bottomBoundaryValue[j] = diffusionSolver->bottomChannelData[j];
+                    diffusionSolver2->topBoundaryValue = diffusionSolver->topChannelData;
+                    diffusionSolver2->bottomBoundaryValue = diffusionSolver->bottomChannelData;
                 }
-
-                //set petsc boundary conditions here:
-                diffusionSolver2->gridData->topDirichletCoefficient = 0.0;
 
                 double ptare = MPI_Wtime();
                 diffusionSolver2->stepDiffusion();
@@ -876,7 +914,7 @@ Simulation::~Simulation()
 //    auto p = mpiComms.data();
 //    for(size_t i(0); i<mpiComms.size(); ++i)
 //    {
-//        if(whichHSLNode == i)
+//        if(whichHSL == i)
 //            if(MPI_COMM_NULL != p[i])
 //                MPI_Comm_free(&p[i]);
 //    }

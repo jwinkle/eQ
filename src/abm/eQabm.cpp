@@ -940,19 +940,22 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
-//                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
-                        hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                            hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                        else
+                            hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
                     membraneDiffusion.push_back(3.0);
 
-//                    auto deltaHSL = thisCell->strain->computeProteins(c4, c14, cellLength);
                     auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
-//                    auto deltaHSL =  std::vector<double>{0.0, 0.0};
-                //HSL WRITE:
-//                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                    writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+
+                    //HSL WRITE:
+                    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                        writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+                    else
+                        writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
 
                     setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 if ("MODULUS_2" == eQ::parameters["simType"])
