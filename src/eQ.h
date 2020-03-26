@@ -108,6 +108,7 @@ public:
         eQ::parameters["numberSeedCells"] = 8;
         eQ::parameters["cellInitType"] = "RANDOM";
 
+        eQ::parameters["PETSC_SIMULATION"] = false;
         eQ::parameters["openWalledDirichlet0"]     = true;//preset
         eQ::parameters["boundaries"] =
         {
@@ -205,6 +206,8 @@ public:
     public:
         struct params
         {
+            int argc;
+            char** argv;
             size_t                      uniqueID;
             MPI_Comm                    comm;
             double                      dt;

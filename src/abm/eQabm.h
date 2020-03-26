@@ -34,6 +34,8 @@ public:
         std::vector<eQabm::HSLsolution>             hslSolutionVector;
         std::vector<eQabm::channelHSLsolution>      channelSolutionVector;
         std::vector<double>                         membraneDiffusionRates;
+        std::vector<eQabm::HSLgrid>                 petscLookupTable;
+        std::vector<eQabm::HSLsolution>             petscSolutionVector;
 
         //these should be vectors:
 //        eQabm::HSLgrid c4lookup;

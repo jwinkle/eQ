@@ -479,6 +479,8 @@ public:
     std::vector<double> solution_vector;
     std::vector<double> solution_vectorTopChannel;
     std::vector<double> solution_vectorBottomChannel;
+    std::vector<double> topChannelData;
+    std::vector<double> bottomChannelData;
     std::vector<double> fluxTopChannel;
     std::vector<double> fluxBottomChannel;
 

@@ -134,7 +134,7 @@ void eQabm::initCells(int numCellsToInit)
 
         if( ("MODULUS_1" == eQ::parameters["simType"])
             || ("MODULUS_2" == eQ::parameters["simType"])
-            || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
+//            || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
             )
         {
             //code to populate the cells on a grid to speed-up init:
@@ -178,6 +178,7 @@ void eQabm::initCells(int numCellsToInit)
             || ("DUAL_SENDER_RECEIVER" == eQ::parameters["simType"])
            || ("STATIC_ASPECTRATIO" == eQ::parameters["simType"])
                 || ("INDUCED_DYNAMIC_ASPECTRATIO" == eQ::parameters["simType"])
+                || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
            )
         {
             if("RANDOM" == eQ::parameters["cellInitType"])
@@ -527,9 +528,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             index = eQ::ij_from_xy(x,y,npm);//uses  grid scaling as passed by "nodes per micron" npm
             i = index.first;  j = index.second;//location of cell center, stored for use in all that follows...
 
-            //JW: compute petsc index from x,y here:
-            //double petscLocationC4 = ...
-
             //get location of pole centers:
             //NOTE: need to check if they are out of bounds! (only cell centers are checked for cell removal)
             auto poleA = eQ::ij_from_xy(thisCell->polePositionA, npm);//uses full grid scaling
@@ -579,27 +577,19 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             }
         };
         auto readHSL = [&](std::vector<double> &HSLvector, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
-//                auto readHSL = [&](std::vector<double> *HSLvector, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
         {
-            //check the grid is defined:
-//            if(nullptr == HSLvector) return 0.0;
             //read from each interior point of the cell (computed above) and equal-average values read:
             double HSL = 0.0;
             for(auto &point : cellPoints)
             {
                 //fenics implementation:
                 auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                HSL += HSLvector->at(location);
                 HSL += HSLvector.at(location);
             }
             return HSL/double(cellPoints.size());
         };
         auto writeHSL = [&](double HSL, std::vector<double> &HSLgrid, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
-//                auto writeHSL = [&](double HSL, std::vector<double> *HSLgrid, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
         {//NOTE:  HSL passed in is in units of concentration [nM]...must scale to extra-cellular volume to ensure convservation of molecule #
-            //check the grid is defined:
-//            if(nullptr == HSLgrid) return;
-
             //we need the fraction of volume outside of cell relative to total rectangular volume 1um wide x 1um tall x cell length (um)
             //[HSL] is the delta concentraion of HSL for the cell; need to determine the amount to put on one grid point:
             //[HSL]*cellVolume=#HSL; to update 1um^2 2D grid point with #HSL molecules and xum^2 extra-cellular volume per grid point:
@@ -610,12 +600,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             double numberHSL = HSL * oneNanoMolarToMoleculeNumber;
             double updatePerSquareMicron = numberHSL/eQ::computeExtraCellularVolumeFraction(cellLength);
             double updateForOneGridPoint = updatePerSquareMicron * nodesPerMicron * nodesPerMicron;
-//            double volumeScaling =
-//                    eQ::computeCellVolumeForConcentrations(cellLength)    // [HSL] * volume (um^3) = moles
-//                    * nodesPerMicron * nodesPerMicron
-//                    / eQ::computeExtraCellularVolumeFraction(cellLength);
-////                    / (double(eQ::parameters["lengthScaling"]) * double(eQ::parameters["lengthScaling"]));
-//            double dHSL = (HSL * volumeScaling)/double(cellPoints.size());
 
             //distribute over interior points of the cell:
             double dHSL = updateForOneGridPoint/double(cellPoints.size());
@@ -623,10 +607,7 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             {
                 //fenics implementation:
                 auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                HSLgrid->at(location) += dHSL;
                 HSLgrid.at(location) += dHSL;
-//                    auto locationc4 = Params.c4lookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                    Params.c4grid->at(locationc4) += dHSL;
             }
         };
         //Note: define new parameters and set filenames in eQ.h
@@ -902,14 +883,24 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                            hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                        else
+                            hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
                     membraneDiffusionRates = std::vector<double>(eQ::parameters["membraneDiffusionRates"].get<std::vector<double>>());
+
                     auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusionRates, cellLength);
+
                     //HSL WRITE:
-                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+                    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                        writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+                    else
+                        writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+
+
                     setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 }
             }
@@ -966,18 +957,24 @@ void eQabm::updateCells(fli_t begin, fli_t end)
                     //HSL READ:
                     for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
                     {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                        if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                            hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                        else
+                            hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
                     }
 
                     //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
                     membraneDiffusion.push_back(3.0);
 
-//                    auto deltaHSL = thisCell->strain->computeProteins(c4, c14, cellLength);
                     auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
-//                    auto deltaHSL =  std::vector<double>{0.0, 0.0};
-                //HSL WRITE:
-                writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                setDiffusionTensor(thisCell->getAngle(), cellPoints);
+
+                    //HSL WRITE:
+                    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                        writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+                    else
+                        writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+
+                    setDiffusionTensor(thisCell->getAngle(), cellPoints);
                 if ("MODULUS_2" == eQ::parameters["simType"])
                 {//HSL WRITE:
 //                    writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
@@ -991,6 +988,24 @@ void eQabm::updateCells(fli_t begin, fli_t end)
         //note: possibly will be altered by genetic circuit, pressure, [protein], etc...
         //should pass growth rate, which should be computed in the ABM class
         (*cell)->updateGrowth();
+    }
+
+    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+    {
+        //COPY FENICS I/O TO PETSC VECTOR FOR TESTING:
+        for(size_t grid(0); grid< Params.hslSolutionVector.size(); grid++)
+        {
+            for (size_t i(0); i < (nodesHigh); i++)
+            {
+                for (size_t j(0); j < (nodesWide); j++)
+                {
+                    auto f = Params.dofLookupTable[grid]->grid[i][j];
+                    auto p = Params.petscLookupTable[grid]->grid[i][j];
+//                    Params.petscSolutionVector[grid].at(p) =  Params.hslSolutionVector[grid].at(f);
+                    Params.hslSolutionVector[grid].at(f) =  Params.petscSolutionVector[grid].at(p);
+                }
+            }
+        }
     }
 
     if(cellCounter != 0)  averagePointsPerCell /= double(cellCounter);

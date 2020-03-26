@@ -107,39 +107,48 @@ void fenicsInterface::stepDiffusion()
     //sets solution_vector to contents of the new solution u (solution_vector is sent to, and then updated by, the ABM layer)
     shell->u->vector()->get_local(solution_vector);
 
-
-    //now compute new flux into the channel boundaries and scale to channel volume element:
-    computeBoundaryFlux();
-
-    //copy the updated values into u0 and solve the next advection-diffusion timestep for both channels:
-
-    size_t numIterations = size_t(eQ::parameters["channelSolverNumberIterations"]);
-//    size_t numIterations = 10;
-    auto dtx = std::make_shared<dolfin::Constant>(myParams.dt/double(numIterations));
-    topChannel->L->dt = dtx;
-    topChannel->a->dt = dtx;
-    bottomChannel->L->dt = dtx;
-    bottomChannel->a->dt = dtx;
-
-    for(size_t i(0); i<numIterations; ++i)
+    if( ("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"]) && ("H_TRAP" != eQ::parameters["trapType"]) )
     {
+        //now compute new flux into the channel boundaries and scale to channel volume element:
+        computeBoundaryFlux();
+
+        //copy the updated values into u0 and solve the next advection-diffusion timestep for both channels:
+
+        size_t numIterations = size_t(eQ::parameters["channelSolverNumberIterations"]);
+        auto dtx = std::make_shared<dolfin::Constant>(myParams.dt/double(numIterations));
+        topChannel->L->dt = dtx;
+        topChannel->a->dt = dtx;
+        bottomChannel->L->dt = dtx;
+        bottomChannel->a->dt = dtx;
+
+        for(size_t i(0); i<numIterations; ++i)
+        {
+            for(size_t j(0); j<nodesW; ++j)
+            {
+                auto dofc = topChannel->boundaryDofChannel[j];
+                solution_vectorTopChannel[dofc] += fluxTopChannel[j]/double(numIterations);
+            }
+            for(size_t j(0); j<nodesW; ++j)
+            {
+                auto dofc = bottomChannel->boundaryDofChannel[j];
+                solution_vectorBottomChannel[dofc] += fluxBottomChannel[j]/double(numIterations);
+            }
+
+            topChannel->u0->vector()->set_local(solution_vectorTopChannel);//sets u0 to contents of solution_vector
+            topChannel->LVS->solve();
+            topChannel->u->vector()->get_local(solution_vectorTopChannel);
+                bottomChannel->u0->vector()->set_local(solution_vectorBottomChannel);//sets u0 to contents of solution_vector
+                bottomChannel->LVS->solve();
+                bottomChannel->u->vector()->get_local(solution_vectorBottomChannel);
+        }
+        //copy vector to petsc exportable vector (grid ordering)
         for(size_t j(0); j<nodesW; ++j)
         {
             auto dofc = topChannel->boundaryDofChannel[j];
-            solution_vectorTopChannel[dofc] += fluxTopChannel[j]/double(numIterations);
+            topChannelData[j] = solution_vectorTopChannel[dofc];
+            dofc = bottomChannel->boundaryDofChannel[j];
+            bottomChannelData[j] = solution_vectorBottomChannel[dofc];
         }
-        for(size_t j(0); j<nodesW; ++j)
-        {
-            auto dofc = bottomChannel->boundaryDofChannel[j];
-            solution_vectorBottomChannel[dofc] += fluxBottomChannel[j]/double(numIterations);
-        }
-
-        topChannel->u0->vector()->set_local(solution_vectorTopChannel);//sets u0 to contents of solution_vector
-        topChannel->LVS->solve();
-        topChannel->u->vector()->get_local(solution_vectorTopChannel);
-            bottomChannel->u0->vector()->set_local(solution_vectorBottomChannel);//sets u0 to contents of solution_vector
-            bottomChannel->LVS->solve();
-            bottomChannel->u->vector()->get_local(solution_vectorBottomChannel);
     }
 
     //old boundary method:
@@ -349,15 +358,7 @@ void fenicsInterface::createHSL()
 
 
 //                              ======= MEDIA FLOW RATE SETTING =======
-    //10, 100, 1000, 0
-//    double trapFlowMicronsPerSecond = 100.0;//physical scale flow velocity
-//    double trapFlowMicronsPerSecond = 50.0;//physical scale flow velocity
-//        double trapFlowMicronsPerSecond = 10.0;
-//    double trapFlowMicronsPerSecond = 1.0;
-//    double trapFlowMicronsPerSecond = 1.0e-10;
-
-        double channelFlowVelocity = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
-//    double trapVelocity = (trapFlowMicronsPerSecond * 60.0)/double(eQ::parameters["lengthScaling"]);//microns/sec * 60sec/min;
+    double channelFlowVelocity = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
     data.v     = std::make_shared<dolfin::Constant>(channelFlowVelocity);//units: um/min
 
 
@@ -424,6 +425,9 @@ void fenicsInterface::createHSL()
     solution_vectorTopChannel.assign(solution_vectorTopChannel.size(), 0.0);//initialize the vector to xfer data
         bottomChannel->u->vector()->get_local(solution_vectorBottomChannel);
         solution_vectorBottomChannel.assign(solution_vectorBottomChannel.size(), 0.0);//initialize the vector to xfer data
+    //set additional vector for grid-ordering of channels (for petsc use)
+    topChannelData.assign(solution_vectorTopChannel.size(), 0.0);
+    bottomChannelData.assign(solution_vectorBottomChannel.size(), 0.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 //                    BOUNDARY CONDITIONS
@@ -440,15 +444,21 @@ void fenicsInterface::createHSL()
 
     //UPDATING DIRICHLET BOUNDARY:  switch to update expression class or zero
 
-    if("DIRICHLET_UPDATE" == eQ::parameters["boundaryType"])
+    if("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"])
     {
+        if("H_TRAP" == eQ::parameters["trapType"])
+        {   //reset the rates to channel velocity for H-trap (left/right boundaries are narrow, transverse flow)
+            //note: should be set with Robin BC set in "boundaries" parameters
+            leftRate = channelFlowVelocity;
+            rightRate = channelFlowVelocity;
+        }
         auto leftWall       = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::LEFT);
         auto rightWall      = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::RIGHT);
         auto topWall        = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::TOP);
         auto bottomWall     = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::BOTTOM);
 
-        boundaryChannelLeft =  std::make_shared<updatingDirchletBoundary>(0.0);
-        boundaryChannelRight =  std::make_shared<updatingDirchletBoundary>(0.0);
+//        boundaryChannelLeft =  std::make_shared<updatingDirchletBoundary>(0.0);
+//        boundaryChannelRight =  std::make_shared<updatingDirchletBoundary>(0.0);
 
         data.meshFunction = std::make_shared<MeshFunction<size_t>>(shell->mesh, shell->mesh->topology().dim()-1, 0);
         leftWall->mark(*data.meshFunction, 1);
@@ -462,37 +472,56 @@ void fenicsInterface::createHSL()
         //use the channel solutions to populate the BC for the trap
         shell->dbc.clear();
 
-        //COMPARTMENT IMPLEMENTATION:
-        boundaryCompartment =  std::make_shared<updatingDirchletBoundary>(0.0);
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, leftWall));//update value each timestep
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, rightWall));
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, topWall));//update value each timestep
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, bottomWall));
+        //DECODE THE BOUNDARY CONDITIONS:
+        //LEFT/RIGHT WALL:
+        std::vector<double> thisData;
+        thisData = eQ::parameters["boundaries"]["left"][1].get<std::vector<double>>();
+        if(0.0 == thisData[0])
+        {//DIRICHLET, SET TO BV:
+            auto leftData = std::make_shared<dolfin::Constant>(thisData[2]);
+            shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, leftData, leftWall));
+        }
+        else if(0.0 == thisData[1])
+        {//NEUMANN, SET TO BV:
+            //ONLY SET HOMOGENEOUS NEUMANN...
+            data.s_left     = std::make_shared<dolfin::Constant>(0.0);
+            data.r_left     = std::make_shared<dolfin::Constant>(0.0);
+        }
+        else
+        {//ROBIN, only set to rate computed, above
+            data.s_left     = std::make_shared<dolfin::Constant>(0.0);
+            data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
+        }
+        thisData = eQ::parameters["boundaries"]["right"][1].get<std::vector<double>>();
+        if(0.0 == thisData[0])
+        {//DIRICHLET, SET TO BV:
+            auto rightData = std::make_shared<dolfin::Constant>(thisData[2]);
+            shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, rightData, rightWall));//set to zero always
+        }
+        else if(0.0 == thisData[1])
+        {//NEUMANN, SET TO BV:
+            //ONLY SET HOMOGENEOUS NEUMANN...
+            data.s_right     = std::make_shared<dolfin::Constant>(0.0);
+            data.r_right     = std::make_shared<dolfin::Constant>(0.0);
+        }
+        else
+        {//ROBIN:
+            data.s_right     = std::make_shared<dolfin::Constant>(0.0);
+            data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
+        }
 
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, leftWall));//set to zero always
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, rightWall));
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryChannelLeft, leftWall));//update value each timestep
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryChannelRight, rightWall));
 
-//        //TOP/BOTTOM FLOW-CHANNEL BOUNDARIES:
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
-        //DIRICHLET=0
+        //TOP/BOTTOM WALL (SET TO FLOW CHANNEL):
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
+        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
+        //SET TO 0
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, topWall));
 //        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, bottomWall));
 
-        //Robin BC for left/right walls:
-        data.s_left     = std::make_shared<dolfin::Constant>(0.0);
-        data.s_right     = std::make_shared<dolfin::Constant>(0.0);
-        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
-        data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
-        //FOR H-TRAP:
-//        data.r_left     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
-//        data.r_right     = std::make_shared<dolfin::Constant>(channelFlowVelocity);
-        //over-ride and set to left/right reflecting BC by setting rates to zero:
-//        data.r_left     = std::make_shared<dolfin::Constant>(0.0);
-//        data.r_right     = std::make_shared<dolfin::Constant>(0.0);
-
+        if("H_TRAP" == eQ::parameters["trapType"])
+        {  //reset the top,bottom boundaries to reflecting (no Dirichlet)
+            shell->dbc.clear();
+        }
     }
     else
     {
