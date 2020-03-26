@@ -302,7 +302,6 @@ int main(int argc, char* argv[])
     };
     auto computeEffectiveDegradationRates = [&](std::map<std::string, double> &physicalDiffusionRates)
     {
-
         //check that diffusion constants are populated in sync:
         auto hslDiffusionRates = std::vector<double>(eQ::parameters["D_HSL"].get<std::vector<double>>());
         auto membraneDiffusionRates = std::vector<double>(eQ::parameters["membraneDiffusionRates"].get<std::vector<double>>());
@@ -332,53 +331,153 @@ int main(int argc, char* argv[])
         eQ::parameters["rhoe_by_rhoi"] = rhoe_by_rhoi;
 
     };
+    auto setBoundaryConditions = [&](double flowRate)
+    {
+        double channelLengthLeft    = double(eQ::parameters["mediaChannelMicronsLeft"])/double(eQ::parameters["lengthScaling"]);
+        double channelLengthRight    = double(eQ::parameters["mediaChannelMicronsRight"])/double(eQ::parameters["lengthScaling"]);
+        eQ::parameters["channelLengthMicronsLeft"] = channelLengthLeft;//channel length is in simulation units
+        eQ::parameters["channelLengthMicronsRight"] = channelLengthRight;//channel length is in simulation units
 
+        if("DIRICHLET_0" == eQ::parameters["boundaryType"])
+        {
+            eQ::parameters["boundaries"] =
+            {//alpha (normal derivative), beta (Dirichlet), gamma (boundary value)
+                {"left",    {"Dirichlet" , {0.0, 1.0, 0.0}}},
+                {"right",   {"Dirichlet" , {0.0, 1.0, 0.0}}},
+//            {"left",    {"Neumann" , {1.0, 0.0, 0.0}}},
+//            {"right",   {"Neumann" , {1.0, 0.0, 0.0}}},
+                {"top",     {"Dirichlet" , {0.0, 1.0, 0.0}}},
+                {"bottom",  {"Dirichlet" , {0.0, 1.0, 0.0}}},
+            };
+        }
+        else if("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"])
+        {
+            if("H_TRAP" == eQ::parameters["trapType"])
+            {
+                eQ::parameters["boundaries"] =
+                {
+                    //Robin BC for left/right walls: u'/u = 1/length = b/a
+                    {"left",    {"Robin" , {channelLengthLeft, 1.0, 0.0}}},
+                    {"right",   {"Robin" , {channelLengthRight, 1.0, 0.0}}},
+                    {"top",    {"Neumann" , {1.0, 0.0, 0.0}}},
+                    {"bottom",   {"Neumann" , {1.0, 0.0, 0.0}}},
+                };
+            }
+            else
+            {
+                eQ::parameters["boundaries"] =
+                {
+                    //Robin BC for left/right walls: u'/u = 1/length = b/a
+                    {"left",    {"Robin" , {channelLengthLeft, 1.0, 0.0}}},
+                    {"right",   {"Robin" , {channelLengthRight, 1.0, 0.0}}},
+                    {"top",    {"Dirichlet" , {0.0, 1.0, -1.0}}},
+                    {"bottom",   {"Dirichlet" , {0.0, 1.0, -1.0}}},
+                };
+            }
+        }
+
+        eQ::parameters["trapChannelLinearFlowRate"] = flowRate * 60.0;//microns/sec * 60sec/min;
+    };
+
+    auto checkAdvectionDiffusionStability = [&](double D)
+    {
+        double h = double(eQ::parameters["lengthScaling"])/double(eQ::parameters["nodesPerMicronSignaling"]);
+        double v = double(eQ::parameters["trapChannelLinearFlowRate"]);
+        double dt = double(eQ::parameters["dt"]);
+
+        double h_stability = 2.0*D/(v * h);
+        double t_stability = h*h/(D*dt);//Crank-N scheme
+
+        size_t timeLoops = ceil(dt/t_stability);
+        eQ::parameters["channelSolverNumberIterations"] = timeLoops;
+
+        std::cout<<"\n\t  ADVECTION-DIFFUSION STABILITY (h,t) > 1 => loops for channel solver: "
+                <<h_stability<<", "<<t_stability
+               <<"  ==>  "<<timeLoops<<std::endl;
+
+        return( (h_stability > 1.0) && (t_stability > 1.0) );
+    };
+//****************************************************************************************
+            //assignSimulationParameters: MODULUS
+//****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
+        eQ::parameters["simType"]       = "MODULUS_2";
+        eQ::parameters["modelType"]       = "OFF_LATTICE_ABM";
+//        eQ::parameters["trapType"]      = "NOWALLED";
+//        eQ::parameters["trapType"]      = "TWOWALLED";
+        eQ::parameters["trapType"]      = "H_TRAP";
+
+//        eQ::parameters["boundaryType"]  = "DIRICHLET_0";
+//        eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
+        eQ::parameters["boundaryType"]  = "MICROFLUIDIC_TRAP";
+
+        eQ::parameters["PETSC_SIMULATION"] =  true;
+//        eQ::parameters["PETSC_SIMULATION"] =  false;
+
+//                double trapFlowRate = 0.0;//um/sec
+                double trapFlowRate = 1.0;//um/sec
+//        double trapFlowRate = 5.0;//um/sec
+//        double trapFlowRate = 10.0;//um/sec
+//        double trapFlowRate = 25.0;//um/sec
+//        double trapFlowRate = 50.0;//um/sec
+//        double trapFlowRate = 100.0;//um/sec
+//        double trapFlowRate = 150.0;
+//        double trapFlowRate = 250.0;
+
+        eQ::parameters["mediaChannelMicronsLeft"] = 100;
+        eQ::parameters["mediaChannelMicronsRight"] = 100;
+
+//        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 30;
+//        eQ::parameters["physicalTrapWidth_X_Microns"]     = 300;
+//        eQ::parameters["lengthScaling"] = 5.0;//150mins
+
+        eQ::parameters["physicalTrapHeight_Y_Microns"]    = 30;
+        eQ::parameters["physicalTrapWidth_X_Microns"]     = 150;
+        eQ::parameters["lengthScaling"] = 3.0;//150mins
+//        eQ::parameters["lengthScaling"] = 2.0;//150mins
+//        eQ::parameters["lengthScaling"] = 5.0;//150mins
+//        eQ::parameters["lengthScaling"] = 4.0;//150mins
+
+        computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
+        setBoundaryConditions(trapFlowRate);
+
 //****************************************************************************************
-                                //MODULUS_1
+
+//        double iptgOffset = 15.0;
+//        double iptgOffset = 25.0;
+        double iptgOffset = 35.0;
+//        double iptgOffset = 45.0;
+//        double iptgOffset = 55.0;
+            double iptgMin = 0.0;
+            double iptgMax = 30.0;
+
+            //NULL INPUT TESTING:
+//            iptgOffset = 30.0;
+//            iptgOffset = 0.0;
+//            iptgMin = 0.0;
+//            iptgMax = 0.0;
+
+        if((iptgMax-iptgMin)/2.0 > iptgOffset)
+        {
+            iptgOffset = (iptgMax-iptgMin)/2.0;
+            std::cout<<"ERROR: IPTG RANGE NEGATIVE.  RESETTING"<<std::endl;
+        }
+                eQ::parameters["IPTG_GRADIENT_OFFSET"]  = iptgOffset;
+                eQ::parameters["IPTG_GRADIENT_MIN"]     = iptgMin;
+                eQ::parameters["IPTG_GRADIENT_MAX"]     = iptgMax;
 //****************************************************************************************
+        //resolution of the HSL diffusion grid: #lattice points per micron
+        eQ::parameters["nodesPerMicronSignaling"] = 2;
+
         //scale factors are relative to "WT" division length of ecoli, defined in ecoli.h:
         eQ::parameters["mutantAspectRatioScale"]       = 1.0;
         eQ::parameters["defaultAspectRatioFactor"]     = 1.0;
 
 
-        //            eQ::parameters["simType"]       = "MODULUS_1";
-            eQ::parameters["simType"]       = "MODULUS_2";
-
-            eQ::parameters["modelType"]     = "OFF_LATTICE_ABM";
-            eQ::parameters["nodesPerMicronSignaling"] = 2;
-
-//            eQ::parameters["trapType"]      = "TWOWALLED";
-            eQ::parameters["trapType"]      = "H_TRAP";//TOP+BOTTOM WALLS (OPEN LEFT/RIGHT)
-            eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 30;
-            eQ::parameters["physicalTrapWidth_X_Microns"]     = 300;
-
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 60;
-//            eQ::parameters["lengthScaling"] = 10.0;//150mins
-//            eQ::parameters["lengthScaling"] = 5.0;//150mins
-            eQ::parameters["lengthScaling"] = 3.0;//150mins
-//        eQ::parameters["lengthScaling"] = 4.0;//150mins
-
-        double channelOneEighth = 0.125 * double(eQ::parameters["physicalTrapWidth_X_Microns"]);
-
-        eQ::parameters["channelLengthMicronsLeft"] = channelOneEighth/double(eQ::parameters["lengthScaling"]);
-        eQ::parameters["channelLengthMicronsRight"] = channelOneEighth/double(eQ::parameters["lengthScaling"]);
-
-//        double trapFlowMicronsPerSecond = 10.0;
-//        double trapFlowMicronsPerSecond = 5.0;
-//        double trapFlowMicronsPerSecond = 1.0;
-        double trapFlowMicronsPerSecond = 0.5;
-//        double trapFlowMicronsPerSecond = 1.0e-3;//don't set to 0.0 to avoid dividing by 0
-
-        eQ::parameters["trapChannelLinearFlowRate"] = trapFlowMicronsPerSecond * 60.0;//microns/sec * 60sec/min;
-
-        computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
-
-
-
+//****************************************************************************************
+//                      SIGNALING
+//****************************************************************************************
         eQ::parameters["hslSignaling"]  = true;
         std::map<std::string, double> physicalDiffusionRates = {
             {"C4", 3.0e4}, {"C14", 1.6e4}
@@ -396,7 +495,6 @@ int main(int argc, char* argv[])
 //                2.1
         };
 
-
     eQ::parameters["AnisotropicDiffusion_Axial"] = 1.0;
 //    eQ::parameters["AnisotropicDiffusion_Axial"] = 0.1;
 //        eQ::parameters["AnisotropicDiffusion_Transverse"] = 0.01;
@@ -404,23 +502,30 @@ int main(int argc, char* argv[])
         eQ::parameters["AnisotropicDiffusion_Transverse"] = 1.0;
 
 //****************************************************************************************
-        //SET SIMULATION TIME HERE:
+                //SET SIMULATION TIME HERE:
 //****************************************************************************************
 
 //        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
 //        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
-        //        setSimulationTimeStep(0.005);//updates parameters and stepsPerHour multiplier
+//                setSimulationTimeStep(0.005);//updates parameters and stepsPerHour multiplier
         //        setSimulationTimeStep(0.004);//updates parameters and stepsPerHour multiplier
 //                        setSimulationTimeStep(0.0025);//updates parameters and stepsPerHour multiplier
                         setSimulationTimeStep(0.001);//updates parameters and stepsPerHour multiplier
         //        simulationStepsMax = 5*stepsPerHour/2;//5*60/2 = 150 mins
         //        simulationStepsMax = 4*stepsPerHour;
-                simulationStepsMax = 5*stepsPerHour;
+//                simulationStepsMax = 5*stepsPerHour;
         //        simulationStepsMax = 6*stepsPerHour;
+//                simulationStepsMax = 10*stepsPerHour;
+                simulationStepsMax = 20*stepsPerHour;
 
 
 
+        computeEffectiveDegradationRates(physicalDiffusionRates);
+        checkAdvectionDiffusionStability(physicalDiffusionRates["C4"]);//send max. D, sets channel loop iterations
 
+
+        //target max HSL in bulk:
+        double hslPeakValue = 1.0e4;
 
         //DIVISION NOISE SCALE:  sets scale for uniform rand. number \in [-.5, +.5] for:
           //division fraction to daughter cells
@@ -428,7 +533,6 @@ int main(int argc, char* argv[])
 
         eQ::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
 //        eQ::parameters["divisionNoiseScale"] = 0.0;
-
 
 
         //for Modulus-1
@@ -516,8 +620,6 @@ int main(int argc, char* argv[])
         eQ::initLogNormalGenerators(logNormals);
 
 
-        computeEffectiveDegradationRates(physicalDiffusionRates);
-
         eQ::parameters["iptgValues"] = iptgValues;
         eQ::parameters["lnmean"]    = pX;
         eQ::parameters["lnvar"]     = pX*xr*pX*xr;
@@ -548,7 +650,7 @@ int main(int argc, char* argv[])
 //                eQ::dataParameter::DTENSOR_12,
 
 //                eQ::dataParameter::MODULUS_S,
-                eQ::dataParameter::MODULUS_H,
+//                eQ::dataParameter::MODULUS_H,
 //                eQ::dataParameter::MODULUS_R
 ////                eQ::dataParameter::SPRING_COMPRESSION,
                 eQ::dataParameter::C4,

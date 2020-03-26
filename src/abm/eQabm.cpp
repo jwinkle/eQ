@@ -520,9 +520,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             index = eQ::ij_from_xy(x,y,npm);//uses  grid scaling as passed by "nodes per micron" npm
             i = index.first;  j = index.second;//location of cell center, stored for use in all that follows...
 
-            //JW: compute petsc index from x,y here:
-            //double petscLocationC4 = ...
-
             //get location of pole centers:
             //NOTE: need to check if they are out of bounds! (only cell centers are checked for cell removal)
             auto poleA = eQ::ij_from_xy(thisCell->polePositionA, npm);//uses full grid scaling
@@ -572,27 +569,19 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             }
         };
         auto readHSL = [&](std::vector<double> &HSLvector, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
-//                auto readHSL = [&](std::vector<double> *HSLvector, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
         {
-            //check the grid is defined:
-//            if(nullptr == HSLvector) return 0.0;
             //read from each interior point of the cell (computed above) and equal-average values read:
             double HSL = 0.0;
             for(auto &point : cellPoints)
             {
                 //fenics implementation:
                 auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                HSL += HSLvector->at(location);
                 HSL += HSLvector.at(location);
             }
             return HSL/double(cellPoints.size());
         };
         auto writeHSL = [&](double HSL, std::vector<double> &HSLgrid, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
-//                auto writeHSL = [&](double HSL, std::vector<double> *HSLgrid, eQabm::HSLgrid &HSLlookup, std::vector<std::pair<size_t, size_t>> &cellPoints)
         {//NOTE:  HSL passed in is in units of concentration [nM]...must scale to extra-cellular volume to ensure convservation of molecule #
-            //check the grid is defined:
-//            if(nullptr == HSLgrid) return;
-
             //we need the fraction of volume outside of cell relative to total rectangular volume 1um wide x 1um tall x cell length (um)
             //[HSL] is the delta concentraion of HSL for the cell; need to determine the amount to put on one grid point:
             //[HSL]*cellVolume=#HSL; to update 1um^2 2D grid point with #HSL molecules and xum^2 extra-cellular volume per grid point:
@@ -603,12 +592,6 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             double numberHSL = HSL * oneNanoMolarToMoleculeNumber;
             double updatePerSquareMicron = numberHSL/eQ::computeExtraCellularVolumeFraction(cellLength);
             double updateForOneGridPoint = updatePerSquareMicron * nodesPerMicron * nodesPerMicron;
-//            double volumeScaling =
-//                    eQ::computeCellVolumeForConcentrations(cellLength)    // [HSL] * volume (um^3) = moles
-//                    * nodesPerMicron * nodesPerMicron
-//                    / eQ::computeExtraCellularVolumeFraction(cellLength);
-////                    / (double(eQ::parameters["lengthScaling"]) * double(eQ::parameters["lengthScaling"]));
-//            double dHSL = (HSL * volumeScaling)/double(cellPoints.size());
 
             //distribute over interior points of the cell:
             double dHSL = updateForOneGridPoint/double(cellPoints.size());
@@ -616,10 +599,7 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             {
                 //fenics implementation:
                 auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                HSLgrid->at(location) += dHSL;
                 HSLgrid.at(location) += dHSL;
-//                    auto locationc4 = Params.c4lookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
-//                    Params.c4grid->at(locationc4) += dHSL;
             }
         };
         //Note: define new parameters and set filenames in eQ.h
@@ -732,261 +712,52 @@ void eQabm::updateCells(fli_t begin, fli_t end)
             }//end for
         };//end lambda recordCelldata
 
-        if(false)
+        //CONVERT THE GRID (X,Y) VALUE TO A (J,I) GRID POSITION FOR HSL SIGNALING INTERFACE
+        index = eQ::ij_from_xy(x,y,nodesPerMicron);//uses full grid scaling
+        i = index.first;  j = index.second;//location of cell center, stored for use in all that follows...
+
+        //now search the rectangular area computed above and call pointIsInCell() method on each point:
+        std::vector<std::pair<size_t, size_t>> cellPoints;//vector of (i,j) pairs
+        findInteriorPoints(nodesPerMicron, cellPoints);
+        //note: the vector contains points that are verified inside the cell
+        //for checking this is working:
+        averagePointsPerCell += cellPoints.size();
+
+        if( ("MODULUS_1" == eQ::parameters["simType"]) || ("MODULUS_2" == eQ::parameters["simType"]) )
         {
-        //BIN RECORDING (Primitive for now):
-            //search i,j for match with
-            const double xr = trapHeightMicrons;
-            const double yr = trapHeightMicrons/2.0;
-    //        const double xr2 = Params.simData.trapWidthMicrons/2.0;
-    //        const double yr2 = Params.simData.trapHeightMicrons*0.75;
-            const double xr2 = trapWidthMicrons/2.0;
-            const double yr2 = trapHeightMicrons*0.75;
-            size_t ir,jr;
-            index = eQ::ij_from_xy(xr,yr,nodesPerMicronData);//uses data scaling
-            ir = index.first;  jr = index.second;
-            if ((i==ir) && (j==jr))
-            {
-                //cell angle:
-                double a = (*cell)->cpmCell->angle;
-                while(a<0.0)
-                    a += 2.0*M_PI;
-                a *= 2.0;  a = fmod(a, 2.0*M_PI);
+            //    a = v(4)/D;
+            //    cxR = c0 / (1 - exp(a*L))  ...
+            //        * (exp(a*x) - exp(a*L)) + offset;
+            double cl = double(eQ::parameters["channelLengthMicronsLeft"]);//already scaled
+            double cr = double(eQ::parameters["channelLengthMicronsRight"]);
+            double tw = trapWidthMicrons;
+            double xt = cl+cr+tw;
 
-                size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                binBuffer.at(thisBin)++;
-            }
-            else
-            {
-                index = eQ::ij_from_xy(xr2,yr2,nodesPerMicronData);//uses data scaling
-                ir = index.first;  jr = index.second;
-                if ((i==ir) && (j==jr))
+            double vx = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
+            //um^2/min for IPTG (relative to C4HSL a la Pai and You, using molecular weight vs. C4HSL)
+            double D = 3.0e4 * sqrt(159.0/238.0) * double(eQ::parameters["diffusionScaling"]);
+            double a = vx/D;
+            double expaL = exp(a*xt);//exp(ax) evaluated at x=L (right side of device)
+            double expax = exp(a*(x+cl));//exp(ax) evaluated at cell position x (add left-side offset)
+
+            double iptgOffset   = 0.0;//low side of gradient at media channel right (Modulus c0 offset of input gradient)
+            double iptgLeft     = +100.0;//high side of gradient at media channel left (+ difference from right side)
+
+            double thisC = (iptgLeft/(1.0 - expaL)) * (expax - expaL) + iptgOffset;
+
+                if ("MODULUS_2" == eQ::parameters["simType"])
                 {
-                    //cell angle:
-                    double a = (*cell)->cpmCell->angle;
-                    while(a<0.0)
-                        a += 2.0*M_PI;
-                    a *= 2.0;  a = fmod(a, 2.0*M_PI);
-
-                    size_t thisBin = size_t(floor((a/(2.0*M_PI)) * numBins));
-                    binBuffer2.at(thisBin)++;
-                }
-            }
-        }
-
 /*
-        //        if(mutantTriggerFlag)
-        //        {
-        //            if(mutantCellNumber == counter++)
-        //            {
-        //                mutantTriggerFlag = false;
-        //                (*cell)->Params.strainType = eQ::strainType::ACTIVATOR;
-        //                //note:  aspectRatio factor has been set on init, above, in the cell params
-
-        //                (*cell)->Params.meanDivisionLength *= double( eQ::parameters["mutantAspectRatioScale"]);
-        ////                (*cell)->Params.meanDivisionLength *= (*cell)->Params.simData.aspectRatioFactor_A;
-        //                auto x = (*cell)->getCenter_x();
-        //                auto y = (*cell)->getCenter_y();
-        //                std::cout<<"Mutant strain asserted at (x,y): "<<x<<", "<<y
-        //                        <<" cell number: "<<mutantCellNumber<<std::endl;
-        //                mutant_xpos = x;
-        //                mutant_ypos = y;
-        //            }
-        //        }
-*/
-
-        if("NOTRAP" == eQ::parameters["trapType"])                  {}
-        if("NO_SIGNALING" == eQ::parameters["simType"])             {}
-        else if("STATIC_ASPECTRATIO" == eQ::parameters["simType"])  {}
-        else
-        {
-            //CONVERT THE GRID (X,Y) VALUE TO A (J,I) GRID POSITION FOR HSL SIGNALING INTERFACE
-            index = eQ::ij_from_xy(x,y,nodesPerMicron);//uses full grid scaling
-            i = index.first;  j = index.second;//location of cell center, stored for use in all that follows...
-
-            //JW: compute petsc index from x,y here:
-            //double petscLocationC4 = ...
-
-            //now search the rectangular area computed above and call pointIsInCell() method on each point:
-            std::vector<std::pair<size_t, size_t>> cellPoints;//vector of (i,j) pairs
-            findInteriorPoints(nodesPerMicron, cellPoints);
-            //note: the vector contains points that are verified inside the cell
-            //for checking this is working:
-            averagePointsPerCell += cellPoints.size();
-
-
-            if("INDUCED_DYNAMIC_ASPECTRATIO" == eQ::parameters["simType"])
-            {
-                if( (aspectRatioInduction) && (eQ::strainType::ACTIVATOR == (*cell)->Params.strainType) )
-                {
-                    (*cell)->Params.meanDivisionLength = double( eQ::parameters["mutantAspectRatioScale"])
-                                                       * double( eQ::parameters["defaultAspectRatioFactor"])
-                                                       * DEFAULT_DIVISION_LENGTH_MICRONS;
-                    (*cell)->Params.divisionLength = (*cell)->Params.meanDivisionLength;//set to divde at this length immediately
-                }
-            }
-            if("DUALSTRAIN_OSCILLATOR" == eQ::parameters["simType"])
-            {
-                //fenics implementation:
-//                auto c4 = readHSL(Params.c4grid, Params.c4lookup, cellPoints);
-//                auto c14 = readHSL(Params.c14grid, Params.c14lookup, cellPoints);
-                auto c4 = readHSL(Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                auto c14 = readHSL(Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
-
-                auto deltaHSL = (*cell)->strain->computeProteins(c4, c14,(*cell)->getLengthMicrons());
-
-                writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
-
-                //13May.2019:  cell size modulation connected to dso:
-//                if(eQ::strainType::REPRESSOR == (*cell)->Params.strainType)
-                if(true)
-                {
-                    double threshold = double(eQ::parameters["dso_hslThresh"]);
-                    double newDivisionLength = (*cell)->Params.meanDivisionLength;
-
-                    double ftsZ = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(H), cellLength);
-//                    double ftsZ = (*cell)->strain->conc[H]/(*cell)->getLengthMicrons();
-
-                    if (ftsZ > threshold)
-                     newDivisionLength *= (2.0/3.0);//scale
-
-                    (*cell)->Params.divisionLength = newDivisionLength;
-                }
-            }
-            else if("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
-            {
-                double aspectRatioThresh = double( eQ::parameters["aspectRatioThresholdHSL"]);
-                double aspectRatioScaling = double( eQ::parameters["defaultAspectRatioFactor"]);
-
-                if(aspectRatioInduction)
-                {
-                    double hslValue = (eQ::strainType::REPRESSOR == thisCell->Params.strainType)
-                            ? thisCell->strain->iHSL[1] : thisCell->strain->iHSL[3];
-
-                    if(hslValue > aspectRatioThresh)
-                        aspectRatioScaling *= double(eQ::parameters["mutantAspectRatioScale"]);
-                }                
-
-                thisCell->Params.meanDivisionLength = aspectRatioScaling * DEFAULT_DIVISION_LENGTH_MICRONS;
-//                    (*cell)->Params.divisionLength = (*cell)->Params.meanDivisionLength;//set to divde at this length immediately
-
-
-                std::vector<double> hslData;
-                std::vector<double> membraneDiffusion;
-                //HSL READ:
-                for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
-                {
-//                    hslData.push_back(readHSL(Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints));
-                    hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
-                }
-                //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
-                membraneDiffusion.push_back(3.0);
-                membraneDiffusion.push_back(2.1);
-                membraneDiffusion.push_back(3.0);
-                membraneDiffusion.push_back(2.1);
-
-                auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
-
-                //HSL WRITE:
-                for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
-                {
-//                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i].get(), Params.dofLookupTable[i], cellPoints);
-                    writeHSL(deltaHSL[i], Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints);
-                }
-
-                setDiffusionTensor(thisCell->getAngle(), cellPoints);
-
-            }
-            else if (
-                     ("SENDER_RECEIVER" == eQ::parameters["simType"])
-                    || ("INDUCED_SENDER_RECEIVER" == eQ::parameters["simType"])
-                    || ("DUAL_SENDER_RECEIVER" == eQ::parameters["simType"]) )
-
-            {
-//                (*cell)->strain->setPressureK50(10.0);
-//                if(pressureInductionFlag)
-//                    (*cell)->strain->setPressureValue((*cell)->getSpringCompression());
-//                else
-//                    (*cell)->strain->setPressureValue(0.0);
-
-                if ("DUAL_SENDER_RECEIVER" == eQ::parameters["simType"])
-                {
-//                    auto c4 = readHSL(Params.c4grid, Params.c4lookup, cellPoints);
-//                    auto c14 = readHSL(Params.c14grid, Params.c14lookup, cellPoints);
-                    auto c4 = readHSL(Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                    auto c14 = readHSL(Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
-
-                    auto deltaHSL = (*cell)->strain->computeProteins(c4, c14,(*cell)->getLengthMicrons());
-
-//                    writeHSL(deltaHSL[0], Params.c4grid, Params.c4lookup, cellPoints);
-//                    writeHSL(deltaHSL[1], Params.c14grid, Params.c14lookup, cellPoints);
-                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                    writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
-
-                    enum concentrations  whichHSL = (eQ::strainType::REPRESSOR == (*cell)->Params.strainType) ? H : I;
-                    double threshold = double(eQ::parameters["hslThresh"]);
-                    double newDivisionLength = (*cell)->Params.meanDivisionLength;
-
-                    double ftsZ = eQ::proteinNumberToNanoMolar((*cell)->strain->getProteinNumber(whichHSL), cellLength);
-
-                    if (ftsZ > threshold)
-                     newDivisionLength *= (2.0/3.0);//scale
-
-                    (*cell)->Params.divisionLength = newDivisionLength;
-                }
-                else
-                {
-                    std::vector<double> hslData;
-                    std::vector<double> membraneDiffusionRates;
-                    //HSL READ:
-                    for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
-                    {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
-                    }
-
-                    //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
-                    membraneDiffusionRates = std::vector<double>(eQ::parameters["membraneDiffusionRates"].get<std::vector<double>>());
-                    auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusionRates, cellLength);
-                    //HSL WRITE:
-                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                    setDiffusionTensor(thisCell->getAngle(), cellPoints);
-                }
-            }
-            else if( ("MODULUS_1" == eQ::parameters["simType"]) || ("MODULUS_2" == eQ::parameters["simType"]) )
-            {
-                //    a = v(4)/D;
-                //    cxR = c0 / (1 - exp(a*L))  ...
-                //        * (exp(a*x) - exp(a*L)) + offset;
-                double cl = double(eQ::parameters["channelLengthMicronsLeft"]);//already scaled
-                double cr = double(eQ::parameters["channelLengthMicronsRight"]);
-                double tw = trapWidthMicrons;
-                double xt = cl+cr+tw;
-
-                double vx = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
-                //um^2/min for IPTG (relative to C4HSL a la Pai and You, using molecular weight vs. C4HSL)
-                double D = 3.0e4 * sqrt(159.0/238.0) * double(eQ::parameters["diffusionScaling"]);
-                double a = vx/D;
-                double expaL = exp(a*xt);//exp(ax) evaluated at x=L (right side of device)
-                double expax = exp(a*(x+cl));//exp(ax) evaluated at cell position x (add left-side offset)
-
-                double iptgOffset   = 0.0;//low side of gradient at media channel right (Modulus c0 offset of input gradient)
-                double iptgLeft     = +100.0;//high side of gradient at media channel left (+ difference from right side)
-
-                double thisC = (iptgLeft/(1.0 - expaL)) * (expax - expaL) + iptgOffset;
-
-                    if ("MODULUS_2" == eQ::parameters["simType"])
-                    {
 //                        eQ::parameters["MODULUS_IPTG"] = thisC;
 //                        const double iptgOffset = 0.0;
 //                        const double iptgOffset = 10.0;
 //                        const double iptgOffset = 20.0;
-//                        const double iptgOffset = 30.0;
+                        const double iptgOffset = 30.0;
 //                        const double iptgOffset = 40.0;
 //                        const double iptgOffset = 50.0;
-                        const double iptgOffset = 60.0;
-                        double iptgMin = 0.0;
-                        double iptgMax = 30.0;
+//                    const double iptgOffset = 60.0;
+                    double iptgMin = 0.0;
+                    double iptgMax = 30.0;
 //                        double iptgMax = 00.0;//control input
 //                        const double iptgMin = 20.0;
 //                        const double iptgMax = 80.0;
@@ -996,32 +767,46 @@ void eQabm::updateCells(fli_t begin, fli_t end)
 //                        const double iptgMax = 10.0;
 //                        const double iptgMin = 30.0;
 //                        const double iptgMax = 30.0;
-                        iptgMin += iptgOffset;
-                        iptgMax += iptgOffset;
-                        double iptg = (x/trapWidthMicrons)*(iptgMax-iptgMin) + iptgMin;
-                        eQ::parameters["MODULUS_IPTG"] = iptg;
-                    }
-                    std::vector<double> hslData;
-                    std::vector<double> membraneDiffusion;
-                    //HSL READ:
-                    for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
-                    {
-                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
-                    }
+                    iptgMin += iptgOffset;
+                    iptgMax += iptgOffset;
+                    double iptg = (x/trapWidthMicrons)*(iptgMax-iptgMin) + iptgMin;
+*/
+                    double iptgOffset = double(eQ::parameters["IPTG_GRADIENT_OFFSET"]);
+                    double iptgMin = double(eQ::parameters["IPTG_GRADIENT_MIN"]);
+                    double iptgMax = double(eQ::parameters["IPTG_GRADIENT_MAX"]);
 
-                    //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
-                    membraneDiffusion.push_back(3.0);
+                    double iptg = (x/trapWidthMicrons - 0.5)*(iptgMax-iptgMin) + iptgOffset;
 
-//                    auto deltaHSL = thisCell->strain->computeProteins(c4, c14, cellLength);
-                    auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
-//                    auto deltaHSL =  std::vector<double>{0.0, 0.0};
-                //HSL WRITE:
-                writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
-                setDiffusionTensor(thisCell->getAngle(), cellPoints);
-                if ("MODULUS_2" == eQ::parameters["simType"])
-                {//HSL WRITE:
-//                    writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
+                    eQ::parameters["MODULUS_IPTG"] = iptg;
+//                    eQ::parameters["MODULUS_IPTG"] = 0.0;
+//                    eQ::parameters["MODULUS_IPTG"] = 30.0;
                 }
+                std::vector<double> hslData;
+                std::vector<double> membraneDiffusion;
+                //HSL READ:
+                for(size_t i(0); i< Params.hslSolutionVector.size(); i++)
+                {
+                    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                        hslData.push_back(readHSL(Params.petscSolutionVector[i], Params.petscLookupTable[i], cellPoints));
+                    else
+                        hslData.push_back(readHSL(Params.hslSolutionVector[i], Params.dofLookupTable[i], cellPoints));
+                }
+
+                //TODO: move these to main where they are defined with the diffusion coeff. of each HSL
+                membraneDiffusion.push_back(3.0);
+
+                auto deltaHSL = thisCell->strain->computeProteins(hslData, membraneDiffusion, cellLength);
+
+                //HSL WRITE:
+                if(bool(eQ::parameters["PETSC_SIMULATION"]))
+                    writeHSL(deltaHSL[0], Params.petscSolutionVector[0], Params.petscLookupTable[0], cellPoints);
+                else
+                    writeHSL(deltaHSL[0], Params.hslSolutionVector[0], Params.dofLookupTable[0], cellPoints);
+
+                setDiffusionTensor(thisCell->getAngle(), cellPoints);
+            if ("MODULUS_2" == eQ::parameters["simType"])
+            {//HSL WRITE:
+//                    writeHSL(deltaHSL[1], Params.hslSolutionVector[1], Params.dofLookupTable[1], cellPoints);
             }
         }
 
@@ -1031,6 +816,24 @@ void eQabm::updateCells(fli_t begin, fli_t end)
         //note: possibly will be altered by genetic circuit, pressure, [protein], etc...
         //should pass growth rate, which should be computed in the ABM class
         (*cell)->updateGrowth();
+    }
+
+    if(bool(eQ::parameters["PETSC_SIMULATION"]))
+    {
+        //COPY FENICS I/O TO PETSC VECTOR FOR TESTING:
+        for(size_t grid(0); grid< Params.hslSolutionVector.size(); grid++)
+        {
+            for (size_t i(0); i < (nodesHigh); i++)
+            {
+                for (size_t j(0); j < (nodesWide); j++)
+                {
+                    auto f = Params.dofLookupTable[grid]->grid[i][j];
+                    auto p = Params.petscLookupTable[grid]->grid[i][j];
+//                    Params.petscSolutionVector[grid].at(p) =  Params.hslSolutionVector[grid].at(f);
+                    Params.hslSolutionVector[grid].at(f) =  Params.petscSolutionVector[grid].at(p);
+                }
+            }
+        }
     }
 
     if(cellCounter != 0)  averagePointsPerCell /= double(cellCounter);

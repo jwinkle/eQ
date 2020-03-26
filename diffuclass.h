@@ -9,6 +9,7 @@
 //JJW mod:
 //#include "eQ.h"
 #include "./src/eQ.h"
+class simulation;
 
 using namespace std;
 
@@ -43,8 +44,11 @@ typedef struct {
 //Class for simulating 2d diffusion
 class diffusionPETSc : public eQ::diffusionSolver
 {
-    diffusionPETSc() {}
+//    diffusionPETSc() {}
 
+//    friend class simulation;
+
+private:
     PetscErrorCode  ierr;
     MPI_Comm        DIFFU_COMM;
     PetscInt        gridNodesX, gridNodesY, step;
@@ -56,7 +60,7 @@ class diffusionPETSc : public eQ::diffusionSolver
 	AO				appOrder;
     KSP             krylovSolver;
     PC              preconditioner;
-    DiffusionData   initData, *gridData;
+//    DiffusionData   initData, *gridData;
     PetscViewer     printViewer;
 
     PetscErrorCode  ApplyBoundaryConditions();
@@ -71,16 +75,36 @@ class diffusionPETSc : public eQ::diffusionSolver
 	std::vector<double> allXCoordinates, allYCoordinates;
 
 	public:
+
+		diffusionPETSc() {}
 		//Vector for storing vector information
 		std::vector<double> solution_vector;
 
-		void initDiffusion(MPI_Comm, std::vector<std::string>, int, char**);
+//		void initDiffusion(MPI_Comm, std::vector<std::string>, int, char**);
+		void initDiffusion(eQ::diffusionSolver::params &initParams);
 		void stepDiffusion();
 		void setBoundaryValues(const eQ::parametersType &bvals);
 		eQ::parametersType getBoundaryFlux(void);
 		double getDiffusionConstant(void);
 		void writeDiffusionFiles(double timestamp);
 		void finalize(void);
+
+        std::vector<double>topBoundaryValue;
+        std::vector<double>bottomBoundaryValue;
+        std::vector<double>leftBoundaryValue;
+        std::vector<double>rightBoundaryValue;
+
+        std::vector<double>topBoundaryNeumann;
+        std::vector<double>topBoundaryDirichlet;
+            std::vector<double>bottomBoundaryNeumann;
+            std::vector<double>bottomBoundaryDirichlet;
+        std::vector<double>leftBoundaryNeumann;
+        std::vector<double>leftBoundaryDirichlet;
+            std::vector<double>rightBoundaryNeumann;
+            std::vector<double>rightBoundaryDirichlet;
+
+            DiffusionData   initData, *gridData;
+
 };
 
 

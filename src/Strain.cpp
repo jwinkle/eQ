@@ -527,8 +527,12 @@ MODULUSmodule::computeProteins
             //FIXED K50 for output promoter:
 //            double HK = double(eQ::parameters["lnmean"]) * 8.0;
 //            double HK = 1.8e4;
-            double HK = 3.0e4;
+//            double HK = 3.0e4;
+//            double HK = 3.6e3;
+            double HK = 2.5e3;
             ratio_H_tau = pow(tHSL[0]/HK, hn);
+
+            double ratio_tetR = pow(tPROTEIN[tetR]/0.5, hn);
 
             //C4 synthase:
             delta[S] = dt * ( //rhlI under PL-lac promoter (direct activation by "c"=iptg, ratio set explicitly above)
@@ -537,8 +541,7 @@ MODULUSmodule::computeProteins
             deltaHSL[0] = dt * (double(eQ::parameters["hslProductionRate_C4"]) * conc[S])//PRODUCTION
                        - dHSL[0];                                               //MEMBRANE DIFFUSION
 
-            deltaPROTEIN[tetR] = dt * ((gamma_d * ratio_H_tau)/(1.0  + ratio_H_tau));
-            double ratio_tetR = pow(tPROTEIN[tetR]/0.5, hn);
+            deltaPROTEIN[tetR] = dt * ((gamma_d * ratio_H_tau)/(1.0  + ratio_H_tau));            
 
             //READOUT:
             delta[FP] = dt * gamma_d * (
@@ -552,35 +555,9 @@ MODULUSmodule::computeProteins
             conc[LEGI_A] = ratio_tetR;
         }
 
-        for(int i=0;i<numConcentrations;i++)
-        {
-            conc[i] += delta[i];
-            if (conc[i] < 0.0)  conc[i] = 0.0;
-            else conc[i] /= nanoMolarPerMolecule;//store as protein #
-        }
-        for(size_t i(0); i< iHSL.size(); i++)
-        {
-            iHSL[i] += deltaHSL[i];
-            if (iHSL[i] < 0.0)
-            {
-                iHSL[i] = 0.0;
-            }
-            HSL_tau[i].push(iHSL[i]);//store as concentration
-            iHSL[i] /= nanoMolarPerMolecule;//store as protein #
-        }
-        for(size_t i(0); i< iPROTEIN.size(); i++)
-        {
-            iPROTEIN[i] += deltaPROTEIN[i];
-            if (iPROTEIN[i] < 0.0) iPROTEIN[i] = 0.0;
-            PROTEIN_tau[i].push(iPROTEIN[i]);//store as concentration
-            iPROTEIN[i] /= nanoMolarPerMolecule;//store as protein #
-        }
-            //push new HSL and LacI values to queue: [STORE AS CONCENTRATION in nM]:
-//            qH_tau.push(conc[H] * nanoMolarPerMolecule);
-//            qL_tau.push(conc[L] * nanoMolarPerMolecule);
-//            qI_tau.push(conc[I] * nanoMolarPerMolecule);
+        pushConcentrations();
 
-            pushCellLengthValue(lengthMicrons);
+        pushCellLengthValue(lengthMicrons);
 
         return dHSL;
 }

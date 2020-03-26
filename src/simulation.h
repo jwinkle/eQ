@@ -111,11 +111,12 @@ private:
     std::vector<MPI_Group> mpiGroups;
     std::vector<MPI_Comm> mpiComms;
     std::vector<std::vector<int>> mpiRanks;
-    size_t whichHSLNode;
+    size_t whichHSL;
 
     MPI_Comm world, workers, controllerComm;
     MPI_Group world_group, worker_group, controller_group;
     std::vector<MPI_Request> mpiRequest;
+    std::vector<MPI_Request> petscRequest;
     std::vector<MPI_Request> mpiRequestA, mpiRequestB, mpiRequestC;
     int         npes;                // number of PEs
     int         my_PE_num;           // my PE number
