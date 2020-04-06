@@ -34,7 +34,8 @@ class inputOutput
     bool isArrayLocal = false;
     size_t  slurmArrayIndex=0;
     size_t  localArrayIndex=0;
-	std::string fbase;
+    std::string fbase;
+    std::string jsonPath;
     long timeStamp;
 
     std::string launchData;

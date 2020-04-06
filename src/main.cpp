@@ -54,8 +54,8 @@ bool signalReceived()
 class jsonRecording
 {
 public:
-    jsonRecording(int whichNode, int whichSim)
-        : nodeID(whichNode), simNumber(whichSim) {}
+    jsonRecording(int whichNode, int whichSim, std::string path)
+        : nodeID(whichNode), simNumber(whichSim), filePath(path) {}
 //    void init(std::shared_ptr<Simulation> pSim, long timeStamp)
     void init(std::shared_ptr<Simulation> pSim, long timeStamp, std::string cTime)
     {
@@ -110,7 +110,8 @@ public:
 //        std::cout<<std::setw(4)<<jfile<<std::endl;
         std::ofstream logFile;
         std::string fname =
-                compileTime
+                filePath
+                + compileTime
                 + std::to_string(timeSinceEpoch)
                 +"_" + std::to_string(nodeID)
                 +"-" + std::to_string(simNumber)
@@ -133,6 +134,7 @@ private:
     std::shared_ptr<Simulation> sim;
     long timeSinceEpoch;
     std::string compileTime;
+    std::string filePath;
 };
 
 
@@ -511,14 +513,17 @@ int main(int argc, char* argv[])
 
 //        eQ::parameters["numberSeedCells"] = 1000;
         eQ::parameters["numberSeedCells"] = 100;
-//        eQ::parameters["cellInitType"] = "RANDOM";
-        eQ::parameters["cellInitType"] = "AB_HALF";
+        eQ::parameters["cellInitType"] = "RANDOM";
+//        eQ::parameters["cellInitType"] = "AB_HALF";
 
 //        eQ::parameters["mutantAspectRatioScale"]        = 1.0;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
 //        eQ::parameters["mutantAspectRatioScale"]        = 0.7;
         eQ::parameters["mutantAspectRatioScale"]        = 0.6;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.65;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.75;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.85;
         eQ::parameters["defaultAspectRatioFactor"]      = 1.0;
 
 //        eQ::parameters["aspectRatioThresholdHSL"]       = 800.0;
@@ -587,6 +592,14 @@ int main(int argc, char* argv[])
             eQ::parameters["mutantAspectRatioScale"] = mRatios[im];
             eQ::parameters["defaultAspectRatioFactor"] = wtRatios[iwt];
         }
+        if(fileIO.isOpuntiaCluster)//aspect ratio sequencing for uh servers:
+        {
+            std::vector<double> mutantRatios = {0.6, 0.7, 0.8, 0.9, 1.0};
+            if(fileIO.slurmArrayIndex < mutantRatios.size())
+            {
+                eQ::parameters["mutantAspectRatioScale"] = mutantRatios[fileIO.slurmArrayIndex];
+            }
+        }
         //else defaults
 
     };//end assignSimulationParameters() lambda function
@@ -600,11 +613,11 @@ int main(int argc, char* argv[])
 
 
 //    int numSimulations = 250;
-//    size_t numSimulations = 1;
+    size_t numSimulations = 1;
 //    size_t numSimulations = 5;
 //    size_t numSimulations = 2;
 //    size_t numSimulations = 10;
-    size_t numSimulations = 20;
+//    size_t numSimulations = 20;
 //    size_t numSimulations = 16;
 
 
@@ -670,7 +683,7 @@ int main(int argc, char* argv[])
         {
             nodeStamp = int(fileIO.slurmArrayIndex);
         }
-        jsonRecord = std::make_shared<jsonRecording>(nodeStamp, simulationNumber);
+        jsonRecord = std::make_shared<jsonRecording>(nodeStamp, simulationNumber, fileIO.jsonPath);
         jsonRecord->init(simulation, fileIO.getTimeStamp(), fileIO.timeString);
 
         if(eQ::parameters["modelType"] == "ON_LATTICE_STATIC")
@@ -728,7 +741,8 @@ int main(int argc, char* argv[])
         {
             if("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
             {
-                if( (250.0 < simulation->simTime) && (!timerFlagThrown) )
+//                if( (250.0 < simulation->simTime) && (!timerFlagThrown) )
+                if( (360.0 < simulation->simTime) && (!timerFlagThrown) )
                 {
                     timerFlagThrown = true;
                     simulation->ABM->aspectRatioInduction = true;

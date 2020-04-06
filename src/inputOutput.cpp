@@ -47,6 +47,10 @@ int inputOutput::parseInputLine(int argc, char* argv[])
             return 1;
         }
     }
+    if(isOpuntiaCluster)
+    {
+        jsonPath.assign("/project/josic/jsonFiles/");
+    }
     return 1;//normal return value
 }
 

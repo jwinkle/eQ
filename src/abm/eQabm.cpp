@@ -257,7 +257,9 @@ void eQabm::initCells(int numCellsToInit)
         double noiseFactor = (rn()-0.5) * dn;
 
         cellParams.divisionLength = (1.0 + noiseFactor) * cellParams.meanDivisionLength;
-        cellParams.length = 0.5*cellParams.divisionLength;
+//        cellParams.length = 0.5*cellParams.divisionLength;
+        //use random initial length:
+        cellParams.length = (1.0 + rn()) * 0.5*cellParams.divisionLength;
 
         std::cout<<"cell: "<<i<<" ("<<cellParams.x<<","<<cellParams.y<<") "<<cellParams.angle<<"=angle; strain = "
                 <<cellParams.strainType<<std::endl;
