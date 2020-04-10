@@ -108,8 +108,10 @@ void eQabm::initCells(int numCellsToInit)
             || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
             )
     {
-        initRows = (int(trapHeightMicrons) - 0)/4;
-        initColumns = (int(trapWidthMicrons) - 0)/2;
+//        initRows = (int(trapHeightMicrons) - 0)/4;
+//        initColumns = (int(trapWidthMicrons) - 0)/2;
+        initRows = (int(trapHeightMicrons) - 20)/4;
+        initColumns = (int(trapWidthMicrons) - 20)/2;
         if(eQ::parameters["trapType"] == "H_TRAP")
         {
             initRows = 1;
@@ -139,8 +141,10 @@ void eQabm::initCells(int numCellsToInit)
         {
             //code to populate the cells on a grid to speed-up init:
             if(initRows == rowCounter) continue;//skips to next for loop iteration, so runs that loop out
-            cellParams.x =  5 + (columnCounter++)*2;
-            cellParams.y =  5 + (rowCounter)*4;
+//            cellParams.x =  5 + (columnCounter++)*2;
+//            cellParams.y =  5 + (rowCounter)*4;
+            cellParams.x =  10 + (columnCounter++)*2;
+            cellParams.y =  10 + (rowCounter)*4;
             if(initColumns == columnCounter){rowCounter++; columnCounter = 0;}
             cellParams.angle = M_PI/2.0;
             if(eQ::parameters["trapType"] == "H_TRAP")
@@ -333,6 +337,25 @@ void eQabm::updateCellPositions(double simTime)
         //==============================================
         //CELL MODEL:
 //        std::shared_ptr<eColi> daughter = cell->updatePhysicsModel(rns);//pass random number stack by reference
+        //use special trigger to not divide cells
+        if(mutantTriggerFlag)
+        {
+            cell->Params.divisionLength = 20;//set to some large value
+            double dx = 0.0;
+            trap->x0 = dx;//set to actual boundary
+            trap->y0 = dx;
+            trap->h = double(eQ::parameters["simulationTrapHeightMicrons"]) - dx;
+            trap->w = double(eQ::parameters["simulationTrapWidthMicrons"]) - dx;
+        }
+        else
+        {
+            double dx = 5.0;
+            trap->x0 = dx;//set to within boundary
+            trap->y0 = dx;
+            trap->h = double(eQ::parameters["simulationTrapHeightMicrons"]) - dx;
+            trap->w = double(eQ::parameters["simulationTrapWidthMicrons"]) - dx;
+        }
+
         std::shared_ptr<eColi> daughter = cell->updatePhysicsModel(*zeroOne);//pass random number stack by reference
         if(nullptr != daughter)
         {//divided cell, check if outside trap (but record division to parent first):
@@ -351,7 +374,9 @@ void eQabm::updateCellPositions(double simTime)
         //==============================================
         //  CHECK FOR OUTSIDE OF BOUNDARY:
         //==============================================
-        if(habitat->outsideTrap(cell->cpmCell))
+        //use special trigger to not divide cells
+        if( (habitat->outsideTrap(cell->cpmCell)) && (!mutantTriggerFlag) )
+//        if(habitat->outsideTrap(cell->cpmCell))
         {
             //push on test data before cell is deleted:
 //            cell->finalizeCell(highResolutionDataVector);
@@ -798,6 +823,8 @@ void eQabm::updateCells(fli_t begin, fli_t end)
         if("NOTRAP" == eQ::parameters["trapType"])                  {}
         if("NO_SIGNALING" == eQ::parameters["simType"])             {}
         else if("STATIC_ASPECTRATIO" == eQ::parameters["simType"])  {}
+        //delete signaling here:
+        else if(false == bool(eQ::parameters["hslSignaling"]))      {}
         else
         {
             //CONVERT THE GRID (X,Y) VALUE TO A (J,I) GRID POSITION FOR HSL SIGNALING INTERFACE

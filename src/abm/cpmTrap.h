@@ -25,6 +25,7 @@ public:
 
     double w;
     double h;
+    double x0,y0;
 
     cpBody      *staticBody;
     std::vector<cpShape *> trap;

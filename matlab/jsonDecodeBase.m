@@ -188,9 +188,9 @@ thisExtension = '.json';
                     frameData.forceXB(i)         = fxB;
                     frameData.forceYB(i)         = fyB;
                 %average columns (but only if counter > 0)
-                    ix = find(xFi>0); 
-                    xF(ix) = xF(ix) ./ xFi(ix);
-                    xFvec(:,i) = xF;
+%                     ix = find(xFi>0); 
+%                     xF(ix) = xF(ix) ./ xFi(ix);
+%                     xFvec(:,i) = xF;
 
     end%end frames
     fprintf('done.\n');

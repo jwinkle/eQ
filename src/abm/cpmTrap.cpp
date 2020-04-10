@@ -25,6 +25,9 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
     w = double(eQ::parameters["simulationTrapWidthMicrons"]);
     h = double(eQ::parameters["simulationTrapHeightMicrons"]);
 
+    x0=0.0;
+    y0=0.0;
+
     if("NOWALLED" != eQ::parameters["trapType"])
     {//1,2,or 3
         cpShape *shape;
@@ -147,9 +150,11 @@ bool cpmTrap::outsideTrap(std::shared_ptr<cpmEColi> cell)
     //should compute this in eQ class:  todo
     return (
             (x > w) ||
-                (x < 0.0) ||
+//                (x < 0.0) ||
+                (x < x0) ||
             (y > h) ||
-                (y < 0.0)
+//                (y < 0.0)
+                (y < y0)
             );
 }
 cpmTrap::~cpmTrap()

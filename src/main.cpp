@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
     //TODO:  these should move to a parameters data structure or utility class (e.g. for timing)
     double simTimeTare;
     int simulationStepsMax, stepsPerMin, stepsPerHour;
-
+    int specialSimulationTriggerTime;
 
 //========================================================================================================================================//
 //  lambda functions for initialization per simulation:
@@ -343,14 +343,21 @@ int main(int argc, char* argv[])
 //            eQ::parameters["trapType"]      = "H_TRAP";//TOP+BOTTOM WALLS (OPEN LEFT/RIGHT)
             eQ::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
 
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-            eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
+//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 100;
+//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 100;
+//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 400;
 
 //            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 60;
 //            eQ::parameters["lengthScaling"] = 10.0;//150mins
 //            eQ::parameters["lengthScaling"] = 5.0;//150mins
 //            eQ::parameters["lengthScaling"] = 3.0;//150mins
-        eQ::parameters["lengthScaling"] = 4.0;//150mins
+//            eQ::parameters["lengthScaling"] = 4.0;//150mins
+
+//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 120;
+//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 120;
+            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 80;
+            eQ::parameters["physicalTrapWidth_X_Microns"]     = 80;
+            eQ::parameters["lengthScaling"] = 2.0;//150mins
 
         double channelOneEighth = 0.125 * double(eQ::parameters["physicalTrapWidth_X_Microns"]);
 
@@ -370,14 +377,15 @@ int main(int argc, char* argv[])
 
 
 
-        eQ::parameters["hslSignaling"]  = true;
+//        eQ::parameters["hslSignaling"]  = true;
+        eQ::parameters["hslSignaling"]  = false;
         std::map<std::string, double> physicalDiffusionRates = {
             {"C4", 3.0e4}, {"C14", 1.6e4}
         };
         eQ::parameters["physicalDiffusionRates"] = physicalDiffusionRates;
 
         eQ::parameters["D_HSL"]			= {
-                physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
+//                physicalDiffusionRates["C4"] * double(eQ::parameters["diffusionScaling"])//C4
 //                ,
 //                physicalDiffusionRates["C14"] * double(eQ::parameters["diffusionScaling"])//C14
         };
@@ -399,17 +407,18 @@ int main(int argc, char* argv[])
 //****************************************************************************************
 
 //        setSimulationTimeStep(0.1);//updates parameters and stepsPerHour multiplier
-//        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
+        setSimulationTimeStep(0.01);//updates parameters and stepsPerHour multiplier
         //        setSimulationTimeStep(0.005);//updates parameters and stepsPerHour multiplier
         //        setSimulationTimeStep(0.004);//updates parameters and stepsPerHour multiplier
 //                        setSimulationTimeStep(0.0025);//updates parameters and stepsPerHour multiplier
-                        setSimulationTimeStep(0.001);//updates parameters and stepsPerHour multiplier
+//                        setSimulationTimeStep(0.001);//updates parameters and stepsPerHour multiplier
         //        simulationStepsMax = 5*stepsPerHour/2;//5*60/2 = 150 mins
         //        simulationStepsMax = 4*stepsPerHour;
-                simulationStepsMax = 5*stepsPerHour;
-        //        simulationStepsMax = 6*stepsPerHour;
+//                simulationStepsMax = 5*stepsPerHour;
+                simulationStepsMax = 6*stepsPerHour;
 
-
+            //used for stopping division and removal of cells for special cell tracking test
+            specialSimulationTriggerTime = simulationStepsMax - 6*stepsPerMin;
 
 
 
@@ -507,15 +516,15 @@ int main(int argc, char* argv[])
         eQ::initLogNormalGenerators(logNormals);
 
 
-        computeEffectiveDegradationRates(physicalDiffusionRates);
+//        computeEffectiveDegradationRates(physicalDiffusionRates);
 
-        eQ::parameters["iptgValues"] = iptgValues;
-        eQ::parameters["lnmean"]    = pX;
-        eQ::parameters["lnvar"]     = pX*xr*pX*xr;
-        eQ::parameters["hslProductionRate_C4"]
-                = (3.0 * pX * double(eQ::parameters["gammaT_C4"]));//
-        eQ::parameters["hslProductionRate_C14"]
-                = (3.0 * pX * double(eQ::parameters["gammaT_C14"]));//
+//        eQ::parameters["iptgValues"] = iptgValues;
+//        eQ::parameters["lnmean"]    = pX;
+//        eQ::parameters["lnvar"]     = pX*xr*pX*xr;
+//        eQ::parameters["hslProductionRate_C4"]
+//                = (3.0 * pX * double(eQ::parameters["gammaT_C4"]));//
+//        eQ::parameters["hslProductionRate_C14"]
+//                = (3.0 * pX * double(eQ::parameters["gammaT_C14"]));//
 
 
         //use a special init function for modulus;  set max. number of cells here (will truncate if needed)
@@ -533,23 +542,23 @@ int main(int argc, char* argv[])
         {
             //populate here the data to be recorded:
             std::vector<eQ::dataParameter> dataToRecord = {
-                eQ::dataParameter::LACI,
+//                eQ::dataParameter::LACI,
 //                eQ::dataParameter::DTENSOR_11,
 //                eQ::dataParameter::DTENSOR_22,
 //                eQ::dataParameter::DTENSOR_12,
 
 //                eQ::dataParameter::MODULUS_S,
-                eQ::dataParameter::MODULUS_H,
+//                eQ::dataParameter::MODULUS_H,
 //                eQ::dataParameter::MODULUS_R
 ////                eQ::dataParameter::SPRING_COMPRESSION,
-                eQ::dataParameter::C4,
+//                eQ::dataParameter::C4,
 //                eQ::dataParameter::C4RHL,//transcription factor
 //                eQ::dataParameter::RHL_T,//total rhlR
 //                eQ::dataParameter::SYN,
 //                eQ::dataParameter::C14,
 ////                eQ::dataParameter::MFP,
 //                eQ::dataParameter::LACI,
-                eQ::dataParameter::FP,
+//                eQ::dataParameter::FP,
 //                eQ::dataParameter::C4,
 //                eQ::dataParameter::C14,
             };
@@ -712,6 +721,12 @@ int main(int argc, char* argv[])
     for(int timeSteps=0; timeSteps<=simulationStepsMax; timeSteps++)
     {
         if(signalReceived()) break;
+
+        if(timeSteps >= specialSimulationTriggerTime)
+        {
+            //set no division and no trap removal
+            simulation->ABM->mutantTriggerFlag = true;//use existing flag
+        }
 
 //        std::cout<<"simulation->stepSimulation()"<<std::endl;
         simulation->stepSimulation();//parallel chipmunk + HSL
