@@ -355,8 +355,10 @@ int main(int argc, char* argv[])
 
 //            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 120;
 //            eQ::parameters["physicalTrapWidth_X_Microns"]     = 120;
-            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 80;
-            eQ::parameters["physicalTrapWidth_X_Microns"]     = 80;
+//            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 80;
+//            eQ::parameters["physicalTrapWidth_X_Microns"]     = 80;
+            eQ::parameters["physicalTrapHeight_Y_Microns"]    = 60;
+            eQ::parameters["physicalTrapWidth_X_Microns"]     = 60;
             eQ::parameters["lengthScaling"] = 2.0;//150mins
 
         double channelOneEighth = 0.125 * double(eQ::parameters["physicalTrapWidth_X_Microns"]);
@@ -528,7 +530,8 @@ int main(int argc, char* argv[])
 
 
         //use a special init function for modulus;  set max. number of cells here (will truncate if needed)
-        eQ::parameters["numberSeedCells"] = 1000;
+//        eQ::parameters["numberSeedCells"] = 1000;
+        eQ::parameters["numberSeedCells"] = 20;
         eQ::parameters["MODULUS_TIME_AVERAGE_MINS"] = 1.0;
         eQ::parameters["K50_correlationScale"] = 0.0;
         eQ::parameters["MODULUS_FEEDBACK_FRACTION"] = 0.5;

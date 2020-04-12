@@ -134,10 +134,11 @@ void eQabm::initCells(int numCellsToInit)
         cellParams.meanDivisionLength =
                 double(eQ::parameters["defaultAspectRatioFactor"]) * DEFAULT_DIVISION_LENGTH_MICRONS;
 
-        if( ("MODULUS_1" == eQ::parameters["simType"])
-            || ("MODULUS_2" == eQ::parameters["simType"])
-            || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
-            )
+//        if( ("MODULUS_1" == eQ::parameters["simType"])
+//            || ("MODULUS_2" == eQ::parameters["simType"])
+//            || ("ASPECTRATIO_INVASION" == eQ::parameters["simType"])
+//            )
+        if(false)//remove this init for the cell tracking sim.
         {
             //code to populate the cells on a grid to speed-up init:
             if(initRows == rowCounter) continue;//skips to next for loop iteration, so runs that loop out
@@ -254,6 +255,9 @@ void eQabm::initCells(int numCellsToInit)
 
         cellParams.divisionLength = (1.0 + noiseFactor) * cellParams.meanDivisionLength;
         cellParams.length = 0.5*cellParams.divisionLength;
+
+        //use random initial length:
+        cellParams.length = (1.0 + rn()) * 0.5*cellParams.divisionLength;
 
         std::cout<<"cell: "<<i<<" ("<<cellParams.x<<","<<cellParams.y<<") "<<cellParams.angle<<"=angle; strain = "
                 <<cellParams.strainType<<std::endl;
