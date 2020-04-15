@@ -42,7 +42,14 @@ set(ABM_DIR ${SRC_DIR}/abm)
 
 link_directories(./lib)
 
-set(HEADERS fenics/hsl.h fenics/boundary.h)
+
+set(CPM_DIR ./Chipmunk-7.0.1/include)
+
+set(HEADERS fenics/hsl.h fenics/boundary.h ${CPM_DIR}/chipmunk/chipmunk.h ${CPM_DIR}/chipmunk/chipmunk_private.h)
+
+# message( ${CPM_DIR} )
+# message( ${HEADERS} )
+
 
 # Executable
 add_executable(${PROJECT_NAME}
@@ -64,6 +71,8 @@ add_executable(${PROJECT_NAME}
 
 	diffuclass.cpp
 )
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${CPM_DIR})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR} fenics)
 
