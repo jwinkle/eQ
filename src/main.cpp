@@ -404,7 +404,8 @@ int main(int argc, char* argv[])
 //        simulationStepsMax = 30*stepsPerHour;//1800 mins
 
 //        simulationStepsMax = 60*stepsPerHour;//1800 mins
-        simulationStepsMax = 180*stepsPerHour;//1800 mins
+//        simulationStepsMax = 180*stepsPerHour;//1800 mins
+        simulationStepsMax = 500*stepsPerHour;//3000 mins
 
 
 
@@ -450,8 +451,8 @@ int main(int argc, char* argv[])
 //        eQ::parameters["numberSeedCells"] = 20;
         eQ::parameters["cellInitType"] = "AB_HALF";
 
-        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
-//        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
+//        eQ::parameters["mutantAspectRatioScale"]        = 0.9;
+        eQ::parameters["mutantAspectRatioScale"]        = 0.8;
         eQ::parameters["defaultAspectRatioFactor"]      = 1.0;
 
 //        eQ::parameters["aspectRatioThresholdHSL"]       = 800.0;
