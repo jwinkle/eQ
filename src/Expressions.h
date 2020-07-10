@@ -7,8 +7,8 @@
 
 
 using namespace dolfin;
-#include <mshr.h>
-using namespace mshr;
+//#include <mshr.h>
+//using namespace mshr;
 
 class updatingDirchletBoundary: public Expression
 {
@@ -46,21 +46,21 @@ class updatingDirchletBoundary: public Expression
 class scalarDataExpression : public Expression
 {
 public:
-//    scalarDataExpression(eQ::tensorDataSource *source)
-	scalarDataExpression(std::shared_ptr<eQ::tensorDataSource> source)
+//    scalarDataExpression(eQ::data::tensor *source)
+    scalarDataExpression(std::shared_ptr<eQ::data::tensor> source)
 		: dataSource(source) {}
 	void eval(Array<double>& values, const Array<double>& x) const
 	{
 		values[0] = dataSource->eval(x[0], x[1]);
 	}
 private:
-	std::shared_ptr<eQ::tensorDataSource> dataSource;
+    std::shared_ptr<eQ::data::tensor> dataSource;
 };
 class vectorDataExpression : public Expression
 {
 public:
-//    vectorDataExpression(eQ::tensorDataSource *source)
-	vectorDataExpression(std::shared_ptr<eQ::tensorDataSource> source)
+//    vectorDataExpression(eQ::data::tensor *source)
+    vectorDataExpression(std::shared_ptr<eQ::data::tensor> source)
 		: Expression(2), dataSource(source) {}
 	void eval(Array<double>& values, const Array<double>& x) const
 	{
@@ -69,7 +69,7 @@ public:
 		values[1] = vec.second;
 	}
 private:
-	std::shared_ptr<eQ::tensorDataSource> dataSource;
+    std::shared_ptr<eQ::data::tensor> dataSource;
 };
 class zeroInitScalar : public Expression
 {
@@ -111,7 +111,7 @@ class AnisotropicDiffusionTensor: public Expression
 	}
 	void eval(Array<double>& values, const Array<double>& x) const
 	{
-		auto index = eQ::ij_from_xy(x[0], x[1], n);
+        auto index = eQ::data::ij_from_xy(x[0], x[1], n);
 		auto entry = index.first*nw + index.second;
 		values[0] = (entry < maxNodes) ? D->at(entry) : testValue;
 //        values[0] = testValue;

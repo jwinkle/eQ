@@ -80,7 +80,7 @@ void cpmEColi::computeCellBoudaryEdges()
 //    edges[3] = vertsA[0] - vertsA[3];
 }
 //==============================================================================
-cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
+cpmEColi::cpmEColi(const cpmEColi::Params &ecoli)
             : space(ecoli.space)
 {
     /*
@@ -97,16 +97,16 @@ cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
 
     k_spring            = ecoli.kspring;
 
-    initialMass         = ecoli.mass;
-    initialMoment       = ecoli.moment;
-    shapeLength         = ecoli.length - ecoli.width;
-    shapeHeight         = ecoli.width;
-    length              = ecoli.length;
-    initialLength       = ecoli.length;
-    center              = cpv(ecoli.x, ecoli.y);
-    angle               = ecoli.angle;
-    velocity            = cpv(ecoli.vx, ecoli.vy);
-    angularVelocity     = ecoli.av;
+    initialMass         = ecoli.baseData.mass;
+    initialMoment       = ecoli.baseData.moment;
+    shapeLength         = ecoli.baseData.length - ecoli.baseData.width;
+    shapeHeight         = ecoli.baseData.width;
+    length              = ecoli.baseData.length;
+    initialLength       = ecoli.baseData.length;
+    center              = cpv(ecoli.baseData.x, ecoli.baseData.y);
+    angle               = ecoli.baseData.angle;
+    velocity            = cpv(ecoli.baseData.vx, ecoli.baseData.vy);
+    angularVelocity     = ecoli.baseData.av;
 
     posA                = center;
     posB                = center;
@@ -116,7 +116,7 @@ cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
     compression         = 0.0;
 
     //rest-length increment per time step for spring model
-    dRL = ecoli.dRL;
+//    dRL = ecoli.dRL;
 
     radius = shapeHeight * 0.5;//radius of a cell pole
     offset = shapeLength * 0.5;//offset to center of pole from cell center
@@ -458,36 +458,24 @@ int cpmEColi::updateExpansionForce(double restLengthIncrement)
     if(cellIsStatic) return 0;//don't update cell if it has been frozen "static"
 
 //to scale by cell length, we want 2um/20 minutes = 20pixels/20min = 1pixel/min = dt pixels/dt mins, say at 3um length
-    cpFloat climit = g_compressionLimit;
-
-    //Exponential growth: l(t) = l0 * 2^(t/Td) ==> dl = dt * l * 2^(dt/20) * ln(2)/20
-    const double expScale = log(2.0)/20.0 * pow(2.0,dRL/20.0);//recall dRL is dt, so a little of a hack here for the source of dt
-    //need to fix this to read length locally:
-//    double dRL_exp = dRL * parent->jget_length() * expScale;
+//    cpFloat climit = g_compressionLimit;
 
         if(true)//bypass growth rate regulation
         // if (compression < climit)
         {
              incSpringRestLength(restLengthIncrement);
-//            incSpringRestLength(dRL_exp);
-            // springForce = cpv(KSPRING * (compression+dRL), 0.0f);
-            // springRestLength += dRL;
         }
         else
         {
-            g_overComp++;
-            cpFloat c = (compression-climit)/climit;
-            if (c > 1.0) c=1.0;
-             cpFloat scaled_dRL = (1.0-c)*dRL;
-//            cpFloat scaled_dRL = (1.0-c)*dRL_exp;
-            incSpringRestLength(scaled_dRL);
-            // springForce = cpv(KSPRING * (compression + scaled_dRL), 0.0f);
-            // springRestLength += scaled_dRL;
+//            g_overComp++;
+//            cpFloat c = (compression-climit)/climit;
+//            if (c > 1.0) c=1.0;
+//             cpFloat scaled_dRL = (1.0-c)*dRL;
+//            incSpringRestLength(scaled_dRL);
         }
 
     //VIRTUAL SPRING IMPLEMENTATION:
-//        cpVect springForce = cpv(KSPRING * (springRestLength - length), cpFloat(0.0));
-        cpVect springForce = cpv(k_spring * (springRestLength - length), cpFloat(0.0));
+    cpVect springForce = cpv(k_spring * (springRestLength - length), cpFloat(0.0));
     cpBodyApplyForceAtLocalPoint(bodyA,  cpvneg(springForce), cpvzero);
     cpBodyApplyForceAtLocalPoint(bodyB,  springForce, cpvzero);
 

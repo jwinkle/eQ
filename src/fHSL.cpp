@@ -8,8 +8,8 @@
 #include <chrono>
 
 #include <mshr.h>
-using namespace dolfin;
-using namespace mshr;
+//using namespace dolfin;
+//using namespace mshr;
 
 #include "fHSL.h"
 
@@ -20,7 +20,7 @@ fenicsInterface::fenicsInterface() :isDataRecordingNode(false)
     //TODO:  check parameter value
     //hard-code for the latest .ufl file uses:
     //shell is the pointer to the base class for access to the fenics-commom methods and variables.
-    hslD =  std::make_shared<fenicsBaseClass<hslD::FunctionSpace, hslD::Form_L, hslD::Form_a>>(shell);
+    shell =  std::make_shared<fenicsBaseClass<hslD::FunctionSpace, hslD::Form_L, hslD::Form_a>>();
 }
 //for data recording only: (this is constructor with non-template initParms argument)
 //calls the common init function with params set already (non-hsl node)
@@ -34,29 +34,23 @@ fenicsInterface::fenicsInterface(const eQ::diffusionSolver::params &initParams)
 }
 
 //called from Simulation::create_HSLgrid (for hsl nodes only)
-//void fenicsInterface::initDiffusion(MPI_Comm comm, std::vector<std::string> filePaths, int argc, char* argv[])
-//void fenicsInterface::initDiffusion(size_t id, MPI_Comm comm, std::string filePath, double D, double dt, int argc, char* argv[])
 void fenicsInterface::initDiffusion(eQ::diffusionSolver::params &initParams)
 {
     myParams = initParams;
     //we convert the template init call into the internal (private) fenics init.
-    std::cout<<"Template initDiffusion() called with mpi comm: "<<myParams.comm<<std::endl;
     fenicsClassInit();
     initHSLFiles();
 
     //NOTE:  h is in simulation units (not physical units)
-    h = 1.0/double(eQ::parameters["nodesPerMicronSignaling"]);
+    h = 1.0/double(eQ::data::parameters["nodesPerMicronSignaling"]);
     //compute volume of flow channel node: 10um z-height, 25um y-height, h wide
-    wellScaling = 10.0 * (25.0/double(eQ::parameters["lengthScaling"])) * h;
+    wellScaling = 10.0 * (25.0/double(eQ::data::parameters["lengthScaling"])) * h;
 
     //buffers used to store total flux into channels per trap timestep:
     fluxTopChannel.assign(nodesW, 0.0);
     fluxBottomChannel.assign(nodesW, 0.0);
 
 }
-void fenicsInterface::setBoundaryValues(const eQ::parametersType &bvals)
-{}
-
 void fenicsInterface::computeBoundaryFlux()
 {
     //TODO: implement each wall separately
@@ -98,6 +92,7 @@ void fenicsInterface::stepDiffusion()
 {
     //note: trap top and bottom boundary conditions are in the solution to the prevous advection/diffusion solution of the channel
 
+
     //copies modified solution_vector to u0; solution_vector updated by ABM via mpi transfer    /*    /*
     shell->u0->vector()->set_local(solution_vector);//sets u0 to contents of solution_vector
     //solve the system (rate-limiting step)
@@ -105,14 +100,14 @@ void fenicsInterface::stepDiffusion()
     //sets solution_vector to contents of the new solution u (solution_vector is sent to, and then updated by, the ABM layer)
     shell->u->vector()->get_local(solution_vector);
 
-    if( ("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"]) && ("H_TRAP" != eQ::parameters["trapType"]) )
+    if( ("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"]) && ("H_TRAP" != eQ::data::parameters["trapType"]) )
     {
         //now compute new flux into the channel boundaries and scale to channel volume element:
         computeBoundaryFlux();
 
         //copy the updated values into u0 and solve the next advection-diffusion timestep for both channels:
 
-        size_t numIterations = size_t(eQ::parameters["channelSolverNumberIterations"]);
+        size_t numIterations = size_t(eQ::data::parameters["channelSolverNumberIterations"]);
         auto dtx = std::make_shared<dolfin::Constant>(myParams.dt/double(numIterations));
         topChannel->L->dt = dtx;
         topChannel->a->dt = dtx;
@@ -157,10 +152,10 @@ void fenicsInterface::stepDiffusion()
     //new value = D*dt*flux/well Volume
     totalBoundaryFlux = (myDiffusionConstant * myParams.dt *  boundaryFlux->get_scalar_value());
 }
-eQ::parametersType fenicsInterface::getBoundaryFlux(void)
+eQ::data::parametersType fenicsInterface::getBoundaryFlux(void)
 {
     //TODO: implement flux computation out of each wall separately
-    eQ::parametersType fluxData;
+    eQ::data::parametersType fluxData;
     fluxData["totalFlux"] = totalBoundaryFlux;
     return fluxData;
 }
@@ -172,7 +167,7 @@ void fenicsInterface::createMesh(MPI_Comm comm)
     //switch on simulation type here to create mesh geometry:
     auto p0 = Point(0.0, 0.0);
     auto p1 = Point(myParams.trapWidthMicrons, myParams.trapHeightMicrons);
-//    auto p1 = Point(eQ::parameters["simulationTrapWidthMicrons"], eQ::parameters["simulationTrapHeightMicrons"]);
+//    auto p1 = Point(eQ::data::parameters["simulationTrapWidthMicrons"], eQ::data::parameters["simulationTrapHeightMicrons"]);
 //    auto p1 = Point(myParams.simData.trapWidthMicrons, myParams.simData.trapHeightMicrons);
     shell->mesh = std::make_shared<RectangleMesh>
             (comm, p0, p1, nodesW, nodesH, "right");
@@ -213,16 +208,19 @@ void fenicsInterface::fenicsClassInit()
     MPI_Comm_size(myParams.comm, &numFenicsPEs);
     MPI_Comm_rank(myParams.comm, &myRankMPI);
     isFenicsRootNode = (0 == myRankMPI);
-    std::cout<<"I am "<<myRankMPI+1<<" of "<<myParams.filePath<<" fenics worker"<<std::endl;
+    std::cout<<"I am "<<myRankMPI+1<<" of "<<numFenicsPEs
+            <<" recording data to file: "
+            <<myParams.filePath
+           <<std::endl;
 
     //for MPI:
     std::string old_ghost_mode = dolfin::parameters["ghost_mode"];
      dolfin::parameters["ghost_mode"] = "shared_facet";
 //    dolfin::parameters["ghost_mode"] = "shared_vertex";
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //                          MESH
-    ////////////////////////////////////////////////////////////////////////////////
+//================================================================
+//              //MESH GENERATION
+//================================================================
 
     if(isDataRecordingNode)//this is a data recording version launched by the controller node
     {
@@ -239,31 +237,37 @@ void fenicsInterface::fenicsClassInit()
     }
     else
     {//SUCCESS ON FENICS DIFFUSION NODE INITIALIZATION:
-        //create new communicators, one per mpi node:
-//        int zeroKey=0;
-//        MPI_Comm_split(myParams.comm, myRankMPI, zeroKey, &mySingletonComm);
-//        std::cout<<"Created new MPI comm! mySingletonComm = "<<mySingletonComm<<std::endl;
         MPI_Barrier(myParams.comm);
 
         //CREATE THE LOCAL MESH:
         nodesH = unsigned(ceil(myParams.trapHeightMicrons * myParams.nodesPerMicron));
         nodesW = unsigned(ceil(myParams.trapWidthMicrons * myParams.nodesPerMicron));
 
+        myDiffusionConstant = myParams.D_HSL;//use a single-entry vector to pass D
+
+        //================================================================
+        //              //TRAP MESH
+        //================================================================
         //create trap mesh:
         createMesh(myParams.comm);//each mpi node creates its own mesh
 
-        topChannel = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
-        bottomChannel = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
+        //================================================================
+        //              //FLOW CHANNEL MESH
+        //================================================================
+//        topChannel      = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
+//        bottomChannel   = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
+        topChannel      = std::make_shared<fenicsChannel>();
+        bottomChannel   = std::make_shared<fenicsChannel>();
 
         //TOP/BOTTOM CHANNELS MESH GENERATION:
         //use Robin BC instead of computing entire channel:
         auto uleft = double(0.0);
         auto uright = double(0.0);
-//        auto uleft = double(eQ::parameters["channelLengthMicronsLeft"]);
-//        auto uright = double(eQ::parameters["channelLengthMicronsRight"]);
-        auto uwidth = double(eQ::parameters["simulationTrapWidthMicrons"]);
+//        auto uleft = double(eQ::data::parameters["simulationChannelLengthLeft"]);
+//        auto uright = double(eQ::data::parameters["simulationChannelLengthRight"]);
+        auto uwidth = double(eQ::data::parameters["simulationTrapWidthMicrons"]);
         nodesChannel = unsigned(
-                    ceil( (double(eQ::parameters["simulationTrapWidthMicrons"]) + uleft + uright) * double(eQ::parameters["nodesPerMicronSignaling"]) ));
+                    ceil( (double(eQ::data::parameters["simulationTrapWidthMicrons"]) + uleft + uright) * double(eQ::data::parameters["nodesPerMicronSignaling"]) ));
 
         //create channel mesh
         topChannel->mesh = std::make_shared<IntervalMesh>
@@ -271,7 +275,6 @@ void fenicsInterface::fenicsClassInit()
         bottomChannel->mesh = std::make_shared<IntervalMesh>
                 (myParams.comm, nodesChannel, -uleft, uwidth + uright);
 
-        myDiffusionConstant = myParams.D_HSL;//use a single-entry vector to pass D
     }
 
     MPI_Barrier(myParams.comm);
@@ -281,29 +284,22 @@ void fenicsInterface::fenicsClassInit()
     nodesH++;
     nodesChannel++;
 
-    if(isFenicsRootNode)
-    {
-        std::cout
-                <<std::endl<<std::endl
-                <<"Grid total nodes H,W: "<<nodesH<<" x "<<nodesW
-                <<" = "<<nodesH * nodesW << " total nodes."
-               <<" Channel nodes: "<<nodesChannel
-               <<std::endl<<std::endl;
-    }
+//================================================================
+//              //CREATE HSL OBJECTS
+//================================================================
     if(isDataRecordingNode) //no hsl, check for data
     {
-        if(!myParams.dataFiles.empty())
+        if(!myParams.dataFiles->empty())
             std::cout<<"Diffusion is empty, creating data writing grid only..."<<std::endl;
 
-        //dataFiles is a vector of pair<dataSource, fileName>
-        for(auto &file : myParams.dataFiles)
+        for(auto &file : *myParams.dataFiles)
         {
-            std::cout<<"Creating data file: "<<file.second<<std::endl;//uses operator<< in
+            std::cout<<"Creating data file: "<<file.fileName<<std::endl;//uses operator<< in
             //create a scalar data function space and output file for each:
-            std::string fileName = eQ::dataStrings[file.second];
+//            std::string fileName = eQ::dataStrings[file.second];
             //create the fenics File class using MPI comm and filename passed in dataFiles vector
             outputFiles.push_back(std::make_shared<dolfin::File>(
-                                      myParams.comm,  std::string(myParams.filePath + fileName), "compressed")
+                                      myParams.comm,  std::string(myParams.filePath + file.fileName), "compressed")
                                   );
         }
         VscalarData = std::make_shared<data::FunctionSpace>(shell->mesh);
@@ -327,8 +323,6 @@ void fenicsInterface::fenicsClassInit()
         D11->assign(solution_vector.size(), 1.0);
         D22->assign(solution_vector.size(), 1.0);
         D12->assign(solution_vector.size(), 0.0);
-//        tensorDx->printSize();
-//        tensorDy->printSize();
 
         //thin the output data:
         dolfin::set_log_level(dolfin::WARNING);
@@ -337,9 +331,9 @@ void fenicsInterface::fenicsClassInit()
 //private:
 void fenicsInterface::createHSL()
 {
-////////////////////////////////////////////////////////////////////////////////
-//                      CLASS VARIABLES
-////////////////////////////////////////////////////////////////////////////////
+    //================================================================
+    //              //CLASS VARIABLES
+    //================================================================
     fenicsVariable::data data;
 
     data.dt     = std::make_shared<dolfin::Constant>(myParams.dt);
@@ -356,12 +350,12 @@ void fenicsInterface::createHSL()
 
 
 //                              ======= MEDIA FLOW RATE SETTING =======
-    double channelFlowVelocity = double(eQ::parameters["trapChannelLinearFlowRate"])/double(eQ::parameters["lengthScaling"]);
+    double channelFlowVelocity = double(eQ::data::parameters["simulationFlowRate"]);
     data.v     = std::make_shared<dolfin::Constant>(channelFlowVelocity);//units: um/min
 
 
-    double channelLengthLeft    = double(eQ::parameters["channelLengthMicronsLeft"]);//channel length is in simulation units
-    double channelLengthRight    = double(eQ::parameters["channelLengthMicronsRight"]);//channel length is in simulation units
+    double channelLengthLeft    = double(eQ::data::parameters["simulationChannelLengthLeft"]);//channel length is in simulation units
+    double channelLengthRight    = double(eQ::data::parameters["simulationChannelLengthRight"]);//channel length is in simulation units
     double lvdl        = (channelLengthLeft * channelFlowVelocity)/myDiffusionConstant;
     double lvdr        = (channelLengthRight * channelFlowVelocity)/myDiffusionConstant;
 
@@ -369,6 +363,8 @@ void fenicsInterface::createHSL()
     double leftRate = 0.0;
 
 
+    //Robin boundary condition rates for left,right of trap (or channel)
+    //see my Overleaf writeup for this derivation:
     if(channelFlowVelocity > 1.0e-6)
     {
         leftRate = channelFlowVelocity * (1.0/(1.0 - exp(-lvdl)));
@@ -380,20 +376,22 @@ void fenicsInterface::createHSL()
         leftRate = myDiffusionConstant/channelLengthRight;
     }
     data.s_left     = std::make_shared<dolfin::Constant>(0.0);
-    data.s_right     = std::make_shared<dolfin::Constant>(0.0);
+    data.s_right    = std::make_shared<dolfin::Constant>(0.0);
     data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
-    data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
+    data.r_right    = std::make_shared<dolfin::Constant>(rightRate);
 
-////////////////////////////////////////////////////////////////////////////////
-//                      FUNCTION SPACES, FORMS, FUNCTIONS:
-//////////////////////////////////////////////////////////////////////////////
+//================================================================
+//             FUNCTION SPACES, FORMS, FUNCTIONS:
+//================================================================
     //call the derived-class specific space and form creation methods
 
-    createSpaceFormsFunctions();
+    shell->createSpaceFormsFunctions();
         topChannel->createSpaceFormsFunctions();
         bottomChannel->createSpaceFormsFunctions();
 
-
+//================================================================
+//              //FLOW CHANNELS
+//================================================================
     //CREATE CHANNEL ROBIN BOUNDARY CONDITION OBJECTS:
     //SUBDOMAINS TO MARK LEFT/RIGHT BOUNDARIES:
     auto leftWall       = std::make_shared<DirichletBoundary_TrapEdges>
@@ -408,7 +406,7 @@ void fenicsInterface::createHSL()
     //set the .ufl form parameters from data:
         topChannel->setFormParameters(data);
         topChannel->createLinearVariationalSolver();
-        topChannel->createCoordinatesToDofMappingChannel();
+        topChannel->createGridCoordinatesToDofMapping();
 
     //repeat for bottom channel
     data.meshFunctionChannel = std::make_shared<MeshFunction<size_t>>(bottomChannel->mesh, bottomChannel->mesh->topology().dim()-1, 0);
@@ -416,7 +414,7 @@ void fenicsInterface::createHSL()
     rightWall->mark(*data.meshFunctionChannel, 2);
         bottomChannel->setFormParameters(data);
         bottomChannel->createLinearVariationalSolver();
-        bottomChannel->createCoordinatesToDofMappingChannel();
+        bottomChannel->createGridCoordinatesToDofMapping();
 
     //actual #dofs are in Function sizes (excludes ghost cells)
     topChannel->u->vector()->get_local(solution_vectorTopChannel);
@@ -427,9 +425,9 @@ void fenicsInterface::createHSL()
     topChannelData.assign(solution_vectorTopChannel.size(), 0.0);
     bottomChannelData.assign(solution_vectorBottomChannel.size(), 0.0);
 
-////////////////////////////////////////////////////////////////////////////////
+//================================================================
 //                    BOUNDARY CONDITIONS
-////////////////////////////////////////////////////////////////////////////////
+//================================================================
 
     //SUBDOMAIN CLASS INSTANTIATIONS:
     auto dbc_openWalled     = std::make_shared<DirichletBoundary_openWalls>();
@@ -442,9 +440,9 @@ void fenicsInterface::createHSL()
 
     //UPDATING DIRICHLET BOUNDARY:  switch to update expression class or zero
 
-    if("MICROFLUIDIC_TRAP" == eQ::parameters["boundaryType"])
+    if("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"])
     {
-        if("H_TRAP" == eQ::parameters["trapType"])
+        if("H_TRAP" == eQ::data::parameters["trapType"])
         {   //reset the rates to channel velocity for H-trap (left/right boundaries are narrow, transverse flow)
             //note: should be set with Robin BC set in "boundaries" parameters
             leftRate = channelFlowVelocity;
@@ -466,14 +464,13 @@ void fenicsInterface::createHSL()
 //        leftWall->mark_facets(*shell->mesh, 0);//translates to ds(0) in .ufl code
 //        rightWall->mark_facets(*shell->mesh, 1);//translates to ds(1) in .ufl
 
-        //GENERATE THE DIRICHLET BOUNDARY CONDITION OBJECT (space, values, subdomain)
-        //use the channel solutions to populate the BC for the trap
         shell->dbc.clear();
 
         //DECODE THE BOUNDARY CONDITIONS:
-        //LEFT/RIGHT WALL:
+
+        //LEFT WALL:
         std::vector<double> thisData;
-        thisData = eQ::parameters["boundaries"]["left"][1].get<std::vector<double>>();
+        thisData = eQ::data::parameters["boundaries"]["left"][1].get<std::vector<double>>();
         if(0.0 == thisData[0])
         {//DIRICHLET, SET TO BV:
             auto leftData = std::make_shared<dolfin::Constant>(thisData[2]);
@@ -490,7 +487,9 @@ void fenicsInterface::createHSL()
             data.s_left     = std::make_shared<dolfin::Constant>(0.0);
             data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
         }
-        thisData = eQ::parameters["boundaries"]["right"][1].get<std::vector<double>>();
+
+        //RIGHT WALL:
+        thisData = eQ::data::parameters["boundaries"]["right"][1].get<std::vector<double>>();
         if(0.0 == thisData[0])
         {//DIRICHLET, SET TO BV:
             auto rightData = std::make_shared<dolfin::Constant>(thisData[2]);
@@ -509,45 +508,71 @@ void fenicsInterface::createHSL()
         }
 
 
-        //TOP/BOTTOM WALL (SET TO FLOW CHANNEL):
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
-        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
-        //SET TO 0
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, topWall));
-//        shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, bottomWall));
-
-        if("H_TRAP" == eQ::parameters["trapType"])
-        {  //reset the top,bottom boundaries to reflecting (no Dirichlet)
-            shell->dbc.clear();
+        //TOP WALL
+        thisData = eQ::data::parameters["boundaries"]["top"][1].get<std::vector<double>>();
+        if(0.0 == thisData[0])//DIRICHLET
+        {
+            if(-1.0 == thisData[2])
+            {
+                //TOP/BOTTOM WALL (SET TO FLOW CHANNEL):
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topChannel->u, topWall));
+            }
+            else
+            {
+                auto topData = std::make_shared<dolfin::Constant>(thisData[2]);
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, topData, topWall));
+            }
         }
+        //NEUMANN:  do nothing...
+
+        //BOTTOMR WALL
+        thisData = eQ::data::parameters["boundaries"]["bottom"][1].get<std::vector<double>>();
+        if(0.0 == thisData[0])//DIRICHLET
+        {
+            if(-1.0 == thisData[2])
+            {
+                //TOP/BOTTOM WALL (SET TO FLOW CHANNEL):
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomChannel->u, bottomWall));
+            }
+            else
+            {
+                auto bottomData = std::make_shared<dolfin::Constant>(thisData[2]);
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomData, bottomWall));
+            }
+        }
+        //NEUMANN:  do nothing...
     }
     else
     {
+
+        std::cout<<"Initializing boundary conditions via old method...should depracate"<<std::endl;
+
         //GENERATE THE DIRICHLET BOUNDARY CONDITION OBJECT (space, values, subdomain)
         std::shared_ptr<SubDomain> boundaryDomain;
 
         //switch on simulation/trap type here:  uses the expression subclass instance "bValues" as defined above
-        if("NOWALLED" == eQ::parameters["trapType"]) boundaryDomain = dbc_openWalled;
-        if("THREEWALLED" == eQ::parameters["trapType"]) boundaryDomain = dbc_threeWalled;
-        if("TWOWALLED" == eQ::parameters["trapType"]) boundaryDomain = dbc_twoWalled;
-        if("ONEWALLED" == eQ::parameters["trapType"]) boundaryDomain = dbc_oneWall;
+        if("DIRICHLET_0" == eQ::data::parameters["boundaryType"])
+        {
+            if("NOWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_openWalled;
+            if("THREEWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_threeWalled;
+            if("TWOWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_twoWalled;
+            if("ONEWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_oneWall;
 
-        walls = std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, boundaryDomain);
+            walls = std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, boundaryDomain);
 
-        if("DIRICHLET_0" == eQ::parameters["boundaryType"])
             shell->dbc.push_back(walls);
-        else if("NEUMANN_3WALLED_TEST" == eQ::parameters["boundaryType"])
+        }
+        else if("NEUMANN_3WALLED_TEST" == eQ::data::parameters["boundaryType"])
             shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, dbc_oneWall));
         else
-        //Robin b.c.: (delete dirichlet BC):
-            shell->dbc.clear();
+            shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, data.zero, dbc_openWalled));
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 //             FORMS, VARIATIONAL PROBLEMS AND SOLVERS::
 ////////////////////////////////////////////////////////////////////////////////
     //call the derived-class method to set parameters into the .ufl file
-    setFormParameters(data);
+    shell->setFormParameters(data);
     shell->createLinearVariationalSolver();
     shell->createGridCoordinatesToDofMapping();
 
@@ -603,15 +628,15 @@ void fenicsInterface::writeDataFiles(double dt)
 {
     for(size_t i(0); i<outputFiles.size(); i++)
     {
-        if(1 == myParams.dataFiles[i].first->getRank())
+        if(eQ::data::tensor::rank::VECTOR == myParams.dataFiles->at(i).data->getRank())
         {//VECTOR DATA
-            auto expression = vectorDataExpression(myParams.dataFiles[i].first);
+            auto expression = vectorDataExpression(myParams.dataFiles->at(i).data);
             uvec->interpolate(expression);
             *outputFiles[i] << std::pair<const Function*, double>(uvec.get(), dt);
         }
-        else if(0 == myParams.dataFiles[i].first->getRank())
+        else if(eQ::data::tensor::rank::SCALAR == myParams.dataFiles->at(i).data->getRank())
         {//SCALAR DATA
-            auto expression = scalarDataExpression(myParams.dataFiles[i].first);
+            auto expression = scalarDataExpression(myParams.dataFiles->at(i).data);
             shell->u->interpolate(expression);
             *outputFiles[i] << std::pair<const Function*, double>(shell->u.get(), dt);
         }
@@ -623,19 +648,32 @@ void fenicsInterface::finalize()
 }
 fenicsInterface::~fenicsInterface()
 {
+    std::cout<<"BEGIN fenicsInterface::~fenicsInterface()"<<std::endl;
     //these must be cleared for MPI in fenics:
-    for(auto &file : outputFiles)
-        file.reset();
+//    for(auto &file : outputFiles)
+//        file.reset();
 
-    for(auto &file : hslWriter)
-        file.first.reset();
+//    for(auto &file : hslWriter)
+//        file.first.reset();
 
-    boundaryFlux.reset();
-    shell->mesh.reset();
-    topChannel->mesh.reset();
-    bottomChannel->mesh.reset();
+//    uvec.reset();
+//    VscalarData.reset();
+//    VvectorData.reset();
+
+//    flux.reset();
+//    ub.reset();
+//    VU.reset();
+//    V0.reset();
+//    boundaryFlux.reset();
+
+//    shell->mesh.reset();
+//    topChannel->mesh.reset();
+//    bottomChannel->mesh.reset();
 
 //        shell.reset();
 //        topChannel.reset();
 //        bottomChannel.reset();
+
+    std::cout<<"END fenicsInterface::~fenicsInterface()"<<std::endl;
+    sleep(1);
 }

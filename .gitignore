@@ -23,3 +23,7 @@
 #  ignore histogram directory 
 /histogram-develop/
 
+#  ignore generated fencs .h files (from ffc, which compiles the .ufl files)
+#  this should always be done on the local machine 
+/fenics/*.h
+

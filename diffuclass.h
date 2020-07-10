@@ -83,8 +83,8 @@ private:
 //		void initDiffusion(MPI_Comm, std::vector<std::string>, int, char**);
 		void initDiffusion(eQ::diffusionSolver::params &initParams);
 		void stepDiffusion();
-		void setBoundaryValues(const eQ::parametersType &bvals);
-		eQ::parametersType getBoundaryFlux(void);
+        void setBoundaryValues(const eQ::data::parametersType &bvals);
+        eQ::data::parametersType getBoundaryFlux(void);
 		double getDiffusionConstant(void);
 		void writeDiffusionFiles(double timestamp);
 		void finalize(void);

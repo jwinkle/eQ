@@ -9,24 +9,23 @@
 #include <math.h>
 #include <algorithm>    // std::replace
 #include <sstream>      // std::stringstream
+#include <iomanip>      // std::setw()
 
-struct initParams{
-	unsigned int timeSinceEpoch, randSeed;
-	double timeStep;
-	double trapDiffusionRate;
-	std::array<double,2> gridSizeMicrons;
-	std::size_t gridNodesPerMicron;
-};
+
+#include "eQ.h"
 
 class inputOutput
 {
 	public:	
-	inputOutput() = default;
+//    inputOutput()  {timeStamp = time(nullptr);}
+    //better to synchronize the timestamp across nodes for filenames:
+    inputOutput(long time) : timeStamp(time) {}
 
 	int parseInputLine(int argc, char* argv[]);
-//    std::string initOutputFiles();
     std::string initOutputFiles(std::string imageFilesRoot);
     long getTimeStamp(){return timeStamp;}
+    void writeParametersToFile(std::string paramsRoot, size_t simNumber, eQ::data::parametersType &params);
+    void setSimulationNumber(size_t simNumber);
 
 	bool isLocalComputer = true;
     bool isAugsburgCluster = false;
@@ -45,6 +44,8 @@ private:
 	std::stringstream sstream;
 	std::ofstream logFile;
 	std::string fpath;
+    std::string uniqueString;
+    std::string imageFilesRoot;
 
 };
 #endif

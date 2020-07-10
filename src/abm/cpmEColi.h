@@ -3,6 +3,8 @@
 
 #include "cpm.h"
 #include <utility>
+#include "eQ.h"
+#include "eQcell.h"
 
 
 class eColi;
@@ -27,20 +29,15 @@ typedef struct{
 class cpmEColi
 {
 public:
-	struct params
+    struct Params
 	{
+        eQ::Cell::Params        baseData;
         cpSpace                 *space;
-		double                   mass, moment;
-		double                   x,y;
-		double                   angle, length, width;
-		double                   vx, vy, av;
-//        double                   doublingPeriodMinutes;
-        double                   dRL;
-        double                   kspring;
-        double                   gammaFluidParameter;
+        double                  kspring;
+        double                  gammaFluidParameter;
 	};
 
-    cpmEColi(const cpmEColi::params &p);
+    cpmEColi(const cpmEColi::Params &p);
 	~cpmEColi(void);
 
     typedef struct bodyData_t

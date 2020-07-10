@@ -36,18 +36,18 @@ void diffusionPETSc::initDiffusion(eQ::diffusionSolver::params &initParams)
     initData.subCommunicator = subComm;
     //Record vector of diffusion constants and choose the appropriate constant for each processor
     std::vector<double>		d_vector;
-    d_vector = std::vector<double>(eQ::parameters["D_HSL"].get<std::vector<double>>());
+    d_vector = std::vector<double>(eQ::data::parameters["D_HSL"].get<std::vector<double>>());
     initData.diffusionConstant = d_vector.at(myRankMPI % d_vector.size());
 
     //Set domain size based on parameters
-    initData.xLengthMicrons = int(eQ::parameters["simulationTrapWidthMicrons"]);
-    initData.yLengthMicrons = int(eQ::parameters["simulationTrapHeightMicrons"]);
+    initData.xLengthMicrons = int(eQ::data::parameters["simulationTrapWidthMicrons"]);
+    initData.yLengthMicrons = int(eQ::data::parameters["simulationTrapHeightMicrons"]);
 
     //Set time step
-    initData.dt = eQ::parameters["dt"];
+    initData.dt = eQ::data::parameters["dt"];
 
     //Set grid spacing in domain
-    initData.h = 1 / double(eQ::parameters["nodesPerMicronSignaling"]);
+    initData.h = 1 / double(eQ::data::parameters["nodesPerMicronSignaling"]);
 
     //Set the appropriate filepath to each grid for data recording
     initData.directoryName = filePaths.at(myRankMPI % d_vector.size());
@@ -66,7 +66,7 @@ void diffusionPETSc::initDiffusion(eQ::diffusionSolver::params &initParams)
      initData.objectName = "grid";
 
     //Set initial boundary conditions
-    if("DIRICHLET_0" == eQ::parameters["boundaryType"]){
+    if("DIRICHLET_0" == eQ::data::parameters["boundaryType"]){
         initData.homogeneousDirichlet = PETSC_TRUE;
 
         initData.topDirichletCoefficient = 1;
@@ -118,7 +118,7 @@ void diffusionPETSc::stepDiffusion(void)
 }
 
 //TODO: implement each wall separately
-void diffusionPETSc::setBoundaryValues(const eQ::parametersType &bvals)
+void diffusionPETSc::setBoundaryValues(const eQ::data::parametersType &bvals)
 {
     //JW: over-ride for now: set boundaries explicitly by writing the data structures
     return;
@@ -132,10 +132,10 @@ void diffusionPETSc::setBoundaryValues(const eQ::parametersType &bvals)
 }
 
 //TODO: verify accuracy, check about choosing walls
-eQ::parametersType diffusionPETSc::getBoundaryFlux(void)
+eQ::data::parametersType diffusionPETSc::getBoundaryFlux(void)
 {
     //Compute and return boundary flux across all walls
-    eQ::parametersType 	fluxData;
+    eQ::data::parametersType 	fluxData;
     double 			   	totalBoundaryFlux, boundarySlope;
     int 				i, j;
 

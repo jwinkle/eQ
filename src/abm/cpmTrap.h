@@ -9,15 +9,15 @@
 class cpmTrap
 {
 public:
-    struct params
+    struct Params
     {
         cpSpace     *space;
 //        bool        removeOutsideTrap;
     };
 
-    cpmTrap(const cpmTrap::params &);
+    cpmTrap(const cpmTrap::Params &);
     ~cpmTrap();
-    const cpmTrap::params &myParams;
+    const cpmTrap::Params &myParams;
 
     bool outsideTrap(std::shared_ptr<cpmEColi> cell);
     bool updateModel(std::shared_ptr<cpmEColi> cell);
