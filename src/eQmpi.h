@@ -23,8 +23,9 @@ public:
 	};
 
 	virtual ~mpi()	=default;
-	mpi()			=default;
-	//init with node that calling node communicates with (one-to-one) on comm
+    mpi()			=default;
+    mpi(MPI_Comm comm, int nodeNumber) {init(comm, nodeNumber);}
+    //init with node that calling node communicates with (one-to-one) on comm
 	void init(MPI_Comm comm, int nodeNumber)
 	{
 		_comm = comm;
@@ -114,9 +115,9 @@ public:
 		{
 			switch(onTask)
 			{
-				case mpi::method::BROADCAST:
-					initTransfer(onTask);
-					break;
+//				case mpi::method::BROADCAST:
+//					initTransfer(onTask);
+//					break;
 				case mpi::method::ISEND:
 					initTransfer(onTask);
 					break;
@@ -130,21 +131,31 @@ public:
 			return *this;
 		}
 	//================================================================================
-	//                  BROADCAST	long
+    //                  BROADCAST
 	//================================================================================
 	mpi &//				ALL "RECEIVE" BROADCAST DATA (but _nodeNumber actually sends)
 	operator>>(long  &data)
 	{
-		int mpiTag=0;
-		MPI_Status thisStaus;
-
 		if(mpi::method::BROADCAST == _mpiState)
 		{
-			MPI_Bcast(&data, 1, MPI_LONG,
+            MPI_Bcast(&data, 1, MPI_LONG,
 					 _nodeNumber, _comm);
 		}
+        return *this;
 	}
-	//================================================================================
+    mpi &//				ALL "RECEIVE" BROADCAST DATA (but _nodeNumber actually sends)
+    operator>>(bool  &boolData)
+    {
+        int data = (boolData) ? 1 : 0;
+        if(mpi::method::BROADCAST == _mpiState)
+        {
+            MPI_Bcast(&data, 1, MPI_INT,
+                     _nodeNumber, _comm);
+        }
+        boolData = (1 == data);
+        return *this;
+    }
+    //================================================================================
 	//                      shared_ptr<vector<double>>
 	//================================================================================
 	//                  RECEIVE

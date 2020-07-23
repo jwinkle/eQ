@@ -1,7 +1,5 @@
 #include "simulation.h"
 
-//static const double linearFlowRate = 100.0 * 60.0;//microns/sec * 60sec/min
-static const double linearFlowRate = 10.0 * 60.0;//microns/sec * 60sec/min
 
 Simulation::Simulation(MPI_Comm commWorld, const Simulation::Params &initParams)
     : params(initParams), world(commWorld)
@@ -219,10 +217,17 @@ void Simulation::create_HSLgrid()
 
         //TODO: should populate this perhaps in main, but left here for now
         std::vector<std::string> hslFilePaths;
+        std::vector<std::string> topChannelFilePaths;
+        std::vector<std::string> bottomChannelFilePaths;
         for(size_t i(0); i<numHSLGrids; i++)
         {
             auto thisFileString = params.fileIO->fbase + "H" + std::to_string(i+1) + ".pvd";
             hslFilePaths.push_back(thisFileString);
+
+            thisFileString = params.fileIO->fbase + "/channels/ctH" + std::to_string(i+1) + ".pvd";
+            topChannelFilePaths.push_back(thisFileString);
+            thisFileString = params.fileIO->fbase + "/channels/cbH" + std::to_string(i+1) + ".pvd";
+            bottomChannelFilePaths.push_back(thisFileString);
         }
 
         auto vecD = std::vector<double>(eQ::data::parameters["D_HSL"].get<std::vector<double>>());
@@ -232,6 +237,8 @@ void Simulation::create_HSLgrid()
         fenicsParams.D_HSL     = vecD[whichHSL];
         fenicsParams.filePath  = hslFilePaths[whichHSL];
         fenicsParams.nodesPerMicron    = double(eQ::data::parameters["nodesPerMicronSignaling"]);
+        fenicsParams.filePathTopChannel  = topChannelFilePaths[whichHSL];
+        fenicsParams.filePathBottomChannel  = bottomChannelFilePaths[whichHSL];
 
 
         diffusionSolver->initDiffusion(fenicsParams);
@@ -324,6 +331,10 @@ void Simulation::create_HSLgrid()
         D22Grid.assign(globalNodes, 1.0);
         D12Grid.assign(globalNodes, 0.0);
 
+        //added an hsl array to record to json file:
+        hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
+        hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
+
         MPI_Barrier(world);
         for(auto &node : mpiHSL)
         {
@@ -368,8 +379,10 @@ void Simulation::create_HSLgrid()
                 //the point of this all is to have this mapping from physical node # to the fenics dof #,
                 //allows to look that up the dof directly for read/write in the main acquisition loop
                 //WRITE THE DOF LOOKUP TABLE:
-                ABM->writeLookupTable(grid, gridPoint.first, gridPoint.second, eQ::nodeType(gridDofs[grid][i]));
+                ABM->writeLookupTable(grid, gridPoint, eQ::nodeType(gridDofs[grid][i]));
             }
+
+            ABM->dofLookupTable[grid]->linearize2Dgrid(hslLookup[grid]);
         }
         //to verify the dof are as expected (for small grids to test):
 //        printData();
@@ -381,7 +394,7 @@ void Simulation::create_HSLgrid()
 }
 void Simulation::init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>> &strains)
 {
-    std::vector<std::shared_ptr<eColi>> cells;
+    std::vector<std::shared_ptr<Ecoli>> cells;
     //ONLY THE CONTROLLER OWNS THE ABM MODEL:
     if(isControllerNode)
     {
@@ -398,7 +411,7 @@ void Simulation::init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>>
     else
         simulateABM = false;
 }
-void Simulation::stepSimulation()
+void Simulation::stepSimulation(double simTime)
 {
     MPI_Barrier(world);
     if(isControllerNode)
@@ -515,7 +528,7 @@ void Simulation::waitMPI()
 //    std::cout<<"Exiting waitMPI"<<std::endl;
 }
 
-void Simulation::writeHSLFiles()
+void Simulation::writeHSLFiles(double simTime)
 {
     if((isDiffusionNode) && createdHSLgrid)
     {
@@ -530,7 +543,7 @@ void Simulation::writeHSLFiles()
         //print the l2 norm and boundary flux of the HSL:
 //        auto thisNorm = diffusionSolver->u->vector()->norm("l2");
         auto flux = diffusionSolver->getBoundaryFlux();
-        std::cout<<"\t boundaryFlux assemble result: ("<<my_PE_num<<") "<<flux["totalFlux"]
+        std::cout<<"\t boundaryFlux assemble result: ("<<my_PE_num<<") "<<diffusionSolver->totalBoundaryFlux
 //                    <<"  u norm: "<<thisNorm
                    <<" well conc.: "<<boundaryWellConcentration
 //                  <<" boundary underflow counter: "<<boundaryUnderFlow
@@ -542,11 +555,9 @@ void Simulation::writeHSLFiles()
 //TODO:  GENERALIZE THIS FOR EACH TYPE OF GENE CIRCUIT
 void Simulation::create_DataGrid()
 {//for using Fenics for data recording only (populating grid functions)
-//    MPI_Barrier(world);
     if(isControllerNode)//only controller makes data grid:
     {
         computeGridParameters();
-        //TODO:  need to switch on the trap type for BC
         //create the fenics interface class:
         //**************************************************************
         //              CREATE FENICS CLASS:
@@ -558,9 +569,8 @@ void Simulation::create_DataGrid()
         diffusionSolver = std::make_shared<fenicsInterface>(fenicsParams);
         std::cout<<"Fenics for data recording Class created..."<<std::endl;
     }
-//    MPI_Barrier(world);
 }
-void Simulation::writeDataFiles()
+void Simulation::writeDataFiles(double simTime)
 {//when using fenics to record cell data over the grid (not for HSL data here)
     if(params.dataFiles->empty()) return;
     if(isControllerNode)
@@ -570,11 +580,11 @@ void Simulation::writeDataFiles()
 }
 void Simulation::computeBoundaryWell()
 {
-    eQ::data::parametersType flux    = diffusionSolver->getBoundaryFlux();
+    double flux    = diffusionSolver->totalBoundaryFlux;
 
     //COMPUTE TRAP CHANNEL CONCENTRATION:
     boundaryWellConcentration
-            += 0.1*double(flux["totalFlux"])/wellScaling;//scale #c from flux integral
+            += flux/wellScaling;//scale #c from flux integral
     boundaryWellConcentration
             -= double(eQ::data::parameters["dt"])*boundaryDecayRate*boundaryWellConcentration;
 
@@ -587,9 +597,9 @@ void Simulation::computeBoundaryWell()
     {
         //note:  set "allBoundaries" to false if not using all boundaries with same value!
         eQ::data::parametersType bvals;
-        bvals["allBoundaries"] = bool(true);
-        bvals["boundaryValue"] = boundaryWellConcentration;
-        diffusionSolver->setBoundaryValues(bvals);
+//        bvals["allBoundaries"] = bool(true);
+//        bvals["boundaryValue"] = boundaryWellConcentration;
+        diffusionSolver->setBoundaryValues(boundaryWellConcentration);
     }
 }
 void Simulation::initBoundaryWell()
@@ -599,8 +609,8 @@ void Simulation::initBoundaryWell()
     boundaryWellConcentration = 0.0;
     boundaryUnderFlow = 0;
     boundaryDecayRate =  //units: min^-1; = linearFlowRate/trapLength = 100/2000=0.05sec^-1
-            (linearFlowRate/double(eQ::data::parameters["lengthScaling"]))
-            * (1.0/double(eQ::data::parameters["simulationTrapWidthMicrons"]));
+            double(eQ::data::parameters["simulationFlowRate"])
+            / double(eQ::data::parameters["simulationTrapWidthMicrons"]);
 
     //compute volume of flow channels (+ left/right sides in first approximation)
     wellScaling = 2.0 * 10.0 * (15.0/double(eQ::data::parameters["lengthScaling"])) //10um z-height, 15um y-height
@@ -716,8 +726,9 @@ void Simulation::printData()
             size_t i = size_t(ii);
             for(size_t j=0; j<globalNodesW; j++)
             {
+                auto point = eQ::nodePoint{i,j};
                 std::cout<< std::setw(3)<<std::left
-                    <<ABM->dofLookupTable[rank]->grid[i][j]
+                    <<ABM->dofLookupTable[rank]->operator[](point)
                       <<" ";
             }
             std::cout<<std::endl;

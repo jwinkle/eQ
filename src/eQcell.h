@@ -11,7 +11,7 @@ public:
 	//virtual destructor needed in base class so that derived classes can be deleted properly:
 	virtual ~Cell() = default;
 
-	enum class strainType
+    enum strainType
 	{
 		ACTIVATOR, REPRESSOR,
 		X,Y,Z,
@@ -24,9 +24,10 @@ public:
 		double divisionLength;
 		double meanDivisionLength;
 		double doublingPeriodMinutes;
+        double divisionCorrelationAlpha;
 	};
 	virtual void       setCellID(long i) {ID = i;}
-	virtual long       getCellID() {return ID;}
+    virtual long       getCellID() {return ID;}
 	virtual void       setParentID(long i) {parentID = i;}
 	virtual long       getParentID() {return parentID;}
 	virtual double     getLengthMicrons()=0;//length in microns
@@ -35,11 +36,6 @@ public:
 	virtual double     getCenter_y()=0;
 	virtual double     getAngle()=0;
 
-    virtual double     getDivisionLength()                  { return baseData.divisionLength; }
-    virtual void       setDivisionLength(double dl)         { baseData.divisionLength = dl; }
-    virtual double     getMeanDivisionLength()              { return baseData.meanDivisionLength; }
-    virtual void       setMeanDivisionLength(double mdl)    { baseData.meanDivisionLength = mdl; }
-
 
 	static constexpr double  DEFAULT_CELL_MASS                      =             1.0;
 	static constexpr double  DEFAULT_CELL_MOMENT                    =             100.0;
@@ -47,32 +43,41 @@ public:
 	static constexpr double  DEFAULT_DIVISION_LENGTH_MICRONS        =             4.2;
 	static constexpr double  DEFAULT_CELL_DOUBLING_PERIOD_MINUTES   =             20.0;
 	static constexpr double  DEFAULT_PROMOTER_DELAY_TIME_MINUTES	=             7.5;//see Chen et al. Science 2015
+    static constexpr double  MINIMUM_CELL_LENGTH_MICRONS            =             1.1;
 
 
 	//global cell parameters (fixed diameter here...may change cell width then put in cell model)
-	//assume cell cylinder, radius 1/2 um;
-	static constexpr double cylindricalCellVolumePerLength = M_PI*(0.5*0.5);//area of circle
-	static constexpr double poleVolume = 4.0/3.0 * M_PI*(0.5*0.5*0.5);//both poles total
+	//assume cell cylinder, radius 1/2 um;    
+    static constexpr double poleRadius = DEFAULT_CELL_WIDTH_MICRONS/2.0;
+    static constexpr double cylindricalCellVolumePerLength = M_PI*(poleRadius*poleRadius);//area of circle
+    static constexpr double poleVolume = 4.0/3.0 * M_PI*(poleRadius*poleRadius*poleRadius);//both poles total
+    //CONVERSION FROM PROTEIN # TO NANOMOLAR:
+        // 1 nanoMolar [nM] = 1e-9mol/L    =    1e-9 * 0.602e24#/L  = 1e15*0.602 [protein#/liter]
+        //1 um^3 = 1e-18m^3    =     1e-18m^3 * 1L/(0.1m)^3 = 1e-15L
+        //==> 1 nM =  1e15*0.602 [protein#/L] * 1e-15 [L/um^3] = 0.602 [protein#/um^3]
+        //==> to nanomolar: (p#/um^3)/0.602;  e.g.,  1.66nM = #1/um^3
+    static constexpr double nanoMolarPerMoleculePerCubicMicron = 1.0/0.602;
 
 	static double computeCellVolumeActual(double cellLength)
 	{//uses cylindrical body and hemispherical poles; models actual (ideal) cell volume
-		return (cellLength - 1.0) * cylindricalCellVolumePerLength + poleVolume;
+        return (cellLength - DEFAULT_CELL_WIDTH_MICRONS) * cylindricalCellVolumePerLength + poleVolume;
 	}
 
 	static double computeCellVolumeForConcentrations(double cellLength)
 	{//09Oct.2019: using pole volumes leads to ~10% jump in conc. at division!
-		return cellLength * cylindricalCellVolumePerLength;
+//		return cellLength * cylindricalCellVolumePerLength;
+        //14July.2020: return whole volume for now:
+        return computeCellVolumeActual(cellLength);
 	}
 
-	static double proteinNumberToNanoMolar(double p, double cellLength)
-	{//CONVERSION FROM PROTEIN # TO NANOMOLAR:
-			// 1 nanoMolar [nM] = 1e-9mol/L    =    1e-9 * 0.602e24#/L  = 1e15*0.602 [protein#/liter]
-			//1 um^3 = 1e-18m^3    =     1e-18m^3 * 1L/(0.1m)^3 = 1e-15L
-			//==> 1 nM =  1e15*0.602 [protein#/L] * 1e-15 [L/um^3] = 0.602 [protein#/um^3]
-			//==> to nanomolar: (p#/um^3)/0.602
-//        return (p/computeCellVolumeActual(cellLength)) / 0.602;
-		return (p/computeCellVolumeForConcentrations(cellLength)) / 0.602;
-	}
+    static double moleculeNumberToNanoMolar(double p, double cellLength)
+    {
+        return (p/computeCellVolumeForConcentrations(cellLength)) * nanoMolarPerMoleculePerCubicMicron;
+    }
+    static double nanoMolarToMoleculeNumber(double nM, double cellLength)
+    {
+        return nM/nanoMolarPerMoleculePerCubicMicron * computeCellVolumeForConcentrations(cellLength);
+    }
 
 	static double computeIntraCellularVolumeFraction(double cellLength)
 	{
@@ -86,11 +91,6 @@ public:
 		//compute volume fraction of cell vs. rectangular region 1um x 1um x cellLength
 		return 1.0 - computeIntraCellularVolumeFraction(cellLength);
 	}
-//    static double computeExtraCellularVolume(double cellLength)
-//    {
-//        //compute volume of outside of cell vs. rectangular region 1um x 1um x cellLength
-//        return (cellLength * 1.0 * 1.0) -  computeCellVolumeActual(cellLength);
-//    }
 	static double computeVolumeRatio_ExtraToIntra(double cellLength)
 	{
 		return computeExtraCellularVolumeFraction(cellLength)/computeIntraCellularVolumeFraction(cellLength);
@@ -101,15 +101,10 @@ protected:
 	{
 		//15Feb.2019:  cell size regulation using ~"incremental model" by Ariel Amir (PRL 112, 2014)
 		//"sizer" regulation <== alpha=1
-		return 2.0 * pow(lengthAtBirth, 1.0-alpha) * pow(meanLengthAtBirth, alpha);
+        double thisLength = 2.0 * pow(lengthAtBirth, 1.0-alpha) * pow(meanLengthAtBirth, alpha);
+        return (thisLength < MINIMUM_CELL_LENGTH_MICRONS) ? MINIMUM_CELL_LENGTH_MICRONS : thisLength;
 	}
-	virtual void    computeDivisionLength(double birthLength)
-	{
-		double alpha = 0.5;
-		baseData.divisionLength = computeDivisionLength(birthLength, 0.5*baseData.meanDivisionLength, alpha);
-	};
 
-	Cell::Params     baseData;
 	double          _dt;
 	long            ID;
 	long            parentID;

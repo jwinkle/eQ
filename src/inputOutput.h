@@ -30,6 +30,7 @@ class inputOutput
 	bool isLocalComputer = true;
     bool isAugsburgCluster = false;
     bool isOpuntiaCluster = false;
+    bool isArrayCluster = false;
     bool isArrayLocal = false;
     size_t  slurmArrayIndex=0;
     size_t  localArrayIndex=0;
@@ -39,12 +40,12 @@ class inputOutput
     std::string launchData;
     std::string timeString;
     std::string dateString;
+    std::string uniqueString;
 
 private:
 	std::stringstream sstream;
 	std::ofstream logFile;
 	std::string fpath;
-    std::string uniqueString;
     std::string imageFilesRoot;
 
 };

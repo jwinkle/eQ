@@ -34,6 +34,8 @@ endif()
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS} )
+
 
 set(SRC_DIR ./src)
 set(ABM_DIR ${SRC_DIR}/abm)
@@ -42,12 +44,42 @@ link_directories(./lib)
 
 set(CPM_DIR ./Chipmunk-7.0.1/include)
 set(HEADERS
-#	fenics/hsl.h fenics/boundary.h
 	${CPM_DIR}/chipmunk/chipmunk.h
 	${CPM_DIR}/chipmunk/chipmunk_private.h)
 
-# message( ${CPM_DIR} )
-# message( ${HEADERS} )
+message("CPM_DIR = " ${CPM_DIR} )
+message("HEADERS = " ${HEADERS} )
+message("CMAKE_SOURCE_DIR = " ${CMAKE_SOURCE_DIR} )
+message("CMAKE_BINARY_DIR = " ${CMAKE_BINARY_DIR} )
+
+
+# see:  http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
+# Get the current working branch
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+  COMMAND git log -1 --format=%H
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message("GIT_BRANCH = " ${GIT_BRANCH} )
+message("GIT_COMMIT_HASH = " ${GIT_COMMIT_HASH} )
+
+
+configure_file(
+  ${CMAKE_SOURCE_DIR}/version.h.in
+  ${CMAKE_BINARY_DIR}/generated/version.h
+)
+include_directories(${CMAKE_BINARY_DIR}/generated)
+
+
 
 # Executable
 add_executable(${PROJECT_NAME}
@@ -61,10 +93,10 @@ add_executable(${PROJECT_NAME}
 	${SRC_DIR}/Strain.cpp
 
 	${ABM_DIR}/eQabm.cpp
-	${ABM_DIR}/eColi.cpp
+	${ABM_DIR}/Ecoli.cpp
 	${ABM_DIR}/cpmHabitat.cpp
 	${ABM_DIR}/cpmTrap.cpp
-	${ABM_DIR}/cpmEColi.cpp
+	${ABM_DIR}/cpmEcoli.cpp
 
 	diffuclass.cpp
 )

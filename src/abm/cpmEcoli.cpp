@@ -4,7 +4,7 @@
 #include "../../Chipmunk-7.0.1/include/chipmunk/chipmunk_unsafe.h"
 
 //this must be included *after* the chipmunk *private/unsafe.h files, above
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 
@@ -38,8 +38,8 @@ void jcpBodyUpdateVelocity(cpBody *body, cpVect gravity, cpFloat damping, cpFloa
         body->m, body->i);
 
     //get the user data for this cell
-    cpmEColi::bodyData_t *pBodyData
-            =  (cpmEColi::bodyData_t *)cpBodyGetUserData(body);
+    cpmEcoli::bodyData_t *pBodyData
+            =  (cpmEcoli::bodyData_t *)cpBodyGetUserData(body);
 
     // cpVect Fbym = body->f * body->m_inv;
     cpVect Fbym     = body->f;
@@ -55,20 +55,20 @@ void jcpBodyUpdateVelocity(cpBody *body, cpVect gravity, cpFloat damping, cpFloa
 }
 //==============================================================================
 //==============================================================================
-void cpmEColi::setStaticCell()
+void cpmEcoli::setStaticCell()
 {//sets the cell body halves to "static" -- they should not be updated, so set flag
     cpBodySetType(bodyA, CP_BODY_TYPE_STATIC);
     cpBodySetType(bodyB, CP_BODY_TYPE_STATIC);
     cellIsStatic = true;
 }
-void cpmEColi::resetDynamicCell()
+void cpmEcoli::resetDynamicCell()
 {//sets the cell body halves back to "dynamic"
     cpBodySetType(bodyA, CP_BODY_TYPE_DYNAMIC);
     cpBodySetType(bodyB, CP_BODY_TYPE_DYNAMIC);
     cellIsStatic = false;
 }
 //==============================================================================
-void cpmEColi::computeCellBoudaryEdges()
+void cpmEcoli::computeCellBoudaryEdges()
 {
     edges[0] = vertsA[1] - vertsA[0];
     edges[1] = vertsA[2] - vertsA[1];
@@ -80,7 +80,7 @@ void cpmEColi::computeCellBoudaryEdges()
 //    edges[3] = vertsA[0] - vertsA[3];
 }
 //==============================================================================
-cpmEColi::cpmEColi(const cpmEColi::Params &ecoli)
+cpmEcoli::cpmEcoli(const cpmEcoli::Params &ecoli)
             : space(ecoli.space)
 {
     /*
@@ -291,7 +291,7 @@ cpmEColi::cpmEColi(const cpmEColi::Params &ecoli)
 
 //==============================================================================
 //==============================================================================
-cpmEColi::~cpmEColi(void)
+cpmEcoli::~cpmEcoli(void)
 {
     for(unsigned int i=0;i<constraintCount;i++)
     {
@@ -310,7 +310,7 @@ cpmEColi::~cpmEColi(void)
     cpBodyFree(bodyB);
 }
 
-bool cpmEColi::pointIsInCell(std::pair<double, double> point)
+bool cpmEcoli::pointIsInCell(std::pair<double, double> point)
 {
     cpVect lpoint = cpBodyWorldToLocal(bodyA, cpv(point.first, point.second));
 
@@ -336,24 +336,24 @@ bool cpmEColi::pointIsInCell(std::pair<double, double> point)
 //    if (responseB < 0.0) return true;
 //    return false;
 }
-void cpmEColi::setVelocity(cpVect vel)
+void cpmEcoli::setVelocity(cpVect vel)
 {
     cpBodySetVelocity(bodyA, vel); velA = vel;
     cpBodySetVelocity(bodyB, vel); velB = vel;
 }
-void cpmEColi::setBodyVelocities(cpVect vA, cpVect vB)
+void cpmEcoli::setBodyVelocities(cpVect vA, cpVect vB)
 {
     cpBodySetVelocity(bodyA, vA); velA =vA;
     cpBodySetVelocity(bodyB, vB); velB=vB;
 }
 
-void cpmEColi::applyForce(cpVect force)
+void cpmEcoli::applyForce(cpVect force)
 {//adds to the current force on the object
     cpBodyApplyForceAtWorldPoint(bodyA,  force, cpBodyLocalToWorld(bodyA, cpvzero));
     cpBodyApplyForceAtWorldPoint(bodyB,  force, cpBodyLocalToWorld(bodyB, cpvzero));
 }
 
-void cpmEColi::setSpringRestLength(cpFloat RL)
+void cpmEcoli::setSpringRestLength(cpFloat RL)
 {
     //viruaal spring RL is set rel. to the full length of the cell
     springRestLength = RL;
@@ -363,18 +363,18 @@ void cpmEColi::setSpringRestLength(cpFloat RL)
     // cpDampedSpringSetRestLength(springJoint1, cpSpringRestLength);
     // cpDampedSpringSetRestLength(springJoint2, cpSpringRestLength);
 }
-void cpmEColi::incSpringRestLength(cpFloat deltaRL)
+void cpmEcoli::incSpringRestLength(cpFloat deltaRL)
 {
     setSpringRestLength(springRestLength + deltaRL);
 }
-cpFloat cpmEColi::getSpringRestLength(void)
+cpFloat cpmEcoli::getSpringRestLength(void)
 {
     // return cpDampedSpringGetRestLength(springJoint1);
     return springRestLength;
 }
 //==============================================================================
 //==============================================================================
-int cpmEColi::updateModel(void)
+int cpmEcoli::updateModel(void)
 {
     //read the post-step data from the chipm. model:
     //position, angle, velocity, angularVelocity
@@ -451,7 +451,7 @@ int cpmEColi::updateModel(void)
 //============================================================
 //  SPRING EXPANSION FORCE ALGORITHM:
 //============================================================
-int cpmEColi::updateExpansionForce(double restLengthIncrement)
+int cpmEcoli::updateExpansionForce(double restLengthIncrement)
 {//cell update will have been called before this (updates compression)
 //at dt=0.001 min, dRL increment is 0.0001 um => 20k x dRL = 2um (doubling) in 20 minutes
 

@@ -3,7 +3,7 @@
 
 #include "../eQ.h"
 #include "cpm.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 class cpmTrap
@@ -19,8 +19,8 @@ public:
     ~cpmTrap();
     const cpmTrap::Params &myParams;
 
-    bool outsideTrap(std::shared_ptr<cpmEColi> cell);
-    bool updateModel(std::shared_ptr<cpmEColi> cell);
+    bool outsideTrap(std::shared_ptr<cpmEcoli> cell);
+    bool updateModel(std::shared_ptr<cpmEcoli> cell);
     
 
     double w;

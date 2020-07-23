@@ -1,314 +1,13 @@
 #include "Strain.h"
 
 
-//static data member for each strain type
-std::vector<bool> aspectRatioInvasionStrain::inductionFlags;
-std::vector<bool> sendRecvStrain::inductionFlags;
-std::vector<bool> MODULUSmodule::inductionFlags;
+//static data member for each strain type (can be initialized via enum within scope of class):
+std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasionStrain::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
 
-
-//Strain::Strain(const eQ::Cell::strainType strainType, const dso_parameters *p, const double timestep, const double nodesPerMicronScale)
-//    : whichType(strainType), params(p), dt(timestep), nodesPerMicron(nodesPerMicronScale), inductionFlag(false)
-Strain::Strain(const Strain::Params &p)
-    : params(p)
-{
-
-    //NOTE:  valid for fixed dt/delay times only
-    queueDepth = size_t(ceil(params.promoterDelayTimeMins/params.dt));
-
-//    //old data structures:
-//	for(size_t i=0; i<queueDepth; i++)
-//	{
-//		qH_tau.push(0.0);
-//		qL_tau.push(0.0);
-//		qI_tau.push(0.0);
-//	}
-    for(int i=0; i<NUM_CONCENTRATIONS; i++)
-	{
-		conc[i]=0.0;//don't omit this!
-		delta[i]=0.0;
-	}
-}
-void Strain::initializeDataStructures(const size_t numHSL, const size_t numProteins)
-{
-    iHSL.assign(numHSL, 0.0);
-    tHSL.assign(numHSL, 0.0);//per timestep value of popped queue value for convenience
-    dHSL.assign(numHSL, 0.0);
-    deltaHSL.assign(numHSL, 0.0);
-
-    iPROTEIN.assign(numProteins, 0.0);
-    tPROTEIN.assign(numProteins, 0.0);//per timestep value of popped queue value for convenience
-    deltaPROTEIN.assign(numProteins, 0.0);
-
-    std::queue<double> q;
-    for(size_t j=0; j<queueDepth; j++) {q.push(0.0);}
-
-    HSL_tau.assign(numHSL, q);
-    PROTEIN_tau.assign(numProteins, q);
-
-}
-void Strain::divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter)
-{
-    //NOTE: the size of all data structures is determined by constructor of derived class
-	double protein;
-	double rd = fracToDaughter;
-	double rm = (1.0 - fracToDaughter);
-
-//    //OLD DATA STRUCTURES:
-//    for(size_t i=0; i<queueDepth; i++)
-//	{
-//        //NOTE:  DON'T DIVIDE SINCE QUEUE STORES CONCENTRATION:
-//        protein = qH_tau.front();
-//            qH_tau.pop();
-//            qH_tau.push(protein);
-//                daughter->qH_tau.pop();
-//                daughter->qH_tau.push(protein);
-//        protein = qL_tau.front();
-//            qL_tau.pop();
-//            qL_tau.push(protein);
-//                daughter->qL_tau.pop();
-//                daughter->qL_tau.push(protein);
-//        protein = qI_tau.front();
-//            qI_tau.pop();
-//            qI_tau.push(protein);
-//                daughter->qI_tau.pop();
-//                daughter->qI_tau.push(protein);
-//	}
-
-    for(size_t i=0;i<NUM_CONCENTRATIONS;i++)
-    {//DIVIDE PROTEINS BY FRACTION
-        daughter->conc[i] =  rd*conc[i];
-        conc[i] *= rm;
-	}
-
-    //NEW DATA STRUCTURES:
-    for(size_t i(0); i< iHSL.size(); i++)
-    {
-        //DIVIDE HSL# BY FRACTION
-        daughter->iHSL[i] = rd*iHSL[i];
-        iHSL[i] *= rm;
-        //NOTE:  DON'T DIVIDE SINCE QUEUE STORES CONCENTRATION:
-        daughter->tHSL[i] = tHSL[i];
-        for(size_t j=0; j<queueDepth; j++)
-        {//pop-push j times for each i:
-            protein = HSL_tau[i].front();
-                HSL_tau[i].pop();
-                HSL_tau[i].push(protein);
-                    daughter->HSL_tau[i].pop();
-                    daughter->HSL_tau[i].push(protein);
-        }
-    }
-
-    for(size_t i(0); i< iPROTEIN.size(); i++)
-    {
-        //DIVIDE PROTEIN# BY FRACTION
-        daughter->iPROTEIN[i] = rd*iPROTEIN[i];
-        iPROTEIN[i] *= rm;
-        //NOTE:  DON'T DIVIDE SINCE QUEUE STORES CONCENTRATION:
-        daughter->tPROTEIN[i] = tPROTEIN[i];
-        for(size_t j=0; j<queueDepth; j++)
-        {//pop-push j times for each i:
-            protein = PROTEIN_tau[i].front();
-                PROTEIN_tau[i].pop();
-                PROTEIN_tau[i].push(protein);
-                    daughter->PROTEIN_tau[i].pop();
-                    daughter->PROTEIN_tau[i].push(protein);
-        }
-    }
-}
-
-/*
-std::vector<double>
-Strain::computeProteins
-    (double C4ext, double C14ext, double lengthMicrons)
-{
-
-    //data:  conc[i] stores protein # for each protein between timesteps (covert to conc. first)
-//    double explicitDilution = params->dilution;
-    double explicitDilution         = 0.0;//set to zero when using ABM  with cell growth
-    //we store protein count, convert to nanoMolar concentration: 0.602 protein/um^3 = 1nM    
-    double oneProteinToNanoMolar = eQ::proteinNumberToNanoMolar(1.0, lengthMicrons);
-
-    if(lengthMicrons == 0.0)
-    {
-        std::cout<<"ERROR: scale for computeProteins() set to 0!"<<std::endl;
-        return std::vector<double>{};
-    }
-    for(int i=0; i<numConcentrations; i++)
-    {
-        conc[i] *= oneProteinToNanoMolar;//convert to proper concentration
-    }
-    //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
-    //promoter Hill functions "started" transcription/translation  tau time ago, so use those concentrations
-    H_tau = qH_tau.front();  qH_tau.pop();
-    L_tau = qL_tau.front();  qL_tau.pop();
-    I_tau = qI_tau.front();  qI_tau.pop();
-    //compute Hill function ratios once:
-     ratio_H_tau = pow(H_tau/params->K.H, params->nH);
-     ratio_L_tau = pow(L_tau/params->K.L, params->nL);
-     ratio_I_tau = pow(I_tau/params->K.I, params->nI);
-
-	totalProtein = 
-            params->K.C + conc[S]+ conc[L] + conc[A] + conc[FP] + conc[M];
-	totalHSL =
-            params->K.A + conc[H] + conc[I];
-	degradationProtein =
-            (params->dC / totalProtein) + explicitDilution;//explicitly model dilution here
-	degradationHSL =
-            (params->dA / totalHSL) * conc[A] + explicitDilution;//explicitly model dilution here
-
-    //C4 or C14 synthase:
-    delta[S] = dt * ( //rhlI or cinI both have rhl/lac hybrid promoter
-			(params->eta.S0 + params->eta.S1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
-			- degradationProtein * conc[S] );
-	//LacI
-    delta[L] = dt * ( //lacI has cin promoter
-			(params->eta.L0 + params->eta.L1 * ratio_I_tau)/(1.0 + ratio_I_tau)
-			- degradationProtein * conc[L] );
-	//AiiA
-    delta[A] = dt * ( //aiiA has cin promoter
-			(params->eta.A0 + params->eta.A1 * ratio_I_tau)/(1.0 + ratio_I_tau)
-			- degradationProtein * conc[A] );
-	//Mature FP
-	delta[M] = dt * (
-			params->m * conc[FP] 
-			- degradationProtein * conc[M] );
-    //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
-    dC4HSL = dt * (
-            params->DH * (conc[H] - C4ext));    //MEMBRANE DIFFUSION
-    dC14HSL = dt * (
-            params->DI * (conc[I] - C14ext));   //MEMBRANE DIFFUSION
-
-    if(eQ::Cell::strainType::ACTIVATOR == whichType)
-	{
-        //CFP --> tracks C4HSL synthase:
-        delta[FP] = dt * ( //activator has rhl/lac hybrid promoter
-				(params->eta.FP0 + params->eta.FP1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
-				- (degradationProtein + params->m) * conc[FP] );
-        delta[H] = dt * (//C4HSL
-				params->phi * conc[S]									//PRODUCTION
-                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
-                - dC4HSL;                                               //MEMBRANE DIFFUSION
-        delta[I] = dt * (//C14HSL
-                - degradationHSL * conc[I] ) 							//DEGRADATION+DILUTION
-                - dC14HSL;                                               //MEMBRANE DIFFUSION
-    }
-    else if(eQ::Cell::strainType::REPRESSOR == whichType)
-	{
-        //YFP --> tracks C14HSL synthase:
-        delta[FP] = dt * ( //repressor has cin/lac promoter
-				(params->eta.FP0 + params->eta.FP1 * ratio_I_tau)/(1.0 + ratio_I_tau + ratio_L_tau)
-				- (degradationProtein + params->m) * conc[FP] );
-        delta[I] = dt * (//C14HSL
-				params->phi * conc[S]									//PRODUCTION
-                - degradationHSL * conc[I] )							//DEGRADATION+DILUTION
-                - dC14HSL;                                               //MEMBRANE DIFFUSION
-        delta[H] = dt * (//C4HSL
-                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
-                - dC4HSL;                                               //MEMBRANE DIFFUSION
-    }
-
-    for(int i=0;i<numConcentrations;i++)
-    {
-        conc[i] += delta[i];
-        if (conc[i] < 0.0)  conc[i] = 0.0;
-        else conc[i] /= oneProteinToNanoMolar;//store as protein #
-    }
-    //push new HSL and LacI values to queue: [STORE AS CONCENTRATION in nM]:
-    qH_tau.push(conc[H] * oneProteinToNanoMolar);
-    qL_tau.push(conc[L] * oneProteinToNanoMolar);
-    qI_tau.push(conc[I] * oneProteinToNanoMolar);
-
-    return std::vector<double> {dC4HSL/oneProteinToNanoMolar, dC14HSL/oneProteinToNanoMolar};//return HSL # changes
-}
-*/
 
 std::vector<double>
-Strain::computeProteins
-    (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
-{
-    computeConcentrations(eHSL, membraneRate, lengthMicrons);
-
-    //        //compute Hill function ratios once:
-//    ratio_H_tau = pow(H_tau/params->K.H, params->nH);
-//    ratio_L_tau = pow(L_tau/params->K.L, params->nL);
-//    ratio_I_tau = pow(I_tau/params->K.I, params->nI);
-    return std::vector<double> {0,0};//return HSL # changes
-
-}
-
-
-void Strain::computeConcentrations(const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
-{
-    //COMMON CODE TO INITIALIZE DATA, COMPUTE CONVERSIONS FROM # TO CONC., POP DELAY QUEUES, COMPUTE MEMBRANE FLUX:
-
-    if(lengthMicrons == 0.0)
-    {
-        std::cout<<"ERROR: scale for computeProteins() set to 0!"<<std::endl;
-        return;
-    }
-    nanoMolarPerMolecule = eQ::Cell::proteinNumberToNanoMolar(1.0, lengthMicrons);
-
-    //OLD PROTEIN ARRAYS:
-    for(int i=0; i<NUM_CONCENTRATIONS; i++)
-    {//concentrations are stored as protein # over time steps in the conc[] array
-        conc[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
-        delta[i] = 0.0;
-    }
-    //OLD DELAY QUEUES:
-    //        //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
-//    H_tau = qH_tau.front();  qH_tau.pop();
-//    L_tau = qL_tau.front();  qL_tau.pop();
-//    I_tau = qI_tau.front();  qI_tau.pop();
-
-    //NEW DATA STRUCTURES:
-    for(size_t i(0); i< iHSL.size(); i++)
-    {
-        deltaHSL[i] =0.0;//hsl generation deltas
-        iHSL[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
-        //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
-        tHSL[i] = HSL_tau[i].front();  HSL_tau[i].pop();
-        //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
-        dHSL[i] = params.dt * (
-                    membraneRate[i] * (iHSL[i] - eHSL[i]));    //MEMBRANE DIFFUSION out
-    }
-    for(size_t i(0); i< iPROTEIN.size(); i++)
-    {
-        deltaPROTEIN[i] = 0.0;// generation deltas
-        iPROTEIN[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
-        //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
-        tPROTEIN[i] = PROTEIN_tau[i].front();  PROTEIN_tau[i].pop();
-    }
-}
-void Strain::pushConcentrations()
-{
-    //OLD DATA STRUCTURES:
-    for(int i=0;i<NUM_CONCENTRATIONS;i++)
-    {
-        conc[i] += delta[i];
-        if (conc[i] < 0.0)  conc[i] = 0.0;
-        else conc[i] /= nanoMolarPerMolecule;//store as protein #
-    }
-    //NEW DATA STRUCTURES:
-    for(size_t i(0); i< iHSL.size(); i++)
-    {
-        iHSL[i] += deltaHSL[i];
-        if (iHSL[i] < 0.0)
-        {
-            iHSL[i] = 0.0;
-        }
-        HSL_tau[i].push(iHSL[i]);//store as concentration
-        iHSL[i] /= nanoMolarPerMolecule;//store as protein #
-    }
-    for(size_t i(0); i< iPROTEIN.size(); i++)
-    {
-        iPROTEIN[i] += deltaPROTEIN[i];
-        if (iPROTEIN[i] < 0.0) iPROTEIN[i] = 0.0;
-        PROTEIN_tau[i].push(iPROTEIN[i]);//store as concentration
-        iPROTEIN[i] /= nanoMolarPerMolecule;//store as protein #
-    }
-}
-std:: vector<double>
 sendRecvStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
@@ -378,10 +77,13 @@ sendRecvStrain::computeProteins
     return dHSL;
 }
 
-std:: vector<double>
+std::vector<double>
 aspectRatioInvasionStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+    //===========================================================================
+    //STATIC_ASPECTRATIO
+    //===========================================================================
 
     //===========================================================================
     //INDUCED_DYNAMIC_ASPECTRATIO
@@ -396,7 +98,7 @@ aspectRatioInvasionStrain::computeProteins
 //                = params.baseData->meanDivisionLength;//set to divde at this length immediately
     }
 
-    if(eHSL.empty()) return {};//no gene circuit to update, return empty vector
+    if(eHSL.empty()) return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
 
     //===========================================================================
     //ASPECTRATIO_INVASION
@@ -404,14 +106,24 @@ aspectRatioInvasionStrain::computeProteins
     double aspectRatioThresh = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
     double aspectRatioScaling = double( eQ::data::parameters["defaultAspectRatioFactor"]);
 
+    static bool flagCheck=false;
+
     if(inductionFlags[ASPECTRATIO_INDUCTION])
     {
         double hslValue = (eQ::Cell::strainType::REPRESSOR == getStrainType())
-                ? getHSL(Strain::hsl::C4) : getHSL(Strain::hsl::C14);
+                ? getDelayedHSL(Strain::hsl::C4) : getDelayedHSL(Strain::hsl::C14);
 
         if(hslValue > aspectRatioThresh)
+        {
             aspectRatioScaling *= double(eQ::data::parameters["mutantAspectRatioScale"]);
+            if(!flagCheck)
+            {
+                flagCheck = true;
+                std::cout<<"\t hit aspect ratio flag...changing to: "<<aspectRatioScaling<<std::endl;
+            }
+        }
     }
+
 
     params.baseData->meanDivisionLength = aspectRatioScaling * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
 
@@ -421,72 +133,79 @@ aspectRatioInvasionStrain::computeProteins
 
     computeConcentrations(eHSL, membraneRate, lengthMicrons);
 
+
     double gamma_d = (log(2)/20.0);
 
-    double pHinThresh           = 1000.0;
-    double pHControlThresh      = 1200.0;
-    double pLacControlThresh    = 1000.0;
-    double placThresh           = 0.25;
+//    double pHinThresh           = 200.0;
+//    double pHinThresh           = double(eQ::data::parameters["aspectRatioThresholdHSL"]);
+    double pHinThresh           = aspectRatioThresh;
 
-    double ratio_L = pow(L_tau/placThresh, 10.0);
+//    double pHControlThresh      = 1200.0;
+//    double pLacControlThresh    = 1000.0;
+//    double placThresh           = 0.25;
+    double placThresh           = 0.5;
 
-    double responseScale = 30.0;
+//    double ratio_L = pow(L_tau/placThresh, 10.0);
+
+//    double responseScale = 30.0;
+    //for using just 2 HSLs:
+    const size_t    Ain = hslType::C14HSL;
+    const size_t    Rin = hslType::C4HSL;
+
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
-        //HSL production from other strain "priming signal" (want high sensitivity and output)
-        double ratio_Hcontrol   = pow(tHSL[2]/pHControlThresh, 10.0);
-        //intra-strain signal
-        deltaHSL[3] = params.dt * responseScale * (double(eQ::data::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
-                - dHSL[3];
+//        //HSL production from other strain "priming signal" (want high sensitivity and output)
+//        double ratio_Hcontrol   = pow(tHSL[2]/pHControlThresh, 10.0);
+//        //intra-strain signal
+//        deltaHSL[3] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
+//                - dHSL[3];
 //        //LacI
-        double ratio_Hin        = pow(tHSL[2]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Ain]/pHinThresh, 10.0);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[3]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
-//        delta[L] = params.dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
+//        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
         //HSL signal to other strain (inhibited by other strain via toggle switch topology)
-        deltaHSL[0] = params.dt * (double(eQ::data::parameters["hslProductionRate_C4"]))
+        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        deltaHSL[Rin] = params.dt * (double(eQ::data::parameters["hslProductionRate_C4"]))
                 *  1.0/(1.0 + ratio_L)
-                - dHSL[0];
+                - dHSL[Rin];
 
         //report HSL from receiver cells:
-        deltaHSL[1] = - dHSL[1];                                         //MEMBRANE DIFFUSION
-        deltaHSL[2] = - dHSL[2];                                         //MEMBRANE DIFFUSION
+        deltaHSL[Ain] = - dHSL[Ain];                                         //MEMBRANE DIFFUSION
     }
     else if(eQ::Cell::strainType::REPRESSOR == params.whichType)
     {
-        double ratio_Hcontrol = pow(tHSL[0]/pHControlThresh, 10.0);
-        //intra-strain signal
-        deltaHSL[1] = params.dt * responseScale * (double(eQ::data::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
-                - dHSL[1];
+//        double ratio_Hcontrol = pow(tHSL[0]/pHControlThresh, 10.0);
+//        //intra-strain signal
+//        deltaHSL[1] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
+//                - dHSL[1];
         //LacI
-        double ratio_Hin        = pow(tHSL[0]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Rin]/pHinThresh, 10.0);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[1]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
-//        delta[L] = params.dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
+//        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
 
         //priming signal output to other strain:
-        deltaHSL[2] = params.dt * (double(eQ::data::parameters["hslProductionRate_C4"]))
+        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        deltaHSL[Ain] = params.dt * (double(eQ::data::parameters["hslProductionRate_C14"]))
                 *  1.0/(1.0 + ratio_L)
-                - dHSL[2];
+                - dHSL[Ain];
 
         //report HSL from receiver cells:
-        deltaHSL[0] = - dHSL[0];                                         //MEMBRANE DIFFUSION
-        deltaHSL[3] = - dHSL[3];                                         //MEMBRANE DIFFUSION
+        deltaHSL[Rin] = - dHSL[Rin];                                         //MEMBRANE DIFFUSION
     }
-
-    //for recording into existing data files:
-    conc[H] = iHSL[0];
-    conc[I] = iHSL[1];
 
     pushConcentrations();
     return dHSL;
 }
 
+
+
 double modulusUpdate(double x);
-std:: vector<double>
+std::vector<double>
 MODULUSmodule::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
@@ -627,8 +346,6 @@ MODULUSmodule::computeProteins
         pushConcentrations();
         return dHSL;
 }
-
-
 
 double modulusUpdate(double x)
 {

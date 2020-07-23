@@ -7,10 +7,10 @@
 #include "eQcell.h"
 
 
-class eColi;
+class Ecoli;
 typedef struct{
 	int which;
-	eColi *parent;
+    Ecoli *parent;
 } body_t;
 
 //too low elast. results in overlap?:
@@ -26,7 +26,7 @@ typedef struct{
 #define GROOVE_JOINT_ERRORBIAS   0.5
 #define GROOVE_JOINT_MAXBIAS    40.0
 
-class cpmEColi
+class cpmEcoli
 {
 public:
     struct Params
@@ -37,8 +37,8 @@ public:
         double                  gammaFluidParameter;
 	};
 
-    cpmEColi(const cpmEColi::Params &p);
-	~cpmEColi(void);
+    cpmEcoli(const cpmEcoli::Params &p);
+    ~cpmEcoli(void);
 
     typedef struct bodyData_t
     {

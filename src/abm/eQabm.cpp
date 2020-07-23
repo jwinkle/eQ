@@ -54,11 +54,10 @@ eQabm::eQabm(const eQabm::Params &p)
     gridDataCounter =
                 std::make_shared<eQ::gridFunction<size_t>>(nodesHighData, nodesWideData);
 
-    eraseCounter=0;
     std::cout<<"creating cellPointers: "<<nodesHigh<<", "<<nodesWide<<std::endl;
     //Note: uses full resolution of grid (not the data recording resolution)
     cellPointers =
-            std::make_shared<eQ::gridFunction<std::shared_ptr<eColi>>>(nodesHigh, nodesWide);
+            std::make_shared<eQ::gridFunction<std::shared_ptr<Ecoli>>>(nodesHigh, nodesWide);
 
     auto numHSLGrids = size_t(eQ::data::parameters["D_HSL"].size());//size of diffusion vector is # of grids (known globally)
     hslSignaling = (numHSLGrids > 0);
@@ -73,31 +72,32 @@ eQabm::eQabm(const eQabm::Params &p)
             eQ::gridFunction<double>>(nodesHigh, nodesWide);
 
     //compute the max. # of nodes from a pole center to the boundary of the cell (for searching for interior points)
-    nodesToEdge = size_t(floor(nodesPerMicron * eQ::Cell::DEFAULT_CELL_WIDTH_MICRONS/2.0));
+    nodesToEdge = size_t(round(nodesPerMicron * eQ::Cell::DEFAULT_CELL_WIDTH_MICRONS/2.0));
 
     maxSpringCompression = 0.0;
     averagePointsPerCell = 0.0;
 
 }
 
-std::vector<double>
+void
 eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std::shared_ptr<Strain>> &strains)
 {
 
-    eColi::Params       cellParams;
+    Ecoli::Params       cellParams;
     assignDefaultParameters(cellParams);
 
     auto numStrains = strains.size();
-    std::vector<double> strainFractions(numStrains, 0.0);
 
     double              rx,ry,ra;
     size_t              whichStrain = 0;
 
-    cellParams.baseData.meanDivisionLength =
+    cellParams.meanDivisionLength =
             double(eQ::data::parameters["defaultAspectRatioFactor"]) * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    cellParams.divisionCorrelationAlpha =
+            double(eQ::data::parameters["divisionCorrelationAlpha"]);
 
-    //add some distribution over the intial cells' division length
-    double dn = double(eQ::data::parameters["divisionNoiseScale"]);
+
+    overWrites.clear();
 
     auto getRandomCell = [&]()
     {
@@ -105,15 +105,16 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
         ry = rn() * trapHeightMicrons;
         ra = rn() * 2*M_PI;
 
-        cellParams.baseData.x = rx;
-        cellParams.baseData.y = ry;
-        cellParams.baseData.angle = ra;
+        cellParams.x = rx;
+        cellParams.y = ry;
+        cellParams.angle = ra;
 
-        double noiseFactor = (rn()-0.5) * dn;
-
-        cellParams.baseData.divisionLength  = (1.0 + noiseFactor) * cellParams.baseData.meanDivisionLength;
-        cellParams.baseData.length          = 0.5*cellParams.baseData.divisionLength;
-        cellParams.baseData.length          *= (1.0 + rn());
+        //add some distribution over the intial cells' division length
+//        double dn = double(eQ::data::parameters["divisionNoiseScale"]);
+//        double noiseFactor = (rn()-0.5) * dn;
+//        cellParams.divisionLength  = (1.0 + noiseFactor) * cellParams.meanDivisionLength;
+        cellParams.divisionLength  = cellParams.meanDivisionLength;
+        cellParams.length          = (1.0 + rn()) * 0.5 * cellParams.divisionLength;
 
         if(eQabm::initType::RANDOM == howToInit)
         {
@@ -126,11 +127,10 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
             whichStrain = size_t(floor(rx * double(numStrains)/trapWidthMicrons));
         }
 
-        strainFractions[whichStrain] += 1;
         //clone the strain object from the objects passed in:
         cellParams.strain = strains[whichStrain]->clone();
 
-        return std::make_shared<eColi>(cellParams);
+        return std::make_shared<Ecoli>(cellParams);
 
     };
 
@@ -150,14 +150,13 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
 
     }
 
+    std::cout<<"Initial strain fractions: ";
+    for(auto frac : cellList.strainFractions())
+    {
+        std::cout<<"  "<<frac;
+    }
+    std::cout<<std::endl;
 
-    if(cellList.cellCount() > 0)
-        for(auto &count:strainFractions)
-            count /= double(cellList.cellCount());
-
-    //TODO:  fix this(old style strainRatio)
-    strainRatio = strainFractions[0];
-    return strainFractions;
 }
 void eQabm::stepSimulation()
 {
@@ -171,92 +170,66 @@ void eQabm::updateCellData(double simTime)
     //DIVIDES CELLS THAT REACH THEIR DIVISION LENGTH TARGET
     //UPDATES LIST DATA STRUCTURE, REMOVING (EXIT) OR ADDING (DIVISION) CELLS AS NEEDED
 
-    std::vector<std::shared_ptr<eColi>> newDaughterCells;
-    std::shared_ptr<eColi> cell;
+    std::vector<std::shared_ptr<Ecoli>> newDaughterCells;
+    std::shared_ptr<Ecoli> cell;
 
-    int loopCounter=0;
 
     //TRAVERSE LIST OF CELLS: (uses C++ STL forward list data structure)
     cellList.beginIteration();
-    while(cellList >> cell)
+    while(cellList >> cell)//delays cellList increment until after possible removal of cell
     {
-        ++loopCounter;
         //==============================================
         //  UPDATE PHYSICS MODEL AND CHECK FOR DIVISION:
         //==============================================
         //CELL MODEL:
-        std::shared_ptr<eColi> daughter = cell->updatePhysicsModel(*params.zeroOne);//pass random number stack by reference
+        std::shared_ptr<Ecoli> daughter = cell->updatePhysicsModel(*params.zeroOne);//pass random number stack by reference
         if(nullptr != daughter)
         {//divided cell, check if outside trap (but record division to parent first):
             daughter->setCellID(cellID_factory++);
             daughter->setParentID(cell->getCellID());
             recordDivisionEvent(simTime, cell, daughter);
-            if(habitat->outsideTrap(daughter->cpmCell))
-            {
-                daughter.reset();
-            }
-            else
-            {
-                newDaughterCells.push_back(daughter);
-            }
+            habitat->outsideTrap(daughter->cpmCell)
+                ? daughter.reset() : newDaughterCells.push_back(daughter);
         }
         //==============================================
         //  CHECK FOR OUTSIDE OF BOUNDARY:
         //==============================================
-        if(habitat->outsideTrap(cell->cpmCell))
-        {
-            --cellList;
-            ++eraseCounter;
-        }
-        else
-        {
-            ++cellList;
-        }
+        (habitat->outsideTrap(cell->cpmCell))
+                ? --cellList : ++cellList;
     }
-    for(auto &cell : newDaughterCells)
+    for(auto &newCell : newDaughterCells)
     {//add daughter cells to main cell list:
-        cellList << cell;
+        cellList << newCell;
     }
 
     //new positions and daughter cells are set; update x,y grid for pointers:
     cellPointers->clear();
-    double x,y;    size_t i,j;    std::pair<size_t, size_t> index;
+    eQ::nodePoint index;
     double springEnergy_L2 = 0.0;
-    int countA=0, countB=0;
 
-    loopCounter = 0;
 
     cellList.beginIteration();
-    while(cellList >> cell)
+    while( ++(cellList >> cell) )
     {
-        ++cellList;
+        index = eQ::data::ij_from_xy(cell->getCenter_x(),cell->getCenter_y(),nodesPerMicron);
 
-        x = cell->getCenter_x();
-        y = cell->getCenter_y();
-        index = eQ::data::ij_from_xy(x,y,nodesPerMicron);
-        i = index.first;  j = index.second;
+        if(nullptr != (*cellPointers)[index])
+        {
+            auto where = eQ::data::ij_from_xy(cell->getCenter_x(),cell->getCenter_y(),nodesPerMicronData);
+            ++overWrites[where];
+        }
 
-        if(nullptr != cellPointers->grid[i][j])
-            std::cout<<"overwrite of cell grid pointer: (x,y) = "<<x<<", "<<y<<std::endl;
-        cellPointers->grid[i][j] = cell;
-
+        (*cellPointers)[index] = cell;
 
         springEnergy_L2 += cell->cpmCell->compression * cell->cpmCell->compression;
-        (eQ::Cell::strainType::ACTIVATOR == cell->params.strain->getStrainType()) ? countA++:countB++;
         if(cell->cpmCell->compression > maxSpringCompression) maxSpringCompression = cell->cpmCell->compression;
 
-    }
-
-    auto totalCells = countA+countB;
-    if(totalCells > 0)
-    {
-        strainRatio = double(countA)/double(totalCells);
     }
 }
 
 
 void eQabm::updateCellModels()
-{//launches multi-threaded cell model updates
+{//launches multi-threaded cell model updates (removed for now)
     //SINGLE-THREADED CELL UPDATE PATH:
     updateCells();
 }
@@ -264,9 +237,8 @@ void eQabm::updateCells()
 {//cell update function called with distributed partition of the cell list:
  //typically called multi-threaded with list range and no risk of race conditions for cells
     double x,y;
-    size_t iGrid,jGrid;
-    size_t iData,jData;
-    std::pair<size_t, size_t> index;
+
+    eQ::nodePoint dataPoint, gridPoint;
 
     //ANISOTROPIC DIFFUSION CODE:
     double Dx = double(eQ::data::parameters["AnisotropicDiffusion_Axial"]);
@@ -278,32 +250,24 @@ void eQabm::updateCells()
     D12grid->assign(0.0);//symmetric, off-diagonal scaling
 
     averagePointsPerCell = 0.0;
-    int cellCounter = 0;
 
-
-    std::shared_ptr<eColi> thisCell;
+    std::shared_ptr<Ecoli> thisCell;
     cellList.beginIteration();
-    while(cellList >> thisCell)
+    while( ++(cellList >> thisCell) )
     {
-        ++cellList;
-
         double cellLength = thisCell->getLengthMicrons();
         x = thisCell->getCenter_x();
         y = thisCell->getCenter_y();
-        cellCounter++;
 
-        index = eQ::data::ij_from_xy(x,y,nodesPerMicron);//uses full scaling
-        iGrid = index.first;  jGrid = index.second;
-        index = eQ::data::ij_from_xy(x,y,nodesPerMicronData);//uses data scaling
-        iData = index.first;  jData = index.second;
-        //keep tally of "hits" at this grid point for averaging:
-        gridDataCounter->grid[iData][jData]++;
+        gridPoint = eQ::data::ij_from_xy(x,y,nodesPerMicron);//uses full scaling
+        dataPoint = eQ::data::ij_from_xy(x,y,nodesPerMicronData);//uses data scaling
+        //keep tally of "hits" at this grid point for averaging:        
+        ++(gridDataCounter->operator[](dataPoint));
 
-        std::vector<std::pair<size_t, size_t>> cellPoints;//vector of (i,j) pairs
-        std::vector<double> hslData;
+        std::vector<eQ::nodePoint>  cellPoints;//vector of (i,j) pairs
+        std::vector<double>         hslData;
 
-
-        auto findInteriorPoints = [&](double npm, std::vector<std::pair<size_t, size_t>> &cellPoints)
+        auto findInteriorPoints = [&](double npm, std::vector<eQ::nodePoint> &cellPoints)
         {
             //implicitly passed by reference: x, y, thisCell, nodesToEdge, nodesHigh, nodesWide
 
@@ -323,8 +287,8 @@ void eQabm::updateCells()
             j1 = (j1 >= nodesToEdge) ? (j1 - nodesToEdge) : 0;
             i2 = ((i2 + nodesToEdge) >= (nodesHigh-1)) ? nodesHigh-1 : (i2 + nodesToEdge);
             j2 = ((j2 + nodesToEdge) >= (nodesWide-1)) ? nodesWide-1 : (j2 + nodesToEdge);
+
             //now search the rectangular area computed above and call pointIsInCell() method on each point:
-//            std::vector<std::pair<size_t, size_t>> cellPoints;//vector of (i,j) pairs
             for(size_t pointi(i1); pointi<=i2; pointi++)
             {
                 for(size_t pointj(j1); pointj<=j2; pointj++)
@@ -334,6 +298,12 @@ void eQabm::updateCells()
                         cellPoints.push_back(std::make_pair(pointi, pointj));
                 }
             }
+            if(cellPoints.empty())
+            {
+//                std::cout<<"empty cell points"<<std::endl;
+                cellPoints.push_back(eQ::data::ij_from_xy(thisCell->getCenter_x(), thisCell->getCenter_y(), npm));
+            }
+
         };
         auto setDiffusionTensor = [&](double theta, std::vector<std::pair<size_t, size_t>> &cellPoints)
         {
@@ -349,9 +319,9 @@ void eQabm::updateCells()
             {
                 if(D11grid->isValidIndex(point))
                 {
-                    D11grid->grid[point.first][point.second] = Dx*cos2t + Dy*sin2t;
-                    D22grid->grid[point.first][point.second] = Dx*sin2t + Dy*cos2t;
-                    D12grid->grid[point.first][point.second] = (Dx-Dy)*sincost;
+                    D11grid->operator[](point) = Dx*cos2t + Dy*sin2t;
+                    D22grid->operator[](point) = Dx*sin2t + Dy*cos2t;
+                    D12grid->operator[](point) = (Dx-Dy)*sincost;
                 }
             }
         };
@@ -362,7 +332,7 @@ void eQabm::updateCells()
             for(auto &point : cellPoints)
             {
                 //fenics implementation:
-                auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
+                auto location = HSLlookup->operator[](point);//translates the i,j position to the fenics DOF entry in the solution vector
                 HSL += HSLvector->at(location);
             }
             return HSL/double(cellPoints.size());
@@ -375,8 +345,8 @@ void eQabm::updateCells()
             //H1, new concentration at grid point;  H0, previous.
             //H1 = [(H0*xum^2) + #HSL]/xum^2 = H0 + #HSL/xum^2, where #HSL = [HSL]*cellVolume
 
-            double oneNanoMolarToMoleculeNumber = 1.0/eQ::Cell::proteinNumberToNanoMolar(1.0, cellLength);
-            double numberHSL = HSL * oneNanoMolarToMoleculeNumber;
+            //note:  use simulation units throughout since length scaling cancels:
+            double numberHSL = eQ::Cell::nanoMolarToMoleculeNumber(HSL, cellLength);
             double updatePerSquareMicron = numberHSL/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
             double updateForOneGridPoint = updatePerSquareMicron * nodesPerMicron * nodesPerMicron;
 
@@ -385,30 +355,27 @@ void eQabm::updateCells()
             for(auto &point : cellPoints)
             {
                 //fenics implementation:
-                auto location = HSLlookup->grid[point.first][point.second];//translates the i,j position to the fenics DOF entry in the solution vector
+                auto location = HSLlookup->operator[](point);//translates the i,j position to the fenics DOF entry in the solution vector
                 HSLvector->at(location) += dHSL;
             }
         };
         //here, we populate the data structure (fenics recording node) with the cell data
         auto recordCelldata = [&]()
         {
-            size_t i,j;
-            i=iData;  j=jData;
-
             //std::shared_ptr<eQ::dataFiles_t> = = std::vector<gridData>
             for(auto &dataFile : *(params.dataFiles))
             {
                 if(eQ::dataParameterType::HSL == dataFile.type)
                 {
                     auto which = static_cast<Strain::hsl>(dataFile.index);
-                    dataFile.data->grid[0]->grid[i][j]
-                            = eQ::Cell::proteinNumberToNanoMolar(thisCell->strain->getHSL(which), cellLength);
+                    dataFile.data->grid[0]->operator[](dataPoint)
+                            = eQ::Cell::moleculeNumberToNanoMolar(thisCell->strain->getHSL(which), cellLength);
                 }
                 if(eQ::dataParameterType::PROTEIN == dataFile.type)
                 {
                     auto which = static_cast<Strain::concentrations>(dataFile.index);
-                    dataFile.data->grid[0]->grid[i][j]
-                            = eQ::Cell::proteinNumberToNanoMolar(thisCell->strain->getProteinNumber(which), cellLength);
+                    dataFile.data->grid[0]->operator[](dataPoint)
+                            = eQ::Cell::moleculeNumberToNanoMolar(thisCell->strain->getProteinNumber(which), cellLength);
                 }
                 if(eQ::dataParameterType::VECTOR == dataFile.type)
                 {
@@ -447,7 +414,6 @@ void eQabm::updateCells()
         //now search the rectangular area computed above and call pointIsInCell() method on each point:
         findInteriorPoints(nodesPerMicron, cellPoints);
         //note: the vector contains points that are verified inside the cell
-        //for checking this is working:
         averagePointsPerCell += cellPoints.size();
 
         updateCellModel();
@@ -459,6 +425,9 @@ void eQabm::updateCells()
         //should pass growth rate, which should be computed in the ABM class
         thisCell->updateGrowth();
     }
+
+    cellList.average(averagePointsPerCell);//divides RHS by the cell count (if count > 0)
+
 /*
     if(bool(eQ::data::parameters["PETSC_SIMULATION"]))
     {
@@ -479,7 +448,6 @@ void eQabm::updateCells()
     }
 */
 
-    if(cellCounter != 0)  averagePointsPerCell /= double(cellCounter);
 }
 
 eQabm::~eQabm()
@@ -489,7 +457,7 @@ eQabm::~eQabm()
     trap.reset();
     habitat.reset();
 }
-void eQabm::recordDivisionEvent(double timeStamp, std::shared_ptr<eColi> cell, std::shared_ptr<eColi> daughter)
+void eQabm::recordDivisionEvent(double timeStamp, std::shared_ptr<Ecoli> cell, std::shared_ptr<Ecoli> daughter)
 {
     if(nullptr == cell)//initial cell at t=0: set parent to -ID (length 0)
     {
@@ -513,20 +481,19 @@ void eQabm::recordDivisionEvent(double timeStamp, std::shared_ptr<eColi> cell, s
     }
 }
 namespace eQ {
-std::ostream &operator<<(std::ostream &os,  const eQ::Cell::strainType &type)
-{
-    if(eQ::Cell::strainType::ACTIVATOR == type)
-        os<<"ACTIVATOR";
-    else if(eQ::Cell::strainType::REPRESSOR == type)
-        os<<"REPRESSOR";
-    else if(eQ::Cell::strainType::X == type)
-        os<<"X";
-    else if(eQ::Cell::strainType::Y == type)
-        os<<"Y";
-    else if(eQ::Cell::strainType::Z == type)
-        os<<"Z";
-    else os<< "";
-    return os;
-}
-
+    std::ostream &operator<<(std::ostream &os,  const eQ::Cell::strainType &type)
+    {
+        if(eQ::Cell::strainType::ACTIVATOR == type)
+            os<<"ACTIVATOR";
+        else if(eQ::Cell::strainType::REPRESSOR == type)
+            os<<"REPRESSOR";
+        else if(eQ::Cell::strainType::X == type)
+            os<<"X";
+        else if(eQ::Cell::strainType::Y == type)
+            os<<"Y";
+        else if(eQ::Cell::strainType::Z == type)
+            os<<"Z";
+        else os<< "";
+        return os;
+    }
 }

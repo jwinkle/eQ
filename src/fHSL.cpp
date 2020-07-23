@@ -66,13 +66,18 @@ void fenicsInterface::computeBoundaryFlux()
     {
         return ds*(myParams.dt * myDiffusionConstant * gradc)/wellScaling;
     };
-    for(size_t j(0); j<nodesW; ++j)
+    size_t j;
+    using point = std::pair<eQ::nodeType, eQ::nodeType &>;
+    point point0{0,j}, point1{1,j}, pointN1{nodesH-1,j}, pointN2{nodesH-2,j};
+    for(j=0; j<nodesW; ++j)
     {
         //LOWER BOUNDARY FLUX:
         dofc = bottomChannel->boundaryDofChannel[j];
         //finite-difference over 'h':
-        doft1 = shell->dofLookupTable->grid[1][j];
-        doft2 = shell->dofLookupTable->grid[0][j];
+//        doft1 = shell->dofLookupTable->grid[1][j];
+//        doft2 = shell->dofLookupTable->grid[0][j];
+        doft1 = shell->dofLookupTable->operator[](point1);
+        doft2 = shell->dofLookupTable->operator[](point0);
         gradc = (solution_vector[doft1] - solution_vector[doft2])/h;
 
         fluxBottomChannel[j] = computeFlux();
@@ -80,8 +85,10 @@ void fenicsInterface::computeBoundaryFlux()
         //UPPER BOUNDARY FLUX:
             dofc = topChannel->boundaryDofChannel[j];
             //finite-difference over 'h':
-            doft1 = shell->dofLookupTable->grid[nodesH-2][j];
-            doft2 = shell->dofLookupTable->grid[nodesH-1][j];
+//            doft1 = shell->dofLookupTable->grid[nodesH-2][j];
+//            doft2 = shell->dofLookupTable->grid[nodesH-1][j];
+            doft1 = shell->dofLookupTable->operator[](pointN2);
+            doft2 = shell->dofLookupTable->operator[](pointN1);
             gradc = (solution_vector[doft1] - solution_vector[doft2])/h;
 
             fluxTopChannel[j] = computeFlux();
@@ -152,13 +159,7 @@ void fenicsInterface::stepDiffusion()
     //new value = D*dt*flux/well Volume
     totalBoundaryFlux = (myDiffusionConstant * myParams.dt *  boundaryFlux->get_scalar_value());
 }
-eQ::data::parametersType fenicsInterface::getBoundaryFlux(void)
-{
-    //TODO: implement flux computation out of each wall separately
-    eQ::data::parametersType fluxData;
-    fluxData["totalFlux"] = totalBoundaryFlux;
-    return fluxData;
-}
+
 //private:
 void fenicsInterface::createMesh(MPI_Comm comm)
 {
@@ -167,8 +168,6 @@ void fenicsInterface::createMesh(MPI_Comm comm)
     //switch on simulation type here to create mesh geometry:
     auto p0 = Point(0.0, 0.0);
     auto p1 = Point(myParams.trapWidthMicrons, myParams.trapHeightMicrons);
-//    auto p1 = Point(eQ::data::parameters["simulationTrapWidthMicrons"], eQ::data::parameters["simulationTrapHeightMicrons"]);
-//    auto p1 = Point(myParams.simData.trapWidthMicrons, myParams.simData.trapHeightMicrons);
     shell->mesh = std::make_shared<RectangleMesh>
             (comm, p0, p1, nodesW, nodesH, "right");
 
@@ -331,6 +330,14 @@ void fenicsInterface::fenicsClassInit()
 //private:
 void fenicsInterface::createHSL()
 {
+
+    //PERIMETER BOUNDARY BC:
+    //SUBDOMAINS TO MARK LEFT/RIGHT BOUNDARIES:
+    auto leftWall       = std::make_shared<DirichletBoundary_TrapEdge>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdge::LEFT);
+    auto rightWall      = std::make_shared<DirichletBoundary_TrapEdge>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdge::RIGHT);
+    auto topWall        = std::make_shared<DirichletBoundary_TrapEdge>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdge::TOP);
+    auto bottomWall     = std::make_shared<DirichletBoundary_TrapEdge>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdge::BOTTOM);
+
     //================================================================
     //              //CLASS VARIABLES
     //================================================================
@@ -393,11 +400,6 @@ void fenicsInterface::createHSL()
 //              //FLOW CHANNELS
 //================================================================
     //CREATE CHANNEL ROBIN BOUNDARY CONDITION OBJECTS:
-    //SUBDOMAINS TO MARK LEFT/RIGHT BOUNDARIES:
-    auto leftWall       = std::make_shared<DirichletBoundary_TrapEdges>
-            (myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::LEFT);
-    auto rightWall      = std::make_shared<DirichletBoundary_TrapEdges>
-            (myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::RIGHT);
 
     //MESH FUNCTION FOR TOP/BOTTOM CHANNELS: MARK LEFT=1, RIGHT=2, for use in .ufl file ds(1), ds(2)
     data.meshFunctionChannel = std::make_shared<MeshFunction<size_t>>(topChannel->mesh, topChannel->mesh->topology().dim()-1, 0);
@@ -436,7 +438,6 @@ void fenicsInterface::createHSL()
     auto dbc_oneWall        = std::make_shared<DirichletBoundary_oneWall>(myParams.trapHeightMicrons, myParams.trapWidthMicrons);
     auto dbc_leftWall       = std::make_shared<DirichletBoundary_leftWall>(myParams.trapHeightMicrons, myParams.trapWidthMicrons);
 
-    //PERIMETER BOUNDARY BC:
 
     //UPDATING DIRICHLET BOUNDARY:  switch to update expression class or zero
 
@@ -448,13 +449,6 @@ void fenicsInterface::createHSL()
             leftRate = channelFlowVelocity;
             rightRate = channelFlowVelocity;
         }
-        auto leftWall       = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::LEFT);
-        auto rightWall      = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::RIGHT);
-        auto topWall        = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::TOP);
-        auto bottomWall     = std::make_shared<DirichletBoundary_TrapEdges>(myParams.trapHeightMicrons, myParams.trapWidthMicrons, DirichletBoundary_TrapEdges::edge::BOTTOM);
-
-//        boundaryChannelLeft =  std::make_shared<updatingDirchletBoundary>(0.0);
-//        boundaryChannelRight =  std::make_shared<updatingDirchletBoundary>(0.0);
 
         data.meshFunction = std::make_shared<MeshFunction<size_t>>(shell->mesh, shell->mesh->topology().dim()-1, 0);
         leftWall->mark(*data.meshFunction, 1);
@@ -544,15 +538,24 @@ void fenicsInterface::createHSL()
     }
     else
     {
+        std::cout<<"\n\t Initializing boundary conditions via old method...should depracate\n"<<std::endl;
 
-        std::cout<<"Initializing boundary conditions via old method...should depracate"<<std::endl;
-
-        //GENERATE THE DIRICHLET BOUNDARY CONDITION OBJECT (space, values, subdomain)
-        std::shared_ptr<SubDomain> boundaryDomain;
-
-        //switch on simulation/trap type here:  uses the expression subclass instance "bValues" as defined above
-        if("DIRICHLET_0" == eQ::data::parameters["boundaryType"])
+        if("DIRICHLET_UPDATE" == eQ::data::parameters["boundaryType"])
         {
+                shell->dbc.clear();
+
+                //COMPARTMENT IMPLEMENTATION:
+                boundaryCompartment =  std::make_shared<updatingDirchletBoundary>(0.0);
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, leftWall));//update value each timestep
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, rightWall));
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, topWall));//update value each timestep
+                shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, boundaryCompartment, bottomWall));
+        }
+        //switch on simulation/trap type here:  uses the expression subclass instance "bValues" as defined above
+        else if("DIRICHLET_0" == eQ::data::parameters["boundaryType"])
+        {
+            //GENERATE THE DIRICHLET BOUNDARY CONDITION OBJECT (space, values, subdomain)
+            std::shared_ptr<SubDomain> boundaryDomain;
             if("NOWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_openWalled;
             if("THREEWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_threeWalled;
             if("TWOWALLED" == eQ::data::parameters["trapType"]) boundaryDomain = dbc_twoWalled;
@@ -594,27 +597,34 @@ void fenicsInterface::createHSL()
 
 
 }
+
+void fenicsInterface::setBoundaryValues(const double bval)
+{
+    boundaryCompartment->updateBoundary(bval);
+}
 //private:
 void fenicsInterface::initHSLFiles()
 {
     //input data is: filePath (from template, passed through to parameters) and mpiRank (for filename lookup)
     hslWriter.push_back(std::make_pair(//pair is (file, function)
                             std::make_shared<dolfin::File>(//a file needs passed mpi comm, file path+name string, and here type "compressed"
-//                               mySingletonComm,
-//                                std::string(myParams.filePaths[size_t(myRankMPI)]), "compressed"),
                                myParams.comm,
                                 myParams.filePath, "compressed"),
                             shell->u));//"u" is the solution vector for hsl
 
-    auto channelPath = std::string("./images/channel/")
-            + std::to_string(size_t(myParams.comm)) + std::string("_") + std::to_string(size_t(myParams.uniqueID)) + std::string("_")
-            + std::string("channelTop.pvd");
-    hslWriter.push_back(std::make_pair(//pair is (file, function)
-                            std::make_shared<dolfin::File>(//a file needs passed mpi comm, file path+name string, and here type "compressed"
-                               myParams.comm,
-                                channelPath, "compressed"),
-                            topChannel->u));//"u" is the solution vector for hsl
-
+    if("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"])
+    {
+       hslWriter.push_back(std::make_pair(//pair is (file, function)
+                                std::make_shared<dolfin::File>(//a file needs passed mpi comm, file path+name string, and here type "compressed"
+                                   myParams.comm,
+                                    myParams.filePathTopChannel, "compressed"),
+                                topChannel->u));//"u" is the solution vector for hsl
+        hslWriter.push_back(std::make_pair(//pair is (file, function)
+                                std::make_shared<dolfin::File>(//a file needs passed mpi comm, file path+name string, and here type "compressed"
+                                   myParams.comm,
+                                    myParams.filePathBottomChannel, "compressed"),
+                                bottomChannel->u));//"u" is the solution vector for hsl
+    }
 }
 //public:
 void fenicsInterface::writeDiffusionFiles(double timeStamp)
@@ -648,32 +658,4 @@ void fenicsInterface::finalize()
 }
 fenicsInterface::~fenicsInterface()
 {
-    std::cout<<"BEGIN fenicsInterface::~fenicsInterface()"<<std::endl;
-    //these must be cleared for MPI in fenics:
-//    for(auto &file : outputFiles)
-//        file.reset();
-
-//    for(auto &file : hslWriter)
-//        file.first.reset();
-
-//    uvec.reset();
-//    VscalarData.reset();
-//    VvectorData.reset();
-
-//    flux.reset();
-//    ub.reset();
-//    VU.reset();
-//    V0.reset();
-//    boundaryFlux.reset();
-
-//    shell->mesh.reset();
-//    topChannel->mesh.reset();
-//    bottomChannel->mesh.reset();
-
-//        shell.reset();
-//        topChannel.reset();
-//        bottomChannel.reset();
-
-    std::cout<<"END fenicsInterface::~fenicsInterface()"<<std::endl;
-    sleep(1);
 }

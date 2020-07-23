@@ -3,7 +3,7 @@
 
 #include <dolfin.h>
 #include "eQ.h"
-#include "./abm/eColi.h"
+#include "./abm/Ecoli.h"
 
 
 using namespace dolfin;

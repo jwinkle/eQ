@@ -7,8 +7,8 @@
 #include "../Strain.h"
 
 #include "../inputOutput.h"
-#include "eColi.h"
-#include "cpmEColi.h"
+#include "Ecoli.h"
+#include "cpmEcoli.h"
 #include "cpmTrap.h"
 #include "cpmHabitat.h"
 
@@ -25,10 +25,11 @@ public:
     virtual void stepSimulation()=0;
     virtual void updateCellData(double simTime)=0;
     virtual void updateCellModels()=0;
-    virtual void updateCellModels(size_t threads)=0;
+//    virtual void updateCellModels(size_t threads)=0;
 
     virtual void createDataVectors(eQ::nodeType, eQ::nodeType)=0;
-    virtual void writeLookupTable(eQ::nodeType grid, eQ::nodeType iy, eQ::nodeType jx, eQ::nodeType dof)=0;
+
+    virtual void writeLookupTable(eQ::nodeType grid, eQ::nodePoint point, eQ::nodeType dof)=0;
 
 };
 
@@ -45,7 +46,7 @@ public:
     struct Params
 	{
         std::shared_ptr<inputOutput>                fileIO;
-        std::shared_ptr<eQ::data::files_t>            dataFiles;
+        std::shared_ptr<eQ::data::files_t>          dataFiles;
         std::shared_ptr<eQ::uniformRandomNumber>    zeroOne;
     };
     Params params;
@@ -61,12 +62,11 @@ public:
         NUM_INITTYPES
     };
 
-    std::vector<double> initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std::shared_ptr<Strain> > &strains);
+    void initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std::shared_ptr<Strain> > &strains);
 
     class cellContainer
     {
     public:
-        cellContainer()=default;
         virtual ~cellContainer()=default;
 
         size_t  cellCount(){return _cellCount;}
@@ -81,55 +81,120 @@ public:
         {
             _cellCount = 0;
             _cellList.clear();
+            _strainCounts.clear();
+            _eraseCounter=0;
         }
-        eQabm::cellContainer &operator<<(std::shared_ptr<eColi> cell)
-        {
+        eQabm::cellContainer &operator<<(std::shared_ptr<Ecoli> &cell)
+        {//adds cell to list, increment count
             _cellList.push_front(cell);
             ++_cellCount;//must count these manually using a forward_list
+            ++_strainCounts[cell->params.strain->getStrainType()];
             return (*this);
         }
-
-        eQabm::cellContainer &operator>>(std::shared_ptr<eColi> &cell)
-        {
-            cell = bool(*this) ? (*_icells) : nullptr;
-            return (*this);
-        }
-        eQabm::cellContainer &operator>>(size_t &size)
-        {
-            size = _cellCount;
+        eQabm::cellContainer &operator>>(std::shared_ptr<Ecoli> &cell)
+        {//fetches cell only (does not remove it)
+            //check not at end of list:
+            if(_icells != _cellList.end())
+            {
+                cell = (*_icells);
+                //flag it a cell was extracted
+                _pendingCell = true;
+            }
+            else
+            {
+                cell = nullptr;
+                _pendingCell = false;
+            }
             return (*this);
         }
         eQabm::cellContainer &operator++()
-        {//necessary for forward_list to have 2 pointers:
-            _icellsPrev = _icells;
-            ++_icells;
+        {//increment the list pointer for next access
+            //check if we're at the end of list (in case >> ended)
+            if(_icells != _cellList.end())
+            {//necessary for forward_list to have 2 pointers:
+                _icellsPrev = _icells;
+                ++_icells;
+            }
             return (*this);
         }
         eQabm::cellContainer &operator--()
-        {
-            _icells = _cellList.erase_after(_icellsPrev);
+        {//removes cell from list, decrement count
+            --_strainCounts[(*_icells)->params.strain->getStrainType()];
             --_cellCount;
+            ++_eraseCounter;
+            _icells = _cellList.erase_after(_icellsPrev);
             return (*this);
         }
         operator bool()
+        {//returns state of the list pointer as boolean cast
+            return (_pendingCell)  // must check if last >> hit last cell
+                    ? true
+                    : _icells != _cellList.end();
+        }
+        void average(double &data)
         {
-            return _icells != _cellList.end();
+            if(_cellCount > 0)
+                data /= double(_cellCount);
+        }
+        bool operator>>(double &size)
+        {
+            size = double(_cellCount);
+            return (_cellCount > 0);
         }
         void beginIteration()
         {
+            _pendingCell = false;
             _icells     = _cellList.begin();
             _icellsPrev = _cellList.before_begin();//needed for forward_list C++ data structure
         }
-    protected:
-        std::forward_list<std::shared_ptr<eColi>>   _cellList;
-        size_t                                      _cellCount=0;//must count these manually using a forward_list
+        bool strainFixation()
+        {
+            bool fixation(true);
+            for(strainCount_t & strain : _strainCounts)
+            {//first occurence of between (0,1) will clear the flag to 'false'
+                fixation &= ((0 == strain.second) || (strain.second == _cellCount));
+            }
+            return fixation;
+        }
+        std::vector<double> strainFractions()
+        {
+            std::vector<double> fracs;
+            if(_cellCount > 0)
+                for(const strainCount_t strain : _strainCounts)
+                        fracs.push_back(double(strain.second)/double(_cellCount));
+            return fracs;
+        }
+        size_t eraseCounter() { return _eraseCounter; }
 
-        std::forward_list<std::shared_ptr<eColi>>::iterator _icells, _icellsPrev;
+    protected:
+        bool                                        _pendingCell=false;
+        std::forward_list<std::shared_ptr<Ecoli>>   _cellList;
+        size_t                                      _cellCount=0;//must count these manually using a forward_list
+        size_t                                      _eraseCounter=0;
+        std::map<eQ::Cell::strainType, size_t>      _strainCounts;
+        using strainCount_t = std::pair<const eQ::Cell::strainType, size_t>;
+
+        std::forward_list<std::shared_ptr<Ecoli>>::iterator _icells, _icellsPrev;
+
 
     };
 
     cellContainer                                   cellList;
+    std::map<std::pair<size_t,size_t>, size_t>      overWrites;
 
+    void printOverWrites()
+    {
+        for(auto where : overWrites)
+        {
+            std::cout<<std::endl;
+            std::cout<<"overwrite of cell grid pointer: (x,y) = "
+                    <<where.second<<"X at: "
+                   <<where.first.second<<", "<<where.first.first //(i,j) order => (y,x)
+                  <<std::endl;
+            std::cout<<std::endl;
+        }
+        overWrites.clear();
+    }
 
 
 
@@ -164,50 +229,47 @@ public:
 //        }
     }
 
-    void writeLookupTable(eQ::nodeType grid, eQ::nodeType iy, eQ::nodeType jx, eQ::nodeType dof) override
+    void writeLookupTable(eQ::nodeType grid, eQ::nodePoint point, eQ::nodeType dof) override
     {
-        dofLookupTable[grid]->grid[iy][jx] = dof;
+        dofLookupTable[grid]->operator[](point) = dof;
     }
 
-    void assignDefaultParameters(eColi::Params &cellParams)
+    void assignDefaultParameters(Ecoli::Params &cellParams)
     {
 
         cellParams.space = habitat->get_cpSpace();
 
         //set default initial cell parameters
-        cellParams.baseData.mass                        = eQ::Cell::DEFAULT_CELL_MASS;
-        cellParams.baseData.moment                      = eQ::Cell::DEFAULT_CELL_MOMENT;
-        cellParams.baseData.width                       = eQ::Cell::DEFAULT_CELL_WIDTH_MICRONS;
-        cellParams.baseData.meanDivisionLength          = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
-        cellParams.baseData.divisionLength              = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
-        cellParams.baseData.doublingPeriodMinutes       = eQ::Cell::DEFAULT_CELL_DOUBLING_PERIOD_MINUTES;
-        cellParams.baseData.x          = 0.0;
-        cellParams.baseData.y          = 0.0;
-        cellParams.baseData.angle      = 0.0;
-        cellParams.baseData.vx          = 0.0;
-        cellParams.baseData.vy          = 0.0;
+        cellParams.mass                        = eQ::Cell::DEFAULT_CELL_MASS;
+        cellParams.moment                      = eQ::Cell::DEFAULT_CELL_MOMENT;
+        cellParams.width                       = eQ::Cell::DEFAULT_CELL_WIDTH_MICRONS;
+        cellParams.meanDivisionLength          = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
+        cellParams.divisionLength              = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
+        cellParams.doublingPeriodMinutes       = eQ::Cell::DEFAULT_CELL_DOUBLING_PERIOD_MINUTES;
+        cellParams.divisionCorrelationAlpha    = 0.5;
+        cellParams.x          = 0.0;
+        cellParams.y          = 0.0;
+        cellParams.angle      = 0.0;
+        cellParams.vx          = 0.0;
+        cellParams.vy          = 0.0;
         cellParams.stabilityScaling     = stabilityScaling;
 
     }
 
-//    void initCells(int) override;
-    void stepSimulation() override;
-    void updateCellData(double simTime) override;
-    void updateCellModels() override;
-    void updateCellModels(size_t threads)override {updateCellModels();}
+    void stepSimulation()                   override;
+    void updateCellData(double simTime)     override;
+    void updateCellModels()                 override;
+//    void updateCellModels(size_t threads)   override {updateCellModels();}
 
     void finalizeDataRecording(std::string fpath);
 
 
     bool pressureInductionFlag = false;
 
-    int eraseCounter;
-    double strainRatio;
-
     double averagePointsPerCell;
 
-    std::shared_ptr<eQ::gridFunction<std::shared_ptr<eColi>>> cellPointers;
-    std::shared_ptr<eQ::gridFunction<size_t>> gridDataCounter;
+    std::shared_ptr<eQ::gridFunction<std::shared_ptr<Ecoli>>>   cellPointers;
+    std::shared_ptr<eQ::gridFunction<size_t>>                   gridDataCounter;
 
     std::shared_ptr<eQ::gridFunction<double>> D11grid;
     std::shared_ptr<eQ::gridFunction<double>> D22grid;
@@ -216,15 +278,9 @@ public:
     double maxSpringCompression;
 
 
-    bool aspectRatioInduction = false;
-
-
-    //the list data structure that holds the cell objects:
-//    std::forward_list<std::shared_ptr<eColi>>               cellList;
-    std::vector<std::tuple<double,long,double,long,double>> divisionList;
+    std::vector<std::tuple<double,long,double,long,double>>     divisionList;
 
 private:
-    using fli_t = std::forward_list<std::shared_ptr<eColi>>::iterator;
 
     std::shared_ptr<cpmHabitat>                 habitat;
     std::shared_ptr<cpmTrap>                    trap;
@@ -232,14 +288,13 @@ private:
     double                                      stabilityScaling;
     bool                                        hslSignaling=false;
 
-    std::vector<fli_t> tiBegins, tiEnds;
 
-    void        recordDivisionEvent(double, std::shared_ptr<eColi>, std::shared_ptr<eColi>);
+    void        recordDivisionEvent(double, std::shared_ptr<Ecoli>, std::shared_ptr<Ecoli>);
     void        updateCells();
     double      rn();
 
 
-    double      dt;
+    double dt;
     size_t nodesHighData, nodesWideData;
     size_t nodesHigh, nodesWide;
     double trapWidthMicrons, trapHeightMicrons;

@@ -13,6 +13,7 @@ using json = nlohmann::json;
 namespace eQ {
 
 using nodeType = size_t;
+using nodePoint = std::pair<nodeType, nodeType>;
 
 //=======================================================================================
 enum class HSLType
@@ -38,29 +39,29 @@ public:
                 : nodesHigh(nh), nodesWide(nw)
     {
         for(size_t i(0); i<nodesHigh; i++)
-            grid.push_back(std::vector<T>(nodesWide, T(0)));
+            _grid.push_back(std::vector<T>(nodesWide, T(0)));
     }
     void clear()
     {
-        if(grid.empty())
+        if(_grid.empty())
         {
             std::cout<<"grid empty error!"<<std::endl;
             return;
         }
         for(size_t i(0); i<nodesHigh; i++)
             for(size_t j(0); j<nodesWide; j++)
-                grid[i][j] = T(0);
+                _grid[i][j] = T(0);
     }
     void assign(T value)
     {
-        if(grid.empty())
+        if(_grid.empty())
         {
             std::cout<<"grid empty error!"<<std::endl;
             return;
         }
         for(size_t i(0); i<nodesHigh; i++)
             for(size_t j(0); j<nodesWide; j++)
-                grid[i][j] = T(value);
+                _grid[i][j] = T(value);
     }
     bool isValidIndex(std::pair<size_t, size_t> point)
     {
@@ -68,15 +69,19 @@ public:
     }
     void linearize2Dgrid(std::vector<T> &dataArray)
     {
-        auto nrows = grid.size();
-        auto ncols = grid[0].size();
+        auto nrows = _grid.size();
+        auto ncols = _grid[0].size();
         size_t index=0;
         for(size_t i(0); i<nrows; i++)
             for(size_t j(0); j<ncols; j++)
-                dataArray.at(index++) = grid[i][j];
+                dataArray.at(index++) = _grid[i][j];
     }
-    std::vector<std::vector<T>> grid;
+    T &operator[](const eQ::nodePoint &point)
+    {
+        return _grid[point.first][point.second];
+    }
 private:
+    std::vector<std::vector<T>> _grid;
     size_t nodesHigh, nodesWide;
 };
 //=======================================================================================
@@ -157,14 +162,17 @@ public:
             double eval(double x, double y)
             {
                 auto ij = ij_from_xy(x,y,nodesPerMicron);
-                return grid[0]->grid[ij.first][ij.second];
+//                return grid[0]->grid[ij.first][ij.second];
+                return grid[0]->operator[](ij);
             }
             std::pair<double,double> evalVector(double x, double y)
             {
                 auto ij = ij_from_xy(x,y,nodesPerMicron);
                 return std::make_pair(
-                    grid[0]->grid[ij.first][ij.second],
-                    grid[1]->grid[ij.first][ij.second]);
+//                    grid[0]->grid[ij.first][ij.second],
+//                    grid[1]->grid[ij.first][ij.second]);
+                grid[0]->operator[](ij),
+                grid[1]->operator[](ij));
             }
             std::vector<std::shared_ptr<eQ::gridFunction<double>>> grid;
 
@@ -179,6 +187,9 @@ public:
 class simulationTiming
     {
     public:
+
+    static constexpr double HOURS(double hours) { return 60.0 * hours; }
+
         simulationTiming()=default;
         void dt(double dt)
         {
@@ -190,7 +201,9 @@ class simulationTiming
             flags.clear();
         }
         void    setSimulationTimeMinutes(size_t mins)   { _simulationTimeMinutes = mins; }
+        void    setSimulationTimeHours(size_t hours)   { setSimulationTimeMinutes(60*hours); }
         size_t  getSimulationTimeMinutes()              { return _simulationTimeMinutes; }
+
         double  dt()            { return _dt; }
         double  getTime()       { return MPI_Wtime(); }
         double  tare()          { _timeTare = getTime(); return _timeTare; }
@@ -199,13 +212,12 @@ class simulationTiming
         size_t  steps()         { return _timeSteps; }
         bool    stepTimer()
         {
-            ++_timeSteps;
-            _timer += _dt;
+            _timer = _dt * ++_timeSteps;
             for(auto &flag : flags)
             {
                 flag.second.thrown = (_timer >= flag.second.when);
             }
-            return (_timer <= _simulationTimeMinutes);
+            return (_timer <= (_simulationTimeMinutes + _dt));
         }
 
         bool    periodicTimeMinutes(size_t mins)
@@ -216,15 +228,20 @@ class simulationTiming
         {
             flags.insert({key, {when, false, false}});
         }
+        void    setTimerFlag(std::string key)
+        {//overload with no timer ==> check every step
+            flags.insert({key, {-1.0, false, false}});
+        }
         bool    flagThrown(std::string key)
         {
+            if(0 == flags.count(key)) return false;
             return (flags.at(key).thrown && !flags.at(key).ignore);
         }
         void    flagIgnore(std::string key)
         {
+            if(0 == flags.count(key)) return;
             flags.at(key).ignore = true;
         }
-//        operator bool() { return _timer < _simulationTimeMinutes; }
 
         size_t stepsPerMin, stepsPerHour;
 
@@ -249,8 +266,10 @@ public:
         MPI_Comm                                    comm;
         double                                      dt;
         double                                      D_HSL;
-        std::string                                 filePath;
-        std::shared_ptr<eQ::data::files_t>            dataFiles;
+		std::string                                 filePath;
+		std::string                                 filePathTopChannel;
+		std::string                                 filePathBottomChannel;
+		std::shared_ptr<eQ::data::files_t>          dataFiles;
         double                                      trapHeightMicrons;
         double                                      trapWidthMicrons;
         double                                      nodesPerMicron;
@@ -260,8 +279,8 @@ public:
 //        virtual void initDiffusion(size_t id, MPI_Comm comm, std::string filePath, double D, double dt, int argc, char* argv[]) =0;// {}
     virtual void initDiffusion(eQ::diffusionSolver::params &) =0;// {}
     virtual void stepDiffusion() {}
-    virtual void setBoundaryValues(const eQ::data::parametersType &bvals) =0;
-    virtual eQ::data::parametersType getBoundaryFlux(void) =0; //must at least define value of "totalFlux"
+//    virtual void setBoundaryValues(const eQ::data::parametersType &bvals) =0;
+	virtual eQ::data::parametersType getBoundaryFlux(void) {}; //must at least define value of "totalFlux"
     virtual void writeDiffusionFiles(double timestamp) =0;
     virtual void finalize(void) {}
 };
