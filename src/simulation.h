@@ -33,8 +33,8 @@ public:
     Simulation(MPI_Comm commWorld, const Simulation::Params &);
     ~Simulation();
 
-    void writeHSLFiles();
-    void writeDataFiles();
+    void writeHSLFiles(double simTime);
+    void writeDataFiles(double simTime);
     void computeGridParameters();
     void create_DataGrid();
     void create_HSLgrid();
@@ -44,16 +44,25 @@ public:
 //    void init_ABM(int);
     void init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>> &strains);
 
-	void stepSimulation();
+    void stepSimulation(double simTime);
     void stepFinalize();
 
     void waitMPI();
     void printData();
 
-
+    void printOverWrites()
+    {
+        if(nullptr != ABM)
+        {
+            ABM->printOverWrites();
+        }
+    }
 
     std::vector<std::vector<int>>       gridDofs;
     std::vector<std::vector<double>>    gridCoords;
+
+    std::vector<std::vector<double>>        hslVector;
+    std::vector<std::vector<eQ::nodeType>>  hslLookup;
 
     std::vector<double>                 D11Grid;
     std::vector<double>                 D22Grid;
@@ -69,7 +78,7 @@ public:
 	struct rates  rates;  
 	struct dso_parameters pA, pR;
 
-    double          simTime, sim_dt;
+//    double          simTime, sim_dt;
     double          computeTimer, diffusionTimer, physicsTimer, waitTimer, petscTimer;
 
     void            resetTimers()
@@ -87,6 +96,7 @@ public:
 
     eQabm::Params                       paramsABM;
     std::shared_ptr<eQabm>              ABM;
+    size_t                              numHSLGrids;
     std::shared_ptr<fenicsInterface>    diffusionSolver;
     std::shared_ptr<diffusionPETSc>     diffusionSolver2;
 
@@ -105,7 +115,6 @@ private:
     MPI_Group                   world_group, worker_group, controller_group;
     int         npes;                // number of PEs
     int         my_PE_num;           // my PE number
-    size_t      numHSLGrids;
 
     size_t      mpiNodesPerDiffusionLayer;
 

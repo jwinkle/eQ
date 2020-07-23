@@ -109,7 +109,6 @@ public:
     };
     Strain::Params				params;
 
-    Strain(const Strain::Params &p);
     //virtual destructor needed in base class so that derived classes can be deleted properly:
     virtual ~Strain() = default;
 
@@ -118,15 +117,15 @@ public:
         clone() const {return std::make_shared<Strain>(*this);}
 
     //Note: must declare methods virtual if you want to over-ride them in subclasses
-    virtual std::vector<double>
-        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons);
-
-	virtual void
-		divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter);
+//    virtual std::vector<double>
+//        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons);
+//	virtual void
+//		divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter);
 
 
     virtual double	getProteinNumber(concentrations which)	const {return conc[which];}
     virtual double	getHSL(hsl which)						const {return iHSL[which];}
+    virtual double	getDelayedHSL(hsl which)				const {return tHSL[which];}
     virtual const std::vector<double>&	getHSLvec()			const {return iHSL;}
 
     eQ::Cell::strainType  getStrainType(void)               const {return params.whichType;}
@@ -135,14 +134,9 @@ public:
     void			setPressureValue(double pressure)       {pressureValue = pressure;}
     void			setPressureK50(double pressure)         {pressureK50 = pressure;}
 
-//	void			solveLinearSystem(double &H_i, double &H_e, double y1, double y2, double rho_cell);
-//	void			loadParams(eQ::Cell::strainType which);
 
   protected:
 
-    void initializeDataStructures(const size_t numHSL, const size_t numProteins);
-    void computeConcentrations(const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons);
-    void pushConcentrations();
 
 
     //ALL VARIABLES WILL BE COPIED BY THE DEFAULT COPY CONSTRUCTOR:
@@ -177,6 +171,183 @@ public:
     double	H_tau, L_tau, I_tau;
 
     friend std::ostream &operator<<(std::ostream &os, const eQ::Cell::strainType &type);
+
+public:
+    //Strain::Strain(const eQ::Cell::strainType strainType, const dso_parameters *p, const double timestep, const double nodesPerMicronScale)
+    //    : whichType(strainType), params(p), dt(timestep), nodesPerMicron(nodesPerMicronScale), inductionFlag(false)
+    Strain(const Strain::Params &p)
+        : params(p)
+    {
+
+        //NOTE:  valid for fixed dt/delay times only
+        queueDepth = size_t(ceil(params.promoterDelayTimeMins/params.dt));
+
+    //    //old data structures:
+    //	for(size_t i=0; i<queueDepth; i++)
+    //	{
+    //		qH_tau.push(0.0);
+    //		qL_tau.push(0.0);
+    //		qI_tau.push(0.0);
+    //	}
+        for(int i=0; i<NUM_CONCENTRATIONS; i++)
+        {
+            conc[i]=0.0;//don't omit this!
+            delta[i]=0.0;
+        }
+    }
+    void initializeDataStructures(const size_t numHSL, const size_t numProteins)
+    {
+        iHSL.assign(numHSL, 0.0);
+        tHSL.assign(numHSL, 0.0);//per timestep value of popped queue value for convenience
+        dHSL.assign(numHSL, 0.0);
+        deltaHSL.assign(numHSL, 0.0);
+
+        iPROTEIN.assign(numProteins, 0.0);
+        tPROTEIN.assign(numProteins, 0.0);//per timestep value of popped queue value for convenience
+        deltaPROTEIN.assign(numProteins, 0.0);
+
+        std::queue<double> q;
+        for(size_t j=0; j<queueDepth; j++) {q.push(0.0);}
+
+        HSL_tau.assign(numHSL, q);
+        PROTEIN_tau.assign(numProteins, q);
+
+    }
+    virtual void divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter)
+    {
+        //NOTE: the size of all data structures is determined by constructor of derived class
+        double protein;
+        double rd = fracToDaughter;
+        double rm = (1.0 - fracToDaughter);
+
+        for(size_t i=0;i<NUM_CONCENTRATIONS;i++)
+        {//DIVIDE PROTEINS BY FRACTION
+            daughter->conc[i] =  rd*conc[i];
+            conc[i] *= rm;
+        }
+
+        //NEW DATA STRUCTURES:
+        for(size_t i(0); i< iHSL.size(); i++)
+        {
+            //DIVIDE HSL# BY FRACTION
+            daughter->iHSL[i] = rd*iHSL[i];
+            iHSL[i] *= rm;
+            //NOTE:  DON'T DIVIDE SINCE QUEUE STORES CONCENTRATION:
+            daughter->tHSL[i] = tHSL[i];
+            for(size_t j=0; j<queueDepth; j++)
+            {//pop-push j times for each i:
+                protein = HSL_tau[i].front();
+                    HSL_tau[i].pop();
+                    HSL_tau[i].push(protein);
+                        daughter->HSL_tau[i].pop();
+                        daughter->HSL_tau[i].push(protein);
+            }
+        }
+
+        for(size_t i(0); i< iPROTEIN.size(); i++)
+        {
+            //DIVIDE PROTEIN# BY FRACTION
+            daughter->iPROTEIN[i] = rd*iPROTEIN[i];
+            iPROTEIN[i] *= rm;
+            //NOTE:  DON'T DIVIDE SINCE QUEUE STORES CONCENTRATION:
+            daughter->tPROTEIN[i] = tPROTEIN[i];
+            for(size_t j=0; j<queueDepth; j++)
+            {//pop-push j times for each i:
+                protein = PROTEIN_tau[i].front();
+                    PROTEIN_tau[i].pop();
+                    PROTEIN_tau[i].push(protein);
+                        daughter->PROTEIN_tau[i].pop();
+                        daughter->PROTEIN_tau[i].push(protein);
+            }
+        }
+    }
+
+
+    virtual std::vector<double>
+    computeProteins
+        (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+    {
+        computeConcentrations(eHSL, membraneRate, lengthMicrons);
+
+        //        //compute Hill function ratios once:
+    //    ratio_H_tau = pow(H_tau/params->K.H, params->nH);
+    //    ratio_L_tau = pow(L_tau/params->K.L, params->nL);
+    //    ratio_I_tau = pow(I_tau/params->K.I, params->nI);
+        return std::vector<double> {0,0};//return HSL # changes
+
+    }
+
+
+    void computeConcentrations(const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+    {
+        //COMMON CODE TO INITIALIZE DATA, COMPUTE CONVERSIONS FROM # TO CONC., POP DELAY QUEUES, COMPUTE MEMBRANE FLUX:
+
+        if(lengthMicrons == 0.0)
+        {
+            std::cout<<"ERROR: scale for computeProteins() set to 0!"<<std::endl;
+            return;
+        }
+        nanoMolarPerMolecule = eQ::Cell::moleculeNumberToNanoMolar(1.0, lengthMicrons);
+
+        //OLD PROTEIN ARRAYS:
+        for(int i=0; i<NUM_CONCENTRATIONS; i++)
+        {//concentrations are stored as protein # over time steps in the conc[] array
+            conc[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
+            delta[i] = 0.0;
+        }
+        //OLD DELAY QUEUES:
+        //        //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
+    //    H_tau = qH_tau.front();  qH_tau.pop();
+    //    L_tau = qL_tau.front();  qL_tau.pop();
+    //    I_tau = qI_tau.front();  qI_tau.pop();
+
+        //NEW DATA STRUCTURES:
+        for(size_t i(0); i< iHSL.size(); i++)
+        {
+            deltaHSL[i] =0.0;//hsl generation deltas
+            iHSL[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
+            //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
+            tHSL[i] = HSL_tau[i].front();  HSL_tau[i].pop();
+            //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
+            dHSL[i] = params.dt * (
+                        membraneRate[i] * (iHSL[i] - eHSL[i]));    //MEMBRANE DIFFUSION out
+        }
+        for(size_t i(0); i< iPROTEIN.size(); i++)
+        {
+            deltaPROTEIN[i] = 0.0;// generation deltas
+            iPROTEIN[i] *= nanoMolarPerMolecule;//convert to proper concentration (units: nM)
+            //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
+            tPROTEIN[i] = PROTEIN_tau[i].front();  PROTEIN_tau[i].pop();
+        }
+    }
+    void pushConcentrations()
+    {
+        //OLD DATA STRUCTURES:
+        for(int i=0;i<NUM_CONCENTRATIONS;i++)
+        {
+            conc[i] += delta[i];
+            if (conc[i] < 0.0)  conc[i] = 0.0;
+            else conc[i] /= nanoMolarPerMolecule;//store as protein #
+        }
+        //NEW DATA STRUCTURES:
+        for(size_t i(0); i< iHSL.size(); i++)
+        {
+            iHSL[i] += deltaHSL[i];
+            if (iHSL[i] < 0.0)
+            {
+                iHSL[i] = 0.0;
+            }
+            HSL_tau[i].push(iHSL[i]);//store as concentration
+            iHSL[i] /= nanoMolarPerMolecule;//store as protein #
+        }
+        for(size_t i(0); i< iPROTEIN.size(); i++)
+        {
+            iPROTEIN[i] += deltaPROTEIN[i];
+            if (iPROTEIN[i] < 0.0) iPROTEIN[i] = 0.0;
+            PROTEIN_tau[i].push(iPROTEIN[i]);//store as concentration
+            iPROTEIN[i] /= nanoMolarPerMolecule;//store as protein #
+        }
+    }
 };
 
 class sendRecvStrain : public Strain
@@ -194,7 +365,7 @@ public:
         C14HSL  = 1,
         NUM_HSLTYPES
     };
-    enum inductionFlags
+    enum inductionFlag
     {
         INDUCTION,
         NUM_INDUCTIONFLAGS
@@ -202,7 +373,7 @@ public:
 
     static std::vector<bool> inductionFlags;
 
-//    double			getProteinNumber(sendRecvStrain::qProteins which) {return iPROTEIN[which];}
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
 
     //CONSTRUCTOR: (called for initial seed cells only)
 //	sendRecvStrain(eQ::Cell::strainType strainType, const double timestep, const double nodesPerMicron, const size_t numHSL)
@@ -230,19 +401,21 @@ private:
 	};
 
 public:
-    enum hslTypes
+    enum hslType
     {
         C4HSL   = 0,
         C14HSL  = 1,
         NUM_HSLTYPES
     };
-    enum inductionFlags
+    enum inductionFlag
     {
         ASPECTRATIO_INDUCTION,
         NUM_INDUCTIONFLAGS
     };
 
-    static std::vector<bool> inductionFlags;
+    static std::vector<bool> inductionFlags; //there is no conflict with "inductionFlags" typename here, apparently due to the static scop
+
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
 
     //CONSTRUCTOR: (called for initial seed cells only)
 //	aspectRatioInvasionStrain(eQ::Cell::strainType strainType, const double timestep, const double nodesPerMicronScale, const size_t numHSL)
@@ -389,4 +562,109 @@ void initRates(double *, struct rates &);
 void loadParams(eQ::Cell::strainType which, struct dso_parameters &params, struct rates &rates);
 	
 
+/*
+std::vector<double>
+Strain::computeProteins
+    (double C4ext, double C14ext, double lengthMicrons)
+{
+
+    //data:  conc[i] stores protein # for each protein between timesteps (covert to conc. first)
+//    double explicitDilution = params->dilution;
+    double explicitDilution         = 0.0;//set to zero when using ABM  with cell growth
+    //we store protein count, convert to nanoMolar concentration: 0.602 protein/um^3 = 1nM
+    double oneProteinToNanoMolar = eQ::proteinNumberToNanoMolar(1.0, lengthMicrons);
+
+    if(lengthMicrons == 0.0)
+    {
+        std::cout<<"ERROR: scale for computeProteins() set to 0!"<<std::endl;
+        return std::vector<double>{};
+    }
+    for(int i=0; i<numConcentrations; i++)
+    {
+        conc[i] *= oneProteinToNanoMolar;//convert to proper concentration
+    }
+    //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
+    //promoter Hill functions "started" transcription/translation  tau time ago, so use those concentrations
+    H_tau = qH_tau.front();  qH_tau.pop();
+    L_tau = qL_tau.front();  qL_tau.pop();
+    I_tau = qI_tau.front();  qI_tau.pop();
+    //compute Hill function ratios once:
+     ratio_H_tau = pow(H_tau/params->K.H, params->nH);
+     ratio_L_tau = pow(L_tau/params->K.L, params->nL);
+     ratio_I_tau = pow(I_tau/params->K.I, params->nI);
+
+    totalProtein =
+            params->K.C + conc[S]+ conc[L] + conc[A] + conc[FP] + conc[M];
+    totalHSL =
+            params->K.A + conc[H] + conc[I];
+    degradationProtein =
+            (params->dC / totalProtein) + explicitDilution;//explicitly model dilution here
+    degradationHSL =
+            (params->dA / totalHSL) * conc[A] + explicitDilution;//explicitly model dilution here
+
+    //C4 or C14 synthase:
+    delta[S] = dt * ( //rhlI or cinI both have rhl/lac hybrid promoter
+            (params->eta.S0 + params->eta.S1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
+            - degradationProtein * conc[S] );
+    //LacI
+    delta[L] = dt * ( //lacI has cin promoter
+            (params->eta.L0 + params->eta.L1 * ratio_I_tau)/(1.0 + ratio_I_tau)
+            - degradationProtein * conc[L] );
+    //AiiA
+    delta[A] = dt * ( //aiiA has cin promoter
+            (params->eta.A0 + params->eta.A1 * ratio_I_tau)/(1.0 + ratio_I_tau)
+            - degradationProtein * conc[A] );
+    //Mature FP
+    delta[M] = dt * (
+            params->m * conc[FP]
+            - degradationProtein * conc[M] );
+    //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
+    dC4HSL = dt * (
+            params->DH * (conc[H] - C4ext));    //MEMBRANE DIFFUSION
+    dC14HSL = dt * (
+            params->DI * (conc[I] - C14ext));   //MEMBRANE DIFFUSION
+
+    if(eQ::Cell::strainType::ACTIVATOR == whichType)
+    {
+        //CFP --> tracks C4HSL synthase:
+        delta[FP] = dt * ( //activator has rhl/lac hybrid promoter
+                (params->eta.FP0 + params->eta.FP1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
+                - (degradationProtein + params->m) * conc[FP] );
+        delta[H] = dt * (//C4HSL
+                params->phi * conc[S]									//PRODUCTION
+                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
+                - dC4HSL;                                               //MEMBRANE DIFFUSION
+        delta[I] = dt * (//C14HSL
+                - degradationHSL * conc[I] ) 							//DEGRADATION+DILUTION
+                - dC14HSL;                                               //MEMBRANE DIFFUSION
+    }
+    else if(eQ::Cell::strainType::REPRESSOR == whichType)
+    {
+        //YFP --> tracks C14HSL synthase:
+        delta[FP] = dt * ( //repressor has cin/lac promoter
+                (params->eta.FP0 + params->eta.FP1 * ratio_I_tau)/(1.0 + ratio_I_tau + ratio_L_tau)
+                - (degradationProtein + params->m) * conc[FP] );
+        delta[I] = dt * (//C14HSL
+                params->phi * conc[S]									//PRODUCTION
+                - degradationHSL * conc[I] )							//DEGRADATION+DILUTION
+                - dC14HSL;                                               //MEMBRANE DIFFUSION
+        delta[H] = dt * (//C4HSL
+                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
+                - dC4HSL;                                               //MEMBRANE DIFFUSION
+    }
+
+    for(int i=0;i<numConcentrations;i++)
+    {
+        conc[i] += delta[i];
+        if (conc[i] < 0.0)  conc[i] = 0.0;
+        else conc[i] /= oneProteinToNanoMolar;//store as protein #
+    }
+    //push new HSL and LacI values to queue: [STORE AS CONCENTRATION in nM]:
+    qH_tau.push(conc[H] * oneProteinToNanoMolar);
+    qL_tau.push(conc[L] * oneProteinToNanoMolar);
+    qI_tau.push(conc[I] * oneProteinToNanoMolar);
+
+    return std::vector<double> {dC4HSL/oneProteinToNanoMolar, dC14HSL/oneProteinToNanoMolar};//return HSL # changes
+}
+*/
 #endif

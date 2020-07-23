@@ -1,0 +1,8 @@
+#ifndef VERSION_H_IN
+#define VERSION_H_IN
+
+//see: http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
+#define GIT_BRANCH			"@GIT_BRANCH@"
+#define GIT_COMMIT_HASH		"@GIT_COMMIT_HASH@"
+
+#endif // VERSION_H_IN

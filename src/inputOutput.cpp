@@ -8,11 +8,14 @@ void inputOutput::writeParametersToFile(std::string paramsRoot, size_t simNumber
     std::string fname =
             paramsRoot
             + uniqueString;
+
     if(isOpuntiaCluster || isAugsburgCluster)
         fname += ("-" + std::to_string(slurmArrayIndex));
+    if(isArrayLocal)
+        fname += ("-" + std::to_string(localArrayIndex));
 
 
-    fname += "-" + std::to_string(simNumber) + "_"
+    fname += "_" + std::to_string(simNumber) + "-"
             + "parameters.json";
 
     logFile.open(fname, std::ios::trunc);
@@ -47,6 +50,7 @@ int inputOutput::parseInputLine(int argc, char* argv[])
 	}
     if( (argc > 2) && (isOpuntiaCluster || isAugsburgCluster) )
 	{
+        isArrayCluster = true;
         slurmArrayIndex = size_t(atoi(argv[2]));
 		std::cout<<"SLURM_ARRAY_TASK_ID = "<<slurmArrayIndex<<std::endl;
         if(argc > 3)
@@ -72,7 +76,7 @@ void inputOutput::setSimulationNumber(size_t simNumber)
       fbase.assign("/homes/gast/winkle/images/");
       fbase += uniqueString;
         fbase += ("-" + std::to_string(slurmArrayIndex));
-      fbase += ("-" + std::to_string(simNumber));
+      fbase += ("_" + std::to_string(simNumber));
       fbase += "/";
     }
     else if(isOpuntiaCluster){
@@ -80,7 +84,7 @@ void inputOutput::setSimulationNumber(size_t simNumber)
 //                fbase.assign("/home/jjwinkle/images/");
       fbase += uniqueString;
         fbase += ("-" + std::to_string(slurmArrayIndex));
-      fbase += ("-" + std::to_string(simNumber));
+      fbase += ("_" + std::to_string(simNumber));
       fbase += "/";
     }
     else
@@ -88,8 +92,8 @@ void inputOutput::setSimulationNumber(size_t simNumber)
         fbase.assign(imageFilesRoot);
         fbase += uniqueString;
         if(isArrayLocal)
-          uniqueString += ("-" + std::to_string(localArrayIndex));
-        fbase += ("-" + std::to_string(simNumber));
+          fbase += ("-" + std::to_string(localArrayIndex));
+        fbase += ("_" + std::to_string(simNumber));
       fbase += "/";
     }
 

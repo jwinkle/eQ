@@ -3,7 +3,7 @@
 
 #include <dolfin.h>
 #include "eQ.h"
-#include "./abm/eColi.h"
+#include "./abm/Ecoli.h"
 
 
 using namespace dolfin;
@@ -95,7 +95,7 @@ class zeroInitVector : public Expression
 class AnisotropicDiffusionTensor: public Expression
 {
   public:
-	AnisotropicDiffusionTensor(std::shared_ptr<std::vector<double>> D,
+    AnisotropicDiffusionTensor(std::vector<double> &D,
 			size_t nodeDensity, size_t nodesHigh, size_t nodesWide, double test)
 		: D(D), n(nodeDensity), nh(nodesHigh), nw(nodesWide), testValue(test)
 	{
@@ -107,16 +107,16 @@ class AnisotropicDiffusionTensor: public Expression
 	}
 	void printSize(void)
 	{
-		std::cout<<"size of D: "<<D->size()<<std::endl;
+        std::cout<<"size of D: "<<D.size()<<std::endl;
 	}
 	void eval(Array<double>& values, const Array<double>& x) const
 	{
         auto index = eQ::data::ij_from_xy(x[0], x[1], n);
 		auto entry = index.first*nw + index.second;
-		values[0] = (entry < maxNodes) ? D->at(entry) : testValue;
+        values[0] = (entry < maxNodes) ? D[entry] : testValue;
 //        values[0] = testValue;
 	}
-	std::shared_ptr<std::vector<double>> D;
+    std::vector<double> &D;
 	size_t n, nh, nw, maxNodes;
 	double testValue;
 private:

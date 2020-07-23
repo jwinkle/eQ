@@ -3,7 +3,7 @@
 
 #include "cpm.h"
 #include "cpmTrap.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 class cpmHabitat
@@ -18,8 +18,8 @@ public:
 
     void setTrap(std::shared_ptr<cpmTrap> trap){_trap = trap;}
     void stepSimulation(double dt);
-    bool outsideTrap(std::shared_ptr<cpmEColi>);
-    bool updateCell(std::shared_ptr<cpmEColi>);
+    bool outsideTrap(std::shared_ptr<cpmEcoli>);
+    bool updateCell(std::shared_ptr<cpmEcoli>);
 
     double getSimTime(){return simTime;}
 

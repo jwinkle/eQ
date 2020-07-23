@@ -1,5 +1,5 @@
 #include "cpmTrap.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 //#define TRAP_ELASTICITY     1.0f
 #define TRAP_ELASTICITY     0.0
@@ -136,7 +136,7 @@ cpmTrap::cpmTrap(const cpmTrap::Params &p)
     }
 }
 
-bool cpmTrap::outsideTrap(std::shared_ptr<cpmEColi> cell)
+bool cpmTrap::outsideTrap(std::shared_ptr<cpmEcoli> cell)
 {
     if("NOTRAP" == eQ::data::parameters["trapType"])
         return false;
@@ -157,7 +157,7 @@ cpmTrap::~cpmTrap()
     for(auto &shape : trap)
         cpShapeFree(shape);
 }
-bool cpmTrap::updateModel(std::shared_ptr<cpmEColi> cell)
+bool cpmTrap::updateModel(std::shared_ptr<cpmEcoli> cell)
 {
     return outsideTrap(cell);
 }

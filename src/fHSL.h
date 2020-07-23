@@ -3,7 +3,7 @@
 #include <dolfin.h>
 
 #include "eQ.h"
-#include "./abm/eColi.h"
+#include "./abm/Ecoli.h"
 
 #include "../qtensor/pressure.h"
 #include "../qtensor/velocity.h"
@@ -109,15 +109,17 @@ public:
             auto x = mesh_coords[2*i];
             auto y = mesh_coords[2*i+1];
 
-            unsigned jx = unsigned(round(x * double(eQ::data::parameters["nodesPerMicronSignaling"])));
-            unsigned iy = unsigned(round(y * double(eQ::data::parameters["nodesPerMicronSignaling"])));
+            size_t jx = size_t(round(x * double(eQ::data::parameters["nodesPerMicronSignaling"])));
+            size_t iy = size_t(round(y * double(eQ::data::parameters["nodesPerMicronSignaling"])));
             //the point of this all is to have this mapping from physical node # to the fenics dof #,
             //allows to look that up the dof directly for read/write in the main acquisition loop
 //                dof_from_grid[grid]->grid[iy][jx] = gridDofs[grid][i];//note row,column = y,x
 
             //WRITE THE DOF LOOKUP TABLE:
             //write directly to the ABM parameters data structure:
-            dofLookupTable->grid[iy][jx] = size_t(dof_from_vertex[i]);
+            auto point = std::pair<size_t, size_t>{iy,jx};
+//            dofLookupTable->grid[iy][jx] = size_t(dof_from_vertex[i]);
+            dofLookupTable->operator[](point) = size_t(dof_from_vertex[i]);
         }
     }
 
@@ -320,12 +322,11 @@ public:
 
     //DIFFUSION SOLVER TEMPLATE METHODS:
     void initDiffusion(size_t id, MPI_Comm comm, std::string filePath, double D, double dt, int argc, char* argv[]);
-    void initDiffusion(eQ::diffusionSolver::params &);
-    void stepDiffusion();
-    void writeDiffusionFiles(double dt);
-    void finalize(void);
-    void setBoundaryValues(const eQ::data::parametersType &bvals) {}
-    eQ::data::parametersType getBoundaryFlux(void);
+    void initDiffusion(eQ::diffusionSolver::params &) override;
+    void stepDiffusion() override;
+    void writeDiffusionFiles(double dt) override;
+    void finalize(void) override;
+    void setBoundaryValues(const double);
 
     void updateChannels();
     void writeDataFiles(double dt);
@@ -354,6 +355,8 @@ public:
     std::vector<double> fluxTopChannel;
     std::vector<double> fluxBottomChannel;
 
+    double totalBoundaryFlux;
+
     //FUNCTIONS:
     std::shared_ptr<dolfin::Function> uvec;
     std::shared_ptr<dolfin::Function> u2;
@@ -363,8 +366,9 @@ public:
     std::shared_ptr<dolfin::Function> u0CT, u0CB;
 
 
-    std::shared_ptr<updatingDirchletBoundary> boundaryChannelLeft;
-    std::shared_ptr<updatingDirchletBoundary> boundaryChannelRight;
+//    std::shared_ptr<updatingDirchletBoundary> boundaryChannelLeft;
+//    std::shared_ptr<updatingDirchletBoundary> boundaryChannelRight;
+    std::shared_ptr<updatingDirchletBoundary> boundaryCompartment;
 
     std::shared_ptr<std::vector<double>> D11, D22, D12;
 
@@ -378,7 +382,6 @@ private:
     void mapGridNodes();
 
     double myDiffusionConstant;
-    double totalBoundaryFlux;
 
     std::shared_ptr<data::FunctionSpace> VscalarData;
     std::shared_ptr<vdata::FunctionSpace> VvectorData;
@@ -523,16 +526,16 @@ public:
 };
 
 
-class DirichletBoundary_TrapEdges: public SubDomain
+class DirichletBoundary_TrapEdge: public SubDomain
 {
 public:
-    enum class edge
+    enum edge
     {
         TOP, BOTTOM, LEFT, RIGHT,
         NUM_EDGES
     };
 
-    DirichletBoundary_TrapEdges(double gridHeight, double gridWidth, edge which)
+    DirichletBoundary_TrapEdge(double gridHeight, double gridWidth, edge which)
         : trapH(gridHeight), trapW(gridWidth), whichEdge(which) {}
     bool inside(const Array<double>& x, bool on_boundary) const
     {

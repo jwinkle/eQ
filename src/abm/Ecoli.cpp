@@ -1,24 +1,18 @@
-#include "eColi.h"
+#include "Ecoli.h"
 
-std::shared_ptr<eColi> eColi::clone(std::shared_ptr<Strain> &newStrain)
-{
-    auto newCell = std::make_shared<eColi>(params);//does not create a new Strain object!
-    newCell->strain = newStrain;
-    return newCell;
-}
 
-eColi::eColi(const eColi::Params &p)
+Ecoli::Ecoli(const Ecoli::Params &p)
         : Cell(), params(p)
 {
     //build the chipmunk cell model parameters:
-    //TODO: define a cell geometry structure to copy directly to the physics model layer (m,moment,x,y,v,theta,w,l)
-    cpmEColi::Params cell;
+    cpmEcoli::Params cell;
+
     cell.space                  = params.space;
-    cell.baseData               = params.baseData;
-    cell.kspring                = eColi::DEFAULT_KSPRING_MINS;
+    cell.baseData               = params;//will implicitly cast to eQ::Cell::Params to only copy that part
+    cell.kspring                = Ecoli::DEFAULT_KSPRING_MINS;
 
     //create the chipmunk class
-    cpmCell = std::make_shared<cpmEColi>(cell);
+    cpmCell = std::make_shared<cpmEcoli>(cell);
 
     //26Feb.2019: scale damping by cell length to remove discontinuity across cell divisions
     setDampingGamma();
@@ -26,10 +20,10 @@ eColi::eColi(const eColi::Params &p)
 
     //note:  strain object has already been created
     strain = params.strain;
-    strain->params.baseData = &params.baseData;
+    strain->params.baseData = &params;//allows the Strain class to access the eQ::Cell::Params by reference
 
 }
-void eColi::setDampingGamma()
+void Ecoli::setDampingGamma()
 {
 //    double gammaScale = 1.0;
 //    double gammaScale = 0.5;
@@ -37,11 +31,11 @@ void eColi::setDampingGamma()
 //    double gammaScale = 0.1;
 //    double gammaScale = 0.05;
     cpmCell->parameterData.gammaFluid
-            = gammaScale * eColi::DEFAULT_GAMMA_FLUID_MINS * params.stabilityScaling * getLengthMicrons();
+            = gammaScale * Ecoli::DEFAULT_GAMMA_FLUID_MINS * params.stabilityScaling * getLengthMicrons();
 }
-void eColi::updatePoleCenters(void)
+void Ecoli::updatePoleCenters(void)
 {
-    double trapWidth = double(eQ::data::parameters["physicalTrapWidth_X_Microns"]);
+    double trapWidth = double(eQ::data::parameters["simulationTrapWidthMicrons"]);
     double trapHeight = double(eQ::data::parameters["simulationTrapHeightMicrons"]);
 
     cpVect polePosition;
@@ -67,28 +61,28 @@ void eColi::updatePoleCenters(void)
 
     polePositionB =    std::make_pair(double(polePosition.x), double(polePosition.y));
 }
-void eColi::updateGrowth()
+void Ecoli::updateGrowth()
 {
     //call the chipmunk model
     int status;
     //set the growth force, with (generally) updated rest-length expansion rate
     //Exponential growth: l(t) = l0 * 2^(t/Td) ==> dl = dt * l * 2^(dt/20) * ln(2)/20
     //NOTE: 2^(dt/20) =~ 1 so skip that in the calculation
-    const double expScale = (log(2.0)/params.baseData.doublingPeriodMinutes) * double(eQ::data::parameters["dt"]);
+    const double expScale = (log(2.0)/params.doublingPeriodMinutes) * double(eQ::data::parameters["dt"]);
     status = cpmCell->updateExpansionForce(expScale * getLengthMicrons());
 }
 
-std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroOne)
+std::shared_ptr<Ecoli> Ecoli::updatePhysicsModel(eQ::uniformRandomNumber  &zeroOne)
 {
       //call the chipmunk model
       int status;
       status = cpmCell->updateModel();
 
       //update the parameters structure (manually for now)
-      params.baseData.x         = getCenter_x();
-      params.baseData.y         = getCenter_y();
-      params.baseData.length    = getLengthMicrons();
-      params.baseData.angle     = getAngle();
+      params.x         = getCenter_x();
+      params.y         = getCenter_y();
+      params.length    = getLengthMicrons();
+      params.angle     = getAngle();
       //velocity if needed
 
       setDampingGamma();
@@ -98,10 +92,9 @@ std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroO
       //CHECK DIVISION:
 //=================================================================================================
     double parentLength = getLengthMicrons();
-    if(parentLength < params.baseData.divisionLength)
+    if(parentLength < params.divisionLength)
         return nullptr;
 
-//    std::cout<<"cell divided: parentLength = "<<parentLength<<std::endl;
 
     int r = -1;
 
@@ -124,9 +117,9 @@ std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroO
     //NOTE:  cell will not be expanding at first subsequent time step
     cpVect vel = (1 == r) ?  cpmCell->velB:cpmCell->velA;
 
-    cpmEColi::Params cell;
+    cpmEcoli::Params cell;
         cell.space      = params.space;
-        cell.baseData   = params.baseData;
+        cell.baseData   = params;
 
         cell.baseData.x      = newpos.x;
         cell.baseData.y      = newpos.y;
@@ -137,7 +130,7 @@ std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroO
 
         cell.kspring         = cpmCell->k_spring;
 
-    auto newCell = std::make_shared<cpmEColi>(cell);
+    auto newCell = std::make_shared<cpmEcoli>(cell);
 
     //need to use averaged values to avoid noise in daughter cells:
     double newRestLength = (cpmCell->springRestLength - cpmCell->length) + cell.baseData.length;
@@ -170,18 +163,18 @@ std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroO
   //============================================================
     double dLength = fracToDaughter*parentLength;
 
-    eColi::Params dparams = params;//copy parameters to new cell (sets all defaults)
+    Ecoli::Params dparams = params;//copy parameters to new cell (sets all defaults)
         //update parameters different for daughter cell
-        dparams.baseData.x = oldpos.x + r*0.5*parentLength*frac*cos ( a + r*da );
-        dparams.baseData.y = oldpos.y + r*0.5*parentLength*frac*sin ( a + r*da );
-        dparams.baseData.angle = a + r*da;
-        dparams.baseData.length = dLength;
-        dparams.baseData.vx = newV2.x;
-        dparams.baseData.vy = newV2.y;
+        dparams.x = oldpos.x + r*0.5*parentLength*frac*cos ( a + r*da );
+        dparams.y = oldpos.y + r*0.5*parentLength*frac*sin ( a + r*da );
+        dparams.angle = a + r*da;
+        dparams.length = dLength;
+        dparams.vx = newV2.x;
+        dparams.vy = newV2.y;
 
     dparams.strain = strain->clone();
 
-    auto daughter = std::make_shared<eColi>(dparams);
+    auto daughter = std::make_shared<Ecoli>(dparams);
 
     daughter->computeDivisionLength(dLength);
     daughter->cpmCell->setVelocity(newV2);//set explicitly to cpm model
@@ -197,7 +190,7 @@ std::shared_ptr<eColi> eColi::updatePhysicsModel(eQ::uniformRandomNumber  &zeroO
 
 }
 
-eColi::~eColi()
+Ecoli::~Ecoli()
 {
     cpmCell.reset();
 }
