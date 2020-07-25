@@ -54,12 +54,12 @@ cpmHabitat::~cpmHabitat()
     cpSpaceFree(_space);
     // cpHastySpaceFree(space);
 }
-bool cpmHabitat::outsideTrap(std::shared_ptr<cpmEColi> cell)
+bool cpmHabitat::outsideTrap(std::shared_ptr<cpmEcoli> cell)
 {
     return (nullptr != _trap) ? _trap->outsideTrap(cell) : false;
 }
 
-bool cpmHabitat::updateCell(std::shared_ptr<cpmEColi> cell)
+bool cpmHabitat::updateCell(std::shared_ptr<cpmEcoli> cell)
 {
     return (nullptr != _trap) ? _trap->updateModel(cell) : false;
 }

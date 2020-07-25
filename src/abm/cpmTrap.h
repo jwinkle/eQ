@@ -3,24 +3,24 @@
 
 #include "../eQ.h"
 #include "cpm.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 class cpmTrap
 {
 public:
-    struct params
+    struct Params
     {
         cpSpace     *space;
 //        bool        removeOutsideTrap;
     };
 
-    cpmTrap(const cpmTrap::params &);
+    cpmTrap(const cpmTrap::Params &);
     ~cpmTrap();
-    const cpmTrap::params &myParams;
+    const cpmTrap::Params &myParams;
 
-    bool outsideTrap(std::shared_ptr<cpmEColi> cell);
-    bool updateModel(std::shared_ptr<cpmEColi> cell);
+    bool outsideTrap(std::shared_ptr<cpmEcoli> cell);
+    bool updateModel(std::shared_ptr<cpmEcoli> cell);
     
 
     double w;

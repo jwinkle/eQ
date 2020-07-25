@@ -3,7 +3,7 @@
 
 #include "cpm.h"
 #include "cpmTrap.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 class cpmHabitat
@@ -18,11 +18,12 @@ public:
 
     void setTrap(std::shared_ptr<cpmTrap> trap){_trap = trap;}
     void stepSimulation(double dt);
-    bool outsideTrap(std::shared_ptr<cpmEColi>);
-    bool updateCell(std::shared_ptr<cpmEColi>);
+    bool outsideTrap(std::shared_ptr<cpmEcoli>);
+    bool updateCell(std::shared_ptr<cpmEcoli>);
 
     double getSimTime(){return simTime;}
 
+    cpSpace *get_cpSpace(){return _space;}
 private:
     std::shared_ptr<cpmTrap>			_trap;
     cpSpace         *_space;
@@ -30,7 +31,7 @@ private:
     double          simTime;
 
 ////allow cells to access the space pointer:
-    friend class eQabm;
+//    friend class eQabm;
 //    friend class jEColi;
 //    friend class jChipmunk_Trap;
 //    friend bool setBinData(jEColi * c, int which);

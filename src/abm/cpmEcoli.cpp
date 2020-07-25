@@ -4,7 +4,7 @@
 #include "../../Chipmunk-7.0.1/include/chipmunk/chipmunk_unsafe.h"
 
 //this must be included *after* the chipmunk *private/unsafe.h files, above
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 
 
@@ -38,8 +38,8 @@ void jcpBodyUpdateVelocity(cpBody *body, cpVect gravity, cpFloat damping, cpFloa
         body->m, body->i);
 
     //get the user data for this cell
-    cpmEColi::bodyData_t *pBodyData
-            =  (cpmEColi::bodyData_t *)cpBodyGetUserData(body);
+    cpmEcoli::bodyData_t *pBodyData
+            =  (cpmEcoli::bodyData_t *)cpBodyGetUserData(body);
 
     // cpVect Fbym = body->f * body->m_inv;
     cpVect Fbym     = body->f;
@@ -55,20 +55,20 @@ void jcpBodyUpdateVelocity(cpBody *body, cpVect gravity, cpFloat damping, cpFloa
 }
 //==============================================================================
 //==============================================================================
-void cpmEColi::setStaticCell()
+void cpmEcoli::setStaticCell()
 {//sets the cell body halves to "static" -- they should not be updated, so set flag
     cpBodySetType(bodyA, CP_BODY_TYPE_STATIC);
     cpBodySetType(bodyB, CP_BODY_TYPE_STATIC);
     cellIsStatic = true;
 }
-void cpmEColi::resetDynamicCell()
+void cpmEcoli::resetDynamicCell()
 {//sets the cell body halves back to "dynamic"
     cpBodySetType(bodyA, CP_BODY_TYPE_DYNAMIC);
     cpBodySetType(bodyB, CP_BODY_TYPE_DYNAMIC);
     cellIsStatic = false;
 }
 //==============================================================================
-void cpmEColi::computeCellBoudaryEdges()
+void cpmEcoli::computeCellBoudaryEdges()
 {
     edges[0] = vertsA[1] - vertsA[0];
     edges[1] = vertsA[2] - vertsA[1];
@@ -80,7 +80,7 @@ void cpmEColi::computeCellBoudaryEdges()
 //    edges[3] = vertsA[0] - vertsA[3];
 }
 //==============================================================================
-cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
+cpmEcoli::cpmEcoli(const cpmEcoli::Params &ecoli)
             : space(ecoli.space)
 {
     /*
@@ -97,16 +97,16 @@ cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
 
     k_spring            = ecoli.kspring;
 
-    initialMass         = ecoli.mass;
-    initialMoment       = ecoli.moment;
-    shapeLength         = ecoli.length - ecoli.width;
-    shapeHeight         = ecoli.width;
-    length              = ecoli.length;
-    initialLength       = ecoli.length;
-    center              = cpv(ecoli.x, ecoli.y);
-    angle               = ecoli.angle;
-    velocity            = cpv(ecoli.vx, ecoli.vy);
-    angularVelocity     = ecoli.av;
+    initialMass         = ecoli.baseData.mass;
+    initialMoment       = ecoli.baseData.moment;
+    shapeLength         = ecoli.baseData.length - ecoli.baseData.width;
+    shapeHeight         = ecoli.baseData.width;
+    length              = ecoli.baseData.length;
+    initialLength       = ecoli.baseData.length;
+    center              = cpv(ecoli.baseData.x, ecoli.baseData.y);
+    angle               = ecoli.baseData.angle;
+    velocity            = cpv(ecoli.baseData.vx, ecoli.baseData.vy);
+    angularVelocity     = ecoli.baseData.av;
 
     posA                = center;
     posB                = center;
@@ -116,7 +116,7 @@ cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
     compression         = 0.0;
 
     //rest-length increment per time step for spring model
-    dRL = ecoli.dRL;
+//    dRL = ecoli.dRL;
 
     radius = shapeHeight * 0.5;//radius of a cell pole
     offset = shapeLength * 0.5;//offset to center of pole from cell center
@@ -291,7 +291,7 @@ cpmEColi::cpmEColi(const cpmEColi::params &ecoli)
 
 //==============================================================================
 //==============================================================================
-cpmEColi::~cpmEColi(void)
+cpmEcoli::~cpmEcoli(void)
 {
     for(unsigned int i=0;i<constraintCount;i++)
     {
@@ -310,7 +310,7 @@ cpmEColi::~cpmEColi(void)
     cpBodyFree(bodyB);
 }
 
-bool cpmEColi::pointIsInCell(std::pair<double, double> point)
+bool cpmEcoli::pointIsInCell(std::pair<double, double> point)
 {
     cpVect lpoint = cpBodyWorldToLocal(bodyA, cpv(point.first, point.second));
 
@@ -336,24 +336,24 @@ bool cpmEColi::pointIsInCell(std::pair<double, double> point)
 //    if (responseB < 0.0) return true;
 //    return false;
 }
-void cpmEColi::setVelocity(cpVect vel)
+void cpmEcoli::setVelocity(cpVect vel)
 {
     cpBodySetVelocity(bodyA, vel); velA = vel;
     cpBodySetVelocity(bodyB, vel); velB = vel;
 }
-void cpmEColi::setBodyVelocities(cpVect vA, cpVect vB)
+void cpmEcoli::setBodyVelocities(cpVect vA, cpVect vB)
 {
     cpBodySetVelocity(bodyA, vA); velA =vA;
     cpBodySetVelocity(bodyB, vB); velB=vB;
 }
 
-void cpmEColi::applyForce(cpVect force)
+void cpmEcoli::applyForce(cpVect force)
 {//adds to the current force on the object
     cpBodyApplyForceAtWorldPoint(bodyA,  force, cpBodyLocalToWorld(bodyA, cpvzero));
     cpBodyApplyForceAtWorldPoint(bodyB,  force, cpBodyLocalToWorld(bodyB, cpvzero));
 }
 
-void cpmEColi::setSpringRestLength(cpFloat RL)
+void cpmEcoli::setSpringRestLength(cpFloat RL)
 {
     //viruaal spring RL is set rel. to the full length of the cell
     springRestLength = RL;
@@ -363,18 +363,18 @@ void cpmEColi::setSpringRestLength(cpFloat RL)
     // cpDampedSpringSetRestLength(springJoint1, cpSpringRestLength);
     // cpDampedSpringSetRestLength(springJoint2, cpSpringRestLength);
 }
-void cpmEColi::incSpringRestLength(cpFloat deltaRL)
+void cpmEcoli::incSpringRestLength(cpFloat deltaRL)
 {
     setSpringRestLength(springRestLength + deltaRL);
 }
-cpFloat cpmEColi::getSpringRestLength(void)
+cpFloat cpmEcoli::getSpringRestLength(void)
 {
     // return cpDampedSpringGetRestLength(springJoint1);
     return springRestLength;
 }
 //==============================================================================
 //==============================================================================
-int cpmEColi::updateModel(void)
+int cpmEcoli::updateModel(void)
 {
     //read the post-step data from the chipm. model:
     //position, angle, velocity, angularVelocity
@@ -451,43 +451,31 @@ int cpmEColi::updateModel(void)
 //============================================================
 //  SPRING EXPANSION FORCE ALGORITHM:
 //============================================================
-int cpmEColi::updateExpansionForce(double restLengthIncrement)
+int cpmEcoli::updateExpansionForce(double restLengthIncrement)
 {//cell update will have been called before this (updates compression)
 //at dt=0.001 min, dRL increment is 0.0001 um => 20k x dRL = 2um (doubling) in 20 minutes
 
     if(cellIsStatic) return 0;//don't update cell if it has been frozen "static"
 
 //to scale by cell length, we want 2um/20 minutes = 20pixels/20min = 1pixel/min = dt pixels/dt mins, say at 3um length
-    cpFloat climit = g_compressionLimit;
-
-    //Exponential growth: l(t) = l0 * 2^(t/Td) ==> dl = dt * l * 2^(dt/20) * ln(2)/20
-    const double expScale = log(2.0)/20.0 * pow(2.0,dRL/20.0);//recall dRL is dt, so a little of a hack here for the source of dt
-    //need to fix this to read length locally:
-//    double dRL_exp = dRL * parent->jget_length() * expScale;
+//    cpFloat climit = g_compressionLimit;
 
         if(true)//bypass growth rate regulation
         // if (compression < climit)
         {
              incSpringRestLength(restLengthIncrement);
-//            incSpringRestLength(dRL_exp);
-            // springForce = cpv(KSPRING * (compression+dRL), 0.0f);
-            // springRestLength += dRL;
         }
         else
         {
-            g_overComp++;
-            cpFloat c = (compression-climit)/climit;
-            if (c > 1.0) c=1.0;
-             cpFloat scaled_dRL = (1.0-c)*dRL;
-//            cpFloat scaled_dRL = (1.0-c)*dRL_exp;
-            incSpringRestLength(scaled_dRL);
-            // springForce = cpv(KSPRING * (compression + scaled_dRL), 0.0f);
-            // springRestLength += scaled_dRL;
+//            g_overComp++;
+//            cpFloat c = (compression-climit)/climit;
+//            if (c > 1.0) c=1.0;
+//             cpFloat scaled_dRL = (1.0-c)*dRL;
+//            incSpringRestLength(scaled_dRL);
         }
 
     //VIRTUAL SPRING IMPLEMENTATION:
-//        cpVect springForce = cpv(KSPRING * (springRestLength - length), cpFloat(0.0));
-        cpVect springForce = cpv(k_spring * (springRestLength - length), cpFloat(0.0));
+    cpVect springForce = cpv(k_spring * (springRestLength - length), cpFloat(0.0));
     cpBodyApplyForceAtLocalPoint(bodyA,  cpvneg(springForce), cpvzero);
     cpBodyApplyForceAtLocalPoint(bodyB,  springForce, cpvzero);
 

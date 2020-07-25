@@ -1,5 +1,5 @@
 #include "cpmTrap.h"
-#include "cpmEColi.h"
+#include "cpmEcoli.h"
 
 //#define TRAP_ELASTICITY     1.0f
 #define TRAP_ELASTICITY     0.0
@@ -13,23 +13,23 @@
 //static  inline cpFloat frand(void) { return cpFloat(rand()/RAND_MAX); }
 
 
-cpmTrap::cpmTrap(const cpmTrap::params &p)
+cpmTrap::cpmTrap(const cpmTrap::Params &p)
 //cpmTrap::cpmTrap(const cpmTrap::params &p)
        : myParams(p)
 {
     staticBody = cpSpaceGetStaticBody(myParams.space);
 
-    if("NOTRAP" == eQ::parameters["trapType"])
+    if("NOTRAP" == eQ::data::parameters["trapType"])
         return;
 
-    w = double(eQ::parameters["simulationTrapWidthMicrons"]);
-    h = double(eQ::parameters["simulationTrapHeightMicrons"]);
+    w = double(eQ::data::parameters["simulationTrapWidthMicrons"]);
+    h = double(eQ::data::parameters["simulationTrapHeightMicrons"]);
 
-    if("NOWALLED" != eQ::parameters["trapType"])
+    if("NOWALLED" != eQ::data::parameters["trapType"])
     {//1,2,or 3
         cpShape *shape;
 
-        if("LEFTCORNER_HALF" == eQ::parameters["trapType"])
+        if("LEFTCORNER_HALF" == eQ::data::parameters["trapType"])
         {
             //LEFT VERTICAL WALL:
             shape = cpSpaceAddShape(
@@ -42,7 +42,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
                             staticBody, cpv(0.0, h), cpv(w/2.0, h), TRAP_BORDER_WIDTH));
                 trap.push_back(shape);
         }
-        else if("OPPOSITE_CORNERS" == eQ::parameters["trapType"])
+        else if("OPPOSITE_CORNERS" == eQ::data::parameters["trapType"])
         {
             //LEFT VERTICAL WALL: TOP HALF
             shape = cpSpaceAddShape(
@@ -70,7 +70,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
 //                            staticBody, cpv(w,0.0), cpv(3.0*w/4.0, 0.0), TRAP_BORDER_WIDTH));
 //                trap.push_back(shape);
         }
-        else if("ONEWALLED_LEFT" == eQ::parameters["trapType"])
+        else if("ONEWALLED_LEFT" == eQ::data::parameters["trapType"])
         {
             //LEFT VERTICAL WALL:
             shape = cpSpaceAddShape(
@@ -78,7 +78,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
                             staticBody, cpv(0.0, 0.0), cpv(0.0, h), TRAP_BORDER_WIDTH));
                 trap.push_back(shape);
         }
-        else if("H_TRAP" == eQ::parameters["trapType"])
+        else if("H_TRAP" == eQ::data::parameters["trapType"])
         {
             //BOTTOM HORIZONTAL WALL:
             shape = cpSpaceAddShape(
@@ -93,7 +93,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
         }
         else
         {
-            if("ONEWALLED" != eQ::parameters["trapType"])
+            if("ONEWALLED" != eQ::data::parameters["trapType"])
             {//2,3
                 //LEFT VERTICAL WALL:
                 shape = cpSpaceAddShape(
@@ -107,7 +107,7 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
                     trap.push_back(shape);
             }
             //close the top of the trap:
-            if("TWOWALLED" != eQ::parameters["trapType"])
+            if("TWOWALLED" != eQ::data::parameters["trapType"])
             {//1,3
                 shape = cpSpaceAddShape(
                             myParams.space, cpSegmentShapeNew(
@@ -136,9 +136,9 @@ cpmTrap::cpmTrap(const cpmTrap::params &p)
     }
 }
 
-bool cpmTrap::outsideTrap(std::shared_ptr<cpmEColi> cell)
+bool cpmTrap::outsideTrap(std::shared_ptr<cpmEcoli> cell)
 {
-    if("NOTRAP" == eQ::parameters["trapType"])
+    if("NOTRAP" == eQ::data::parameters["trapType"])
         return false;
 
     double y = double(cell->center.y);
@@ -157,7 +157,7 @@ cpmTrap::~cpmTrap()
     for(auto &shape : trap)
         cpShapeFree(shape);
 }
-bool cpmTrap::updateModel(std::shared_ptr<cpmEColi> cell)
+bool cpmTrap::updateModel(std::shared_ptr<cpmEcoli> cell)
 {
     return outsideTrap(cell);
 }

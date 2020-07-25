@@ -9,9 +9,9 @@
 !/CMakeLists.txt
 
 
-#  ignore the build directory in the root directory
+#  ignore the build and run directory in the root directory
 /build/
-
+/run/
 
 #  ignore Chipmunk dir
 /Chipmunk*/
@@ -22,4 +22,8 @@
 
 #  ignore histogram directory 
 /histogram-develop/
+
+#  ignore generated fencs .h files (from ffc, which compiles the .ufl files)
+#  this should always be done on the local machine 
+/fenics/*.h
 

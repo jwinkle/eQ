@@ -3,12 +3,14 @@
 
 #include "cpm.h"
 #include <utility>
+#include "eQ.h"
+#include "eQcell.h"
 
 
-class eColi;
+class Ecoli;
 typedef struct{
 	int which;
-	eColi *parent;
+    Ecoli *parent;
 } body_t;
 
 //too low elast. results in overlap?:
@@ -24,24 +26,19 @@ typedef struct{
 #define GROOVE_JOINT_ERRORBIAS   0.5
 #define GROOVE_JOINT_MAXBIAS    40.0
 
-class cpmEColi
+class cpmEcoli
 {
 public:
-	struct params
+    struct Params
 	{
+        eQ::Cell::Params        baseData;
         cpSpace                 *space;
-		double                   mass, moment;
-		double                   x,y;
-		double                   angle, length, width;
-		double                   vx, vy, av;
-//        double                   doublingPeriodMinutes;
-        double                   dRL;
-        double                   kspring;
-        double                   gammaFluidParameter;
+        double                  kspring;
+        double                  gammaFluidParameter;
 	};
 
-    cpmEColi(const cpmEColi::params &p);
-	~cpmEColi(void);
+    cpmEcoli(const cpmEcoli::Params &p);
+    ~cpmEcoli(void);
 
     typedef struct bodyData_t
     {

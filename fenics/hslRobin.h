@@ -3116,7 +3116,7 @@ public:
 
   const std::vector<bool> & enabled_coefficients() const final override
   {
-static const std::vector<bool> enabled({true, true, false});
+static const std::vector<bool> enabled({true, true, false, false});
 return enabled;
   }
 
@@ -3192,23 +3192,23 @@ return enabled;
 };
 
 
-class hslrobin_exterior_facet_integral_0_otherwise: public ufc::exterior_facet_integral
+class hslrobin_exterior_facet_integral_0_0: public ufc::exterior_facet_integral
 {
 public:
 
-  hslrobin_exterior_facet_integral_0_otherwise() : ufc::exterior_facet_integral()
+  hslrobin_exterior_facet_integral_0_0() : ufc::exterior_facet_integral()
   {
 
   }
 
-  ~hslrobin_exterior_facet_integral_0_otherwise() override
+  ~hslrobin_exterior_facet_integral_0_0() override
   {
 
   }
 
   const std::vector<bool> & enabled_coefficients() const final override
   {
-static const std::vector<bool> enabled({false, true, true});
+static const std::vector<bool> enabled({false, true, true, false});
 return enabled;
   }
 
@@ -3283,6 +3283,97 @@ return enabled;
 };
 
 
+class hslrobin_exterior_facet_integral_0_1: public ufc::exterior_facet_integral
+{
+public:
+
+  hslrobin_exterior_facet_integral_0_1() : ufc::exterior_facet_integral()
+  {
+
+  }
+
+  ~hslrobin_exterior_facet_integral_0_1() override
+  {
+
+  }
+
+  const std::vector<bool> & enabled_coefficients() const final override
+  {
+static const std::vector<bool> enabled({false, true, false, true});
+return enabled;
+  }
+
+  void tabulate_tensor(double * A,
+                       const double * const * w,
+                       const double * coordinate_dofs,
+                       std::size_t facet,
+                       int cell_orientation) const final override
+  {
+    // This function was generated using 'uflacs' representation
+    // with the following integrals metadata:
+    // 
+    // num_cells:         None
+    // optimize:          True
+    // precision:         16
+    // quadrature_degree: 2
+    // quadrature_rule:   'default'
+    // representation:    'uflacs'
+    // 
+    // and the following integral 0 metadata:
+    // 
+    // estimated_polynomial_degree: 2
+    // optimize:                    True
+    // precision:                   16
+    // quadrature_degree:           2
+    // quadrature_rule:             'default'
+    // representation:              'uflacs'
+    // Precomputed values of basis functions and precomputations
+    // FE* dimensions: [entities][points][dofs]
+    // PI* dimensions: [entities][dofs][dofs] or [entities][dofs]
+    // PM* dimensions: [entities][dofs][dofs]
+    alignas(32) static const double FE3_C0_D01_F_Q2[1][1][2] = { { { -1.0, 1.0 } } };
+    alignas(32) static const double PI0[3][3][3] =
+        { { { 0.0, 0.0, 0.0 },
+            { 0.0, 0.3333333333333334, 0.1666666666666667 },
+            { 0.0, 0.1666666666666667, 0.3333333333333334 } },
+          { { 0.3333333333333334, 0.0, 0.1666666666666667 },
+            { 0.0, 0.0, 0.0 },
+            { 0.1666666666666667, 0.0, 0.3333333333333334 } },
+          { { 0.3333333333333334, 0.1666666666666667, 0.0 },
+            { 0.1666666666666667, 0.3333333333333334, 0.0 },
+            { 0.0, 0.0, 0.0 } } };
+    // Unstructured piecewise computations
+    const double J_c0 = coordinate_dofs[0] * FE3_C0_D01_F_Q2[0][0][0] + coordinate_dofs[2] * FE3_C0_D01_F_Q2[0][0][1];
+    const double J_c1 = coordinate_dofs[0] * FE3_C0_D01_F_Q2[0][0][0] + coordinate_dofs[4] * FE3_C0_D01_F_Q2[0][0][1];
+    const double J_c2 = coordinate_dofs[1] * FE3_C0_D01_F_Q2[0][0][0] + coordinate_dofs[3] * FE3_C0_D01_F_Q2[0][0][1];
+    const double J_c3 = coordinate_dofs[1] * FE3_C0_D01_F_Q2[0][0][0] + coordinate_dofs[5] * FE3_C0_D01_F_Q2[0][0][1];
+    alignas(32) double sp[12];
+    sp[0] = w[1][0] * w[3][0];
+    sp[1] = J_c0 * triangle_reference_facet_jacobian[facet][0][0];
+    sp[2] = J_c1 * triangle_reference_facet_jacobian[facet][1][0];
+    sp[3] = sp[1] + sp[2];
+    sp[4] = sp[3] * sp[3];
+    sp[5] = triangle_reference_facet_jacobian[facet][0][0] * J_c2;
+    sp[6] = triangle_reference_facet_jacobian[facet][1][0] * J_c3;
+    sp[7] = sp[5] + sp[6];
+    sp[8] = sp[7] * sp[7];
+    sp[9] = sp[4] + sp[8];
+    sp[10] = std::sqrt(sp[9]);
+    sp[11] = sp[0] * sp[10];
+    A[0] = sp[11] * PI0[facet][0][0];
+    A[1] = sp[11] * PI0[facet][0][1];
+    A[2] = sp[11] * PI0[facet][0][2];
+    A[3] = sp[11] * PI0[facet][1][0];
+    A[4] = sp[11] * PI0[facet][1][1];
+    A[5] = sp[11] * PI0[facet][1][2];
+    A[6] = sp[11] * PI0[facet][2][0];
+    A[7] = sp[11] * PI0[facet][2][1];
+    A[8] = sp[11] * PI0[facet][2][2];
+  }
+
+};
+
+
 class hslrobin_cell_integral_1_otherwise: public ufc::cell_integral
 {
 public:
@@ -3299,7 +3390,7 @@ public:
 
   const std::vector<bool> & enabled_coefficients() const final override
   {
-static const std::vector<bool> enabled({true, true, true, false, false});
+static const std::vector<bool> enabled({true, true, true, false, false, false, false});
 return enabled;
   }
 
@@ -3371,23 +3462,23 @@ return enabled;
 };
 
 
-class hslrobin_exterior_facet_integral_1_otherwise: public ufc::exterior_facet_integral
+class hslrobin_exterior_facet_integral_1_0: public ufc::exterior_facet_integral
 {
 public:
 
-  hslrobin_exterior_facet_integral_1_otherwise() : ufc::exterior_facet_integral()
+  hslrobin_exterior_facet_integral_1_0() : ufc::exterior_facet_integral()
   {
 
   }
 
-  ~hslrobin_exterior_facet_integral_1_otherwise() override
+  ~hslrobin_exterior_facet_integral_1_0() override
   {
 
   }
 
   const std::vector<bool> & enabled_coefficients() const final override
   {
-static const std::vector<bool> enabled({false, true, false, true, true});
+static const std::vector<bool> enabled({false, true, false, true, true, false, false});
 return enabled;
   }
 
@@ -3451,6 +3542,86 @@ return enabled;
 };
 
 
+class hslrobin_exterior_facet_integral_1_1: public ufc::exterior_facet_integral
+{
+public:
+
+  hslrobin_exterior_facet_integral_1_1() : ufc::exterior_facet_integral()
+  {
+
+  }
+
+  ~hslrobin_exterior_facet_integral_1_1() override
+  {
+
+  }
+
+  const std::vector<bool> & enabled_coefficients() const final override
+  {
+static const std::vector<bool> enabled({false, true, false, false, false, true, true});
+return enabled;
+  }
+
+  void tabulate_tensor(double * A,
+                       const double * const * w,
+                       const double * coordinate_dofs,
+                       std::size_t facet,
+                       int cell_orientation) const final override
+  {
+    // This function was generated using 'uflacs' representation
+    // with the following integrals metadata:
+    // 
+    // num_cells:         None
+    // optimize:          True
+    // precision:         16
+    // quadrature_degree: 1
+    // quadrature_rule:   'default'
+    // representation:    'uflacs'
+    // 
+    // and the following integral 0 metadata:
+    // 
+    // estimated_polynomial_degree: 1
+    // optimize:                    True
+    // precision:                   16
+    // quadrature_degree:           1
+    // quadrature_rule:             'default'
+    // representation:              'uflacs'
+    // Precomputed values of basis functions and precomputations
+    // FE* dimensions: [entities][points][dofs]
+    // PI* dimensions: [entities][dofs][dofs] or [entities][dofs]
+    // PM* dimensions: [entities][dofs][dofs]
+    alignas(32) static const double FE3_C0_D01_F_Q1[1][1][2] = { { { -1.0, 1.0 } } };
+    alignas(32) static const double PI0[3][3] =
+        { { 0.0, 0.5, 0.5 },
+          { 0.5, 0.0, 0.5 },
+          { 0.5, 0.5, 0.0 } };
+    // Unstructured piecewise computations
+    const double J_c0 = coordinate_dofs[0] * FE3_C0_D01_F_Q1[0][0][0] + coordinate_dofs[2] * FE3_C0_D01_F_Q1[0][0][1];
+    const double J_c1 = coordinate_dofs[0] * FE3_C0_D01_F_Q1[0][0][0] + coordinate_dofs[4] * FE3_C0_D01_F_Q1[0][0][1];
+    const double J_c2 = coordinate_dofs[1] * FE3_C0_D01_F_Q1[0][0][0] + coordinate_dofs[3] * FE3_C0_D01_F_Q1[0][0][1];
+    const double J_c3 = coordinate_dofs[1] * FE3_C0_D01_F_Q1[0][0][0] + coordinate_dofs[5] * FE3_C0_D01_F_Q1[0][0][1];
+    alignas(32) double sp[13];
+    sp[0] = w[1][0] * w[5][0];
+    sp[1] = sp[0] * (-1 * w[6][0]);
+    sp[2] = J_c0 * triangle_reference_facet_jacobian[facet][0][0];
+    sp[3] = J_c1 * triangle_reference_facet_jacobian[facet][1][0];
+    sp[4] = sp[2] + sp[3];
+    sp[5] = sp[4] * sp[4];
+    sp[6] = triangle_reference_facet_jacobian[facet][0][0] * J_c2;
+    sp[7] = triangle_reference_facet_jacobian[facet][1][0] * J_c3;
+    sp[8] = sp[6] + sp[7];
+    sp[9] = sp[8] * sp[8];
+    sp[10] = sp[5] + sp[9];
+    sp[11] = std::sqrt(sp[10]);
+    sp[12] = -1 * sp[1] * sp[11];
+    A[0] = sp[12] * PI0[facet][0];
+    A[1] = sp[12] * PI0[facet][1];
+    A[2] = sp[12] * PI0[facet][2];
+  }
+
+};
+
+
 class hslrobin_form_0: public ufc::form
 {
 public:
@@ -3467,7 +3638,7 @@ public:
 
   const char * signature() const final override
   {
-    return "6961abc682990a1637986969c948314ffce9b7330241d336199a6c7838d8fb651fa6aee0284d706d3e6c96ae1e31e82048b1c62fcf6d780c1edcb694347bb6e0";
+    return "2f2a4b58a76c45bbbe9cd2c3fcb04f993140f797b13ca0cbc65f0cc798199b56f6d086062adf844a85905aadfebc7affbd8c5ac0f73bf9a792f8d31bb8674fc5";
   }
 
   std::size_t rank() const final override
@@ -3477,16 +3648,16 @@ public:
 
   std::size_t num_coefficients() const final override
   {
-    return 3;
+    return 4;
   }
 
   std::size_t original_coefficient_position(std::size_t i) const final override
   {
-    if (i >= 3)
+    if (i >= 4)
     {
         throw std::runtime_error("Invalid original coefficient index.");
     }
-    static const std::vector<std::size_t> position = {0, 1, 2};
+    static const std::vector<std::size_t> position = {0, 1, 2, 3};
     return position[i];
   }
 
@@ -3519,6 +3690,8 @@ public:
         return new hslrobin_finite_element_2();
     case 4:
         return new hslrobin_finite_element_2();
+    case 5:
+        return new hslrobin_finite_element_2();
     default:
         return nullptr;
     }
@@ -3538,6 +3711,8 @@ public:
         return new hslrobin_dofmap_2();
     case 4:
         return new hslrobin_dofmap_2();
+    case 5:
+        return new hslrobin_dofmap_2();
     default:
         return nullptr;
     }
@@ -3550,7 +3725,7 @@ public:
 
   std::size_t max_exterior_facet_subdomain_id() const final override
   {
-    return 0;
+    return 2;
   }
 
   std::size_t max_interior_facet_subdomain_id() const final override
@@ -3630,7 +3805,15 @@ public:
 
   ufc::exterior_facet_integral * create_exterior_facet_integral(std::size_t subdomain_id) const final override
   {
-    return nullptr;
+    switch (subdomain_id)
+    {
+    case 0:
+        return new hslrobin_exterior_facet_integral_0_0();
+    case 1:
+        return new hslrobin_exterior_facet_integral_0_1();
+    default:
+        return nullptr;
+    }
   }
 
   ufc::interior_facet_integral * create_interior_facet_integral(std::size_t subdomain_id) const final override
@@ -3670,7 +3853,7 @@ public:
 
   ufc::exterior_facet_integral * create_default_exterior_facet_integral() const final override
   {
-    return new hslrobin_exterior_facet_integral_0_otherwise();
+    return nullptr;
   }
 
   ufc::interior_facet_integral * create_default_interior_facet_integral() const final override
@@ -3722,7 +3905,7 @@ public:
 
   const char * signature() const final override
   {
-    return "0f161965b94618ef5aabfe99aed03a3f46f51cac6f16882db7d466b296252777c370ab24e3e9366cb08bbfcf473f92ea741f761088a06202e1f49734c3daff7a";
+    return "157150fae38ead831bfdb82e815e922bef0696df34c3ebaf66c539633ab62c5b426c3c739ea6086b77cd2548abb514475f1f5d98aaedb368fc7cf7e45aa71623";
   }
 
   std::size_t rank() const final override
@@ -3732,16 +3915,16 @@ public:
 
   std::size_t num_coefficients() const final override
   {
-    return 5;
+    return 7;
   }
 
   std::size_t original_coefficient_position(std::size_t i) const final override
   {
-    if (i >= 5)
+    if (i >= 7)
     {
         throw std::runtime_error("Invalid original coefficient index.");
     }
-    static const std::vector<std::size_t> position = {0, 1, 2, 3, 4};
+    static const std::vector<std::size_t> position = {0, 1, 2, 3, 4, 5, 6};
     return position[i];
   }
 
@@ -3776,6 +3959,10 @@ public:
         return new hslrobin_finite_element_2();
     case 5:
         return new hslrobin_finite_element_2();
+    case 6:
+        return new hslrobin_finite_element_2();
+    case 7:
+        return new hslrobin_finite_element_2();
     default:
         return nullptr;
     }
@@ -3797,6 +3984,10 @@ public:
         return new hslrobin_dofmap_2();
     case 5:
         return new hslrobin_dofmap_2();
+    case 6:
+        return new hslrobin_dofmap_2();
+    case 7:
+        return new hslrobin_dofmap_2();
     default:
         return nullptr;
     }
@@ -3809,7 +4000,7 @@ public:
 
   std::size_t max_exterior_facet_subdomain_id() const final override
   {
-    return 0;
+    return 2;
   }
 
   std::size_t max_interior_facet_subdomain_id() const final override
@@ -3889,7 +4080,15 @@ public:
 
   ufc::exterior_facet_integral * create_exterior_facet_integral(std::size_t subdomain_id) const final override
   {
-    return nullptr;
+    switch (subdomain_id)
+    {
+    case 0:
+        return new hslrobin_exterior_facet_integral_1_0();
+    case 1:
+        return new hslrobin_exterior_facet_integral_1_1();
+    default:
+        return nullptr;
+    }
   }
 
   ufc::interior_facet_integral * create_interior_facet_integral(std::size_t subdomain_id) const final override
@@ -3929,7 +4128,7 @@ public:
 
   ufc::exterior_facet_integral * create_default_exterior_facet_integral() const final override
   {
-    return new hslrobin_exterior_facet_integral_1_otherwise();
+    return nullptr;
   }
 
   ufc::interior_facet_integral * create_default_interior_facet_integral() const final override
@@ -4061,12 +4260,12 @@ public:
 
 };
 
-class CoefficientSpace_r: public dolfin::FunctionSpace
+class CoefficientSpace_r0: public dolfin::FunctionSpace
 {
 public:
 
   // Constructor for standard function space
-  CoefficientSpace_r(std::shared_ptr<const dolfin::Mesh> mesh):
+  CoefficientSpace_r0(std::shared_ptr<const dolfin::Mesh> mesh):
     dolfin::FunctionSpace(mesh,
                           std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
                           std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh))
@@ -4075,7 +4274,7 @@ public:
   }
 
   // Constructor for constrained function space
-  CoefficientSpace_r(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
+  CoefficientSpace_r0(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
     dolfin::FunctionSpace(mesh,
                           std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
                           std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh, constrained_domain))
@@ -4085,12 +4284,12 @@ public:
 
 };
 
-class CoefficientSpace_s: public dolfin::FunctionSpace
+class CoefficientSpace_r1: public dolfin::FunctionSpace
 {
 public:
 
   // Constructor for standard function space
-  CoefficientSpace_s(std::shared_ptr<const dolfin::Mesh> mesh):
+  CoefficientSpace_r1(std::shared_ptr<const dolfin::Mesh> mesh):
     dolfin::FunctionSpace(mesh,
                           std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
                           std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh))
@@ -4099,7 +4298,55 @@ public:
   }
 
   // Constructor for constrained function space
-  CoefficientSpace_s(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
+  CoefficientSpace_r1(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
+    dolfin::FunctionSpace(mesh,
+                          std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
+                          std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh, constrained_domain))
+  {
+    // Do nothing
+  }
+
+};
+
+class CoefficientSpace_s0: public dolfin::FunctionSpace
+{
+public:
+
+  // Constructor for standard function space
+  CoefficientSpace_s0(std::shared_ptr<const dolfin::Mesh> mesh):
+    dolfin::FunctionSpace(mesh,
+                          std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
+                          std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh))
+  {
+    // Do nothing
+  }
+
+  // Constructor for constrained function space
+  CoefficientSpace_s0(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
+    dolfin::FunctionSpace(mesh,
+                          std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
+                          std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh, constrained_domain))
+  {
+    // Do nothing
+  }
+
+};
+
+class CoefficientSpace_s1: public dolfin::FunctionSpace
+{
+public:
+
+  // Constructor for standard function space
+  CoefficientSpace_s1(std::shared_ptr<const dolfin::Mesh> mesh):
+    dolfin::FunctionSpace(mesh,
+                          std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
+                          std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh))
+  {
+    // Do nothing
+  }
+
+  // Constructor for constrained function space
+  CoefficientSpace_s1(std::shared_ptr<const dolfin::Mesh> mesh, std::shared_ptr<const dolfin::SubDomain> constrained_domain):
     dolfin::FunctionSpace(mesh,
                           std::make_shared<const dolfin::FiniteElement>(std::make_shared<hslrobin_finite_element_2>()),
                           std::make_shared<const dolfin::DofMap>(std::make_shared<hslrobin_dofmap_2>(), *mesh, constrained_domain))
@@ -4225,7 +4472,9 @@ typedef CoefficientSpace_D Form_a_FunctionSpace_2;
 
 typedef CoefficientSpace_dt Form_a_FunctionSpace_3;
 
-typedef CoefficientSpace_r Form_a_FunctionSpace_4;
+typedef CoefficientSpace_r0 Form_a_FunctionSpace_4;
+
+typedef CoefficientSpace_r1 Form_a_FunctionSpace_5;
 
 class Form_a: public dolfin::Form
 {
@@ -4233,7 +4482,7 @@ public:
 
   // Constructor
   Form_a(std::shared_ptr<const dolfin::FunctionSpace> V1, std::shared_ptr<const dolfin::FunctionSpace> V0):
-    dolfin::Form(2, 3), D(*this, 0), dt(*this, 1), r(*this, 2)
+    dolfin::Form(2, 4), D(*this, 0), dt(*this, 1), r0(*this, 2), r1(*this, 3)
   {
     _function_spaces[0] = V0;
     _function_spaces[1] = V1;
@@ -4242,15 +4491,16 @@ public:
   }
 
   // Constructor
-  Form_a(std::shared_ptr<const dolfin::FunctionSpace> V1, std::shared_ptr<const dolfin::FunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> D, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> r):
-    dolfin::Form(2, 3), D(*this, 0), dt(*this, 1), r(*this, 2)
+  Form_a(std::shared_ptr<const dolfin::FunctionSpace> V1, std::shared_ptr<const dolfin::FunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> D, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> r0, std::shared_ptr<const dolfin::GenericFunction> r1):
+    dolfin::Form(2, 4), D(*this, 0), dt(*this, 1), r0(*this, 2), r1(*this, 3)
   {
     _function_spaces[0] = V0;
     _function_spaces[1] = V1;
 
     this->D = D;
     this->dt = dt;
-    this->r = r;
+    this->r0 = r0;
+    this->r1 = r1;
 
     _ufc_form = std::make_shared<const hslrobin_form_0>();
   }
@@ -4266,8 +4516,10 @@ public:
       return 0;
     else if (name == "dt")
       return 1;
-    else if (name == "r")
+    else if (name == "r0")
       return 2;
+    else if (name == "r1")
+      return 3;
 
     dolfin::dolfin_error("generated code for class Form",
                          "access coefficient data",
@@ -4285,7 +4537,9 @@ public:
     case 1:
       return "dt";
     case 2:
-      return "r";
+      return "r0";
+    case 3:
+      return "r1";
     }
 
     dolfin::dolfin_error("generated code for class Form",
@@ -4301,12 +4555,14 @@ public:
   typedef Form_a_MultiMeshFunctionSpace_1 MultiMeshTrialSpace;
   typedef Form_a_FunctionSpace_2 CoefficientSpace_D;
   typedef Form_a_FunctionSpace_3 CoefficientSpace_dt;
-  typedef Form_a_FunctionSpace_4 CoefficientSpace_r;
+  typedef Form_a_FunctionSpace_4 CoefficientSpace_r0;
+  typedef Form_a_FunctionSpace_5 CoefficientSpace_r1;
 
   // Coefficients
   dolfin::CoefficientAssigner D;
   dolfin::CoefficientAssigner dt;
-  dolfin::CoefficientAssigner r;
+  dolfin::CoefficientAssigner r0;
+  dolfin::CoefficientAssigner r1;
 };
 
 class MultiMeshForm_a: public dolfin::MultiMeshForm
@@ -4315,7 +4571,7 @@ public:
 
   // Constructor
   MultiMeshForm_a(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V1, std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0):
-    dolfin::MultiMeshForm(V1, V0), D(*this, 0), dt(*this, 1), r(*this, 2)
+    dolfin::MultiMeshForm(V1, V0), D(*this, 0), dt(*this, 1), r0(*this, 2), r1(*this, 3)
   {
     // Create and add standard forms
     std::size_t num_parts = V0->num_parts(); // assume all equal and pick first
@@ -4333,8 +4589,8 @@ public:
   }
 
   // Constructor
-  MultiMeshForm_a(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V1, std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> D, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> r):
-    dolfin::MultiMeshForm(V1, V0), D(*this, 0), dt(*this, 1), r(*this, 2)
+  MultiMeshForm_a(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V1, std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> D, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> r0, std::shared_ptr<const dolfin::GenericFunction> r1):
+    dolfin::MultiMeshForm(V1, V0), D(*this, 0), dt(*this, 1), r0(*this, 2), r1(*this, 3)
   {
     // Create and add standard forms
     std::size_t num_parts = V0->num_parts(); // assume all equal and pick first
@@ -4350,7 +4606,8 @@ public:
     /// Assign coefficients
     this->D = D;
     this->dt = dt;
-    this->r = r;
+    this->r0 = r0;
+    this->r1 = r1;
 
   }
 
@@ -4365,8 +4622,10 @@ public:
       return 0;
     else if (name == "dt")
       return 1;
-    else if (name == "r")
+    else if (name == "r0")
       return 2;
+    else if (name == "r1")
+      return 3;
 
     dolfin::dolfin_error("generated code for class Form",
                          "access coefficient data",
@@ -4384,7 +4643,9 @@ public:
     case 1:
       return "dt";
     case 2:
-      return "r";
+      return "r0";
+    case 3:
+      return "r1";
     }
 
     dolfin::dolfin_error("generated code for class Form",
@@ -4400,12 +4661,14 @@ public:
   typedef Form_a_MultiMeshFunctionSpace_1 MultiMeshTrialSpace;
   typedef Form_a_FunctionSpace_2 CoefficientSpace_D;
   typedef Form_a_FunctionSpace_3 CoefficientSpace_dt;
-  typedef Form_a_FunctionSpace_4 CoefficientSpace_r;
+  typedef Form_a_FunctionSpace_4 CoefficientSpace_r0;
+  typedef Form_a_FunctionSpace_5 CoefficientSpace_r1;
 
   // Coefficients
   dolfin::MultiMeshCoefficientAssigner D;
   dolfin::MultiMeshCoefficientAssigner dt;
-  dolfin::MultiMeshCoefficientAssigner r;
+  dolfin::MultiMeshCoefficientAssigner r0;
+  dolfin::MultiMeshCoefficientAssigner r1;
 };
 
 class Form_L_FunctionSpace_0: public dolfin::FunctionSpace
@@ -4458,9 +4721,13 @@ typedef CoefficientSpace_dt Form_L_FunctionSpace_2;
 
 typedef CoefficientSpace_f Form_L_FunctionSpace_3;
 
-typedef CoefficientSpace_r Form_L_FunctionSpace_4;
+typedef CoefficientSpace_r0 Form_L_FunctionSpace_4;
 
-typedef CoefficientSpace_s Form_L_FunctionSpace_5;
+typedef CoefficientSpace_s0 Form_L_FunctionSpace_5;
+
+typedef CoefficientSpace_r1 Form_L_FunctionSpace_6;
+
+typedef CoefficientSpace_s1 Form_L_FunctionSpace_7;
 
 class Form_L: public dolfin::Form
 {
@@ -4468,7 +4735,7 @@ public:
 
   // Constructor
   Form_L(std::shared_ptr<const dolfin::FunctionSpace> V0):
-    dolfin::Form(1, 5), u0(*this, 0), dt(*this, 1), f(*this, 2), r(*this, 3), s(*this, 4)
+    dolfin::Form(1, 7), u0(*this, 0), dt(*this, 1), f(*this, 2), r0(*this, 3), s0(*this, 4), r1(*this, 5), s1(*this, 6)
   {
     _function_spaces[0] = V0;
 
@@ -4476,16 +4743,18 @@ public:
   }
 
   // Constructor
-  Form_L(std::shared_ptr<const dolfin::FunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> u0, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> f, std::shared_ptr<const dolfin::GenericFunction> r, std::shared_ptr<const dolfin::GenericFunction> s):
-    dolfin::Form(1, 5), u0(*this, 0), dt(*this, 1), f(*this, 2), r(*this, 3), s(*this, 4)
+  Form_L(std::shared_ptr<const dolfin::FunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> u0, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> f, std::shared_ptr<const dolfin::GenericFunction> r0, std::shared_ptr<const dolfin::GenericFunction> s0, std::shared_ptr<const dolfin::GenericFunction> r1, std::shared_ptr<const dolfin::GenericFunction> s1):
+    dolfin::Form(1, 7), u0(*this, 0), dt(*this, 1), f(*this, 2), r0(*this, 3), s0(*this, 4), r1(*this, 5), s1(*this, 6)
   {
     _function_spaces[0] = V0;
 
     this->u0 = u0;
     this->dt = dt;
     this->f = f;
-    this->r = r;
-    this->s = s;
+    this->r0 = r0;
+    this->s0 = s0;
+    this->r1 = r1;
+    this->s1 = s1;
 
     _ufc_form = std::make_shared<const hslrobin_form_1>();
   }
@@ -4503,10 +4772,14 @@ public:
       return 1;
     else if (name == "f")
       return 2;
-    else if (name == "r")
+    else if (name == "r0")
       return 3;
-    else if (name == "s")
+    else if (name == "s0")
       return 4;
+    else if (name == "r1")
+      return 5;
+    else if (name == "s1")
+      return 6;
 
     dolfin::dolfin_error("generated code for class Form",
                          "access coefficient data",
@@ -4526,9 +4799,13 @@ public:
     case 2:
       return "f";
     case 3:
-      return "r";
+      return "r0";
     case 4:
-      return "s";
+      return "s0";
+    case 5:
+      return "r1";
+    case 6:
+      return "s1";
     }
 
     dolfin::dolfin_error("generated code for class Form",
@@ -4543,15 +4820,19 @@ public:
   typedef Form_L_FunctionSpace_1 CoefficientSpace_u0;
   typedef Form_L_FunctionSpace_2 CoefficientSpace_dt;
   typedef Form_L_FunctionSpace_3 CoefficientSpace_f;
-  typedef Form_L_FunctionSpace_4 CoefficientSpace_r;
-  typedef Form_L_FunctionSpace_5 CoefficientSpace_s;
+  typedef Form_L_FunctionSpace_4 CoefficientSpace_r0;
+  typedef Form_L_FunctionSpace_5 CoefficientSpace_s0;
+  typedef Form_L_FunctionSpace_6 CoefficientSpace_r1;
+  typedef Form_L_FunctionSpace_7 CoefficientSpace_s1;
 
   // Coefficients
   dolfin::CoefficientAssigner u0;
   dolfin::CoefficientAssigner dt;
   dolfin::CoefficientAssigner f;
-  dolfin::CoefficientAssigner r;
-  dolfin::CoefficientAssigner s;
+  dolfin::CoefficientAssigner r0;
+  dolfin::CoefficientAssigner s0;
+  dolfin::CoefficientAssigner r1;
+  dolfin::CoefficientAssigner s1;
 };
 
 class MultiMeshForm_L: public dolfin::MultiMeshForm
@@ -4560,7 +4841,7 @@ public:
 
   // Constructor
   MultiMeshForm_L(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0):
-    dolfin::MultiMeshForm(V0), u0(*this, 0), dt(*this, 1), f(*this, 2), r(*this, 3), s(*this, 4)
+    dolfin::MultiMeshForm(V0), u0(*this, 0), dt(*this, 1), f(*this, 2), r0(*this, 3), s0(*this, 4), r1(*this, 5), s1(*this, 6)
   {
     // Create and add standard forms
     std::size_t num_parts = V0->num_parts(); // assume all equal and pick first
@@ -4578,8 +4859,8 @@ public:
   }
 
   // Constructor
-  MultiMeshForm_L(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> u0, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> f, std::shared_ptr<const dolfin::GenericFunction> r, std::shared_ptr<const dolfin::GenericFunction> s):
-    dolfin::MultiMeshForm(V0), u0(*this, 0), dt(*this, 1), f(*this, 2), r(*this, 3), s(*this, 4)
+  MultiMeshForm_L(std::shared_ptr<const dolfin::MultiMeshFunctionSpace> V0, std::shared_ptr<const dolfin::GenericFunction> u0, std::shared_ptr<const dolfin::GenericFunction> dt, std::shared_ptr<const dolfin::GenericFunction> f, std::shared_ptr<const dolfin::GenericFunction> r0, std::shared_ptr<const dolfin::GenericFunction> s0, std::shared_ptr<const dolfin::GenericFunction> r1, std::shared_ptr<const dolfin::GenericFunction> s1):
+    dolfin::MultiMeshForm(V0), u0(*this, 0), dt(*this, 1), f(*this, 2), r0(*this, 3), s0(*this, 4), r1(*this, 5), s1(*this, 6)
   {
     // Create and add standard forms
     std::size_t num_parts = V0->num_parts(); // assume all equal and pick first
@@ -4596,8 +4877,10 @@ public:
     this->u0 = u0;
     this->dt = dt;
     this->f = f;
-    this->r = r;
-    this->s = s;
+    this->r0 = r0;
+    this->s0 = s0;
+    this->r1 = r1;
+    this->s1 = s1;
 
   }
 
@@ -4614,10 +4897,14 @@ public:
       return 1;
     else if (name == "f")
       return 2;
-    else if (name == "r")
+    else if (name == "r0")
       return 3;
-    else if (name == "s")
+    else if (name == "s0")
       return 4;
+    else if (name == "r1")
+      return 5;
+    else if (name == "s1")
+      return 6;
 
     dolfin::dolfin_error("generated code for class Form",
                          "access coefficient data",
@@ -4637,9 +4924,13 @@ public:
     case 2:
       return "f";
     case 3:
-      return "r";
+      return "r0";
     case 4:
-      return "s";
+      return "s0";
+    case 5:
+      return "r1";
+    case 6:
+      return "s1";
     }
 
     dolfin::dolfin_error("generated code for class Form",
@@ -4654,15 +4945,19 @@ public:
   typedef Form_L_FunctionSpace_1 CoefficientSpace_u0;
   typedef Form_L_FunctionSpace_2 CoefficientSpace_dt;
   typedef Form_L_FunctionSpace_3 CoefficientSpace_f;
-  typedef Form_L_FunctionSpace_4 CoefficientSpace_r;
-  typedef Form_L_FunctionSpace_5 CoefficientSpace_s;
+  typedef Form_L_FunctionSpace_4 CoefficientSpace_r0;
+  typedef Form_L_FunctionSpace_5 CoefficientSpace_s0;
+  typedef Form_L_FunctionSpace_6 CoefficientSpace_r1;
+  typedef Form_L_FunctionSpace_7 CoefficientSpace_s1;
 
   // Coefficients
   dolfin::MultiMeshCoefficientAssigner u0;
   dolfin::MultiMeshCoefficientAssigner dt;
   dolfin::MultiMeshCoefficientAssigner f;
-  dolfin::MultiMeshCoefficientAssigner r;
-  dolfin::MultiMeshCoefficientAssigner s;
+  dolfin::MultiMeshCoefficientAssigner r0;
+  dolfin::MultiMeshCoefficientAssigner s0;
+  dolfin::MultiMeshCoefficientAssigner r1;
+  dolfin::MultiMeshCoefficientAssigner s1;
 };
 
 // Class typedefs
