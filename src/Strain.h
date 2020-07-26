@@ -365,7 +365,7 @@ public:
         C14HSL  = 1,
         NUM_HSLTYPES
     };
-    enum inductionFlags
+    enum inductionFlag
     {
         INDUCTION,
         NUM_INDUCTIONFLAGS
@@ -373,7 +373,7 @@ public:
 
     static std::vector<bool> inductionFlags;
 
-//    double			getProteinNumber(sendRecvStrain::qProteins which) {return iPROTEIN[which];}
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
 
     //CONSTRUCTOR: (called for initial seed cells only)
 //	sendRecvStrain(eQ::Cell::strainType strainType, const double timestep, const double nodesPerMicron, const size_t numHSL)
