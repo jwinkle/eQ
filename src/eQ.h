@@ -189,6 +189,16 @@ class simulationTiming
     public:
 
     static constexpr double HOURS(double hours) { return 60.0 * hours; }
+    class triggerEvent
+    {
+    public:
+        triggerEvent(std::string which, double when) : event{which, when} {}
+        virtual ~triggerEvent()=default;
+        virtual bool operator()(double simTime)=0;
+        std::pair<std::string, double> event;
+        static std::vector<std::shared_ptr<triggerEvent>> list;
+    };
+
 
         simulationTiming()=default;
         void dt(double dt)
@@ -224,7 +234,11 @@ class simulationTiming
         {
             return (_timeSteps%(mins*stepsPerMin) == 0);
         }
-        void    setTimerFlag(std::string key, double when)
+        void    setTimerFlag(const std::pair<std::string, double> event)
+        {
+            flags.insert({event.first, alarm{event.second, false, false}});
+        }
+        void    setTimerFlag(const std::string &key, double when)
         {
             flags.insert({key, {when, false, false}});
         }
@@ -243,16 +257,40 @@ class simulationTiming
             flags.at(key).ignore = true;
         }
 
+        void setFlags(std::vector<std::shared_ptr<triggerEvent>> eventList)
+        {
+            for(auto flag : eventList)
+            {
+                flags.insert({flag->event.first, alarm{flag->event.second, false, false, flag}});
+            }
+        }
+        void checkTimerFlags()
+        {
+            for(alarm_t &flag : flags)
+            {
+                if(flagThrown(flag.first))
+                {
+                    flag.second.ignore = flag.second.call->operator()(simTime());
+                }
+            }
+
+        }
+
+        using params_t    = eQ::data::parametersType;
+        friend
+        params_t & operator<<(params_t &params, const eQ::simulationTiming &timer);
+
         size_t stepsPerMin, stepsPerHour;
 
     private:
-        struct alarm { double when; bool thrown; bool ignore; };
+        struct alarm { double when; bool thrown; bool ignore; std::shared_ptr<triggerEvent> call;};
         double  _dt;
         size_t  _simulationTimeMinutes;
         size_t  _timeSteps=0;
         double  _timeTare;
         double  _timer;
         std::map<std::string, alarm> flags;
+        using alarm_t = std::pair<const std::string, alarm>;
     };
 //=======================================================================================
 class diffusionSolver
