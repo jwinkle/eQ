@@ -84,7 +84,7 @@ public:
             _strainCounts.clear();
             _eraseCounter=0;
         }
-        eQabm::cellContainer &operator<<(std::shared_ptr<Ecoli> cell)
+        eQabm::cellContainer &operator<<(std::shared_ptr<Ecoli> &cell)
         {//adds cell to list, increment count
             _cellList.push_front(cell);
             ++_cellCount;//must count these manually using a forward_list
@@ -93,13 +93,24 @@ public:
         }
         eQabm::cellContainer &operator>>(std::shared_ptr<Ecoli> &cell)
         {//fetches cell only (does not remove it)
-            cell = bool(*this) ? (*_icells) : nullptr;
+            //check not at end of list:
+            if(_icells != _cellList.end())
+            {
+                cell = (*_icells);
+                //flag it a cell was extracted
+                _pendingCell = true;
+            }
+            else
+            {
+                cell = nullptr;
+                _pendingCell = false;
+            }
             return (*this);
         }
         eQabm::cellContainer &operator++()
         {//increment the list pointer for next access
             //check if we're at the end of list (in case >> ended)
-            if( bool(*this) )
+            if(_icells != _cellList.end())
             {//necessary for forward_list to have 2 pointers:
                 _icellsPrev = _icells;
                 ++_icells;
@@ -115,8 +126,10 @@ public:
             return (*this);
         }
         operator bool()
-        {
-            return _icells != _cellList.end();
+        {//returns state of the list pointer as boolean cast
+            return (_pendingCell)  // must check if last >> hit last cell
+                    ? true
+                    : _icells != _cellList.end();
         }
         void average(double &data)
         {
@@ -130,6 +143,7 @@ public:
         }
         void beginIteration()
         {
+            _pendingCell = false;
             _icells     = _cellList.begin();
             _icellsPrev = _cellList.before_begin();//needed for forward_list C++ data structure
         }
@@ -153,6 +167,7 @@ public:
         size_t eraseCounter() { return _eraseCounter; }
 
     protected:
+        bool                                        _pendingCell=false;
         std::forward_list<std::shared_ptr<Ecoli>>   _cellList;
         size_t                                      _cellCount=0;//must count these manually using a forward_list
         size_t                                      _eraseCounter=0;
@@ -231,6 +246,7 @@ public:
         cellParams.meanDivisionLength          = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
         cellParams.divisionLength              = eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;//default, possibly reset below:
         cellParams.doublingPeriodMinutes       = eQ::Cell::DEFAULT_CELL_DOUBLING_PERIOD_MINUTES;
+        cellParams.divisionCorrelationAlpha    = 0.5;
         cellParams.x          = 0.0;
         cellParams.y          = 0.0;
         cellParams.angle      = 0.0;
