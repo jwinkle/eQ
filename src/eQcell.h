@@ -24,6 +24,7 @@ public:
 		double divisionLength;
 		double meanDivisionLength;
 		double doublingPeriodMinutes;
+        double divisionCorrelationAlpha;
 	};
 	virtual void       setCellID(long i) {ID = i;}
     virtual long       getCellID() {return ID;}
