@@ -412,11 +412,14 @@ int main(int argc, char* argv[])
         eQ::data::parameters << bcs;
 
     };
-    auto checkAdvectionDiffusionStability = [&](double D)
+    auto checkAdvectionDiffusionStability = [&]()
     {
+        double D = double(eQ::data::physicalDiffusionRates["C4"][0]);
+        double vc = double(eQ::data::parameters["trapChannelLinearFlowRate"]);
+
         //nodes per micron must be adjust by length scaling to get "physical" node size
         double h = double(eQ::data::parameters["lengthScaling"])/double(eQ::data::parameters["nodesPerMicronSignaling"]);
-        double v = double(eQ::data::parameters["trapChannelLinearFlowRate"]) * 60.0;//use physical rate (um/min)
+        double v = vc * 60.0;//use physical rate (um/min)
         double dt = double(eQ::data::parameters["dt"]);
 
         double h_stability = 2.0*D/(v * h);
@@ -425,9 +428,13 @@ int main(int argc, char* argv[])
         size_t timeLoops = ceil(dt/t_stability);
         eQ::data::parameters["channelSolverNumberIterations"] = timeLoops;
 
-        std::cout<<"\t  ADVECTION-DIFFUSION STABILITY (h,t) > 1 => OK: "
-                <<h_stability<<", "<<t_stability
-               <<", < 1  ==>  x"<<timeLoops<<" loops for channel solver."<<std::endl;
+        if(eQ::data::isControllerNode)
+        {
+            std::cout<<"\n\t(v="<<vc<<"um/sec) ADVECTION-DIFFUSION STABILITY (h,t) > 1 => OK: "
+                    <<h_stability<<", "<<t_stability
+                   <<", < 1  ==>  x"<<timeLoops<<" loops for channel solver."
+                  <<std::endl<<std::endl;
+        }
 
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
@@ -442,57 +449,62 @@ int main(int argc, char* argv[])
         eQ::data::parameters["simType"]         = "SENDER_RECEIVER";
         int numberOfDiffusionNodes              = 1;
 
-//        setSimulationTimeStep(0.1);//resets the timer object
-        setSimulationTimeStep(0.05);//resets the timer object
+        setSimulationTimeStep(0.1);//resets the timer object
+//        setSimulationTimeStep(0.05);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
 
-
-        eQ::data::parameters["mutantAspectRatioScale"] = 0.6;
-
-        struct AnisotropicDiffusion : public event_t
+        struct changeFlowRate : public event_t
         {
-            AnisotropicDiffusion() : triggerEvent("AnisotropicDiffusion", eQ::simulationTiming::HOURS(5)) {}
+            const std::shared_ptr<Simulation>   &simulation;
+            eQ::simulationTiming                &simulationTimer;
+            std::vector<double>                 changeRates;
+            double                              changeTime;
+            std::function<bool()>               checkStability;
+            size_t                              count;
+
+            changeFlowRate(const std::shared_ptr<Simulation> &sim, eQ::simulationTiming &timer, double time,
+                           std::vector<double> rates, double deltaT, std::function<bool()> f)
+                : triggerEvent("changeFlowRate", time),
+                  simulation(sim), simulationTimer(timer), changeRates(rates), changeTime(deltaT), checkStability(f),
+                    count(0) {}
+
             bool operator()(double simTime) override
             {
-                eQ::data::parameters["AnisotropicDiffusion_Transverse"] = 0.12;
-                if(eQ::data::isControllerNode)
+                if(count < changeRates.size())
                 {
-                    std::cout<<std::endl<<std::endl;
-                    std::cout<<"Trigger of AnisotropicDiffusion_Transverse to: "
-                            <<eQ::data::parameters["AnisotropicDiffusion_Transverse"]
-                            <<" at simTime="<<simTime<<std::endl;
-                    std::cout<<std::endl<<std::endl;
+                    eQ::data::parameters["trapChannelLinearFlowRate"] = changeRates[count];//microns/sec;
+                    eQ::data::parameters["simulationFlowRate"] = changeRates[count] * 60.0/double(eQ::data::parameters["lengthScaling"]);//microns/sec * 60sec/min;
+                    ++count;
+                    checkStability();
+                    if(false == eQ::data::isControllerNode)
+                    {
+                        simulation->diffusionSolver->setRobinBoundaryConditions();
+                        simulation->diffusionSolver->updateRobinParameters();
+                        simulation->setBoundaryRate();
+                    }
                 }
-                return true;//ignore
-            }
-        };
-        struct Induction : public event_t
-        {
-            Induction() : triggerEvent("Induction", eQ::simulationTiming::HOURS(7)) {}
-            bool operator()(double simTime) override
-            {
-                if(eQ::data::isControllerNode)
+                if(count < changeRates.size())//check updated count if next event needed
                 {
-                    sendRecvStrain::setFlag(sendRecvStrain::INDUCTION);
-
-                    std::cout<<std::endl<<std::endl;
-                    std::cout<<"Trigger of aspect ratio change to: "
-                            <<eQ::data::parameters["mutantAspectRatioScale"]
-                            <<" at simTime="<<simTime<<std::endl;
-                    std::cout<<std::endl<<std::endl;
+                    simulationTimer.updateFlag(event.first,  simTime + changeTime);
+                    return false;//timer still active (don't ignore)
                 }
-                return true;//ignore
+                else
+                    return true;//ignore
             }
         };
 
-        event_t::list.push_back(std::make_shared<AnisotropicDiffusion>());
-        event_t::list.push_back(std::make_shared<Induction>());
+        double trapFlowRate = 1;//um/sec
+        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};
+        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);
+        event_t::list.push_back(std::make_shared<changeFlowRate>(simulation, simulationTimer, eQ::simulationTiming::HOURS(3),
+                                                                 flowRateChanges, flowRateDeltaT, checkAdvectionDiffusionStability));
 
+        eQ::data::parameters["flowRateChanges"]  =  flowRateChanges;
+        eQ::data::parameters["flowRateDeltaT"]  =  flowRateDeltaT;
 
         //target max HSL in bulk:
         double hslPeakValue = 1.0e3;
-        double trapFlowRate = 10.0;//um/sec
 
         numSimulations = 1;
     //    numSimulations = 2;
@@ -510,9 +522,9 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
-        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
+//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-//        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
+        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
 //        double trapFlowRate = 0.0;//um/sec
@@ -527,8 +539,8 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["lengthScaling"] = 1.0;//150mins
 //        eQ::data::parameters["lengthScaling"] = 2.0;//150mins
-//        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
-        eQ::data::parameters["lengthScaling"] = 4.0;//150mins
+        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
+//        eQ::data::parameters["lengthScaling"] = 4.0;//150mins
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
@@ -576,7 +588,7 @@ int main(int argc, char* argv[])
         if(bool(eQ::data::parameters["hslSignaling"]))
         {
             computeEffectiveDegradationRates(eQ::data::physicalDiffusionRates);
-            checkAdvectionDiffusionStability(eQ::data::physicalDiffusionRates["C4"][0]);//send max. D, sets channel loop iterations
+            checkAdvectionDiffusionStability();//send max. D, sets channel loop iterations
 
             eQ::data::parameters["hslProductionRate_C4"]
                     = (hslPeakValue * double(eQ::data::parameters["gammaT_C4"]));//
@@ -617,8 +629,11 @@ int main(int argc, char* argv[])
 //        strainTypes.push_back(std::make_shared<aspectRatioInvasionStrain>(strainB));
 
         //SENDER-RECEIVER:
+//        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
+//        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainB));
+
+        //QUORUM-SENSING:
         strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
-        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainB));
 
         //MODULUS:
 //        strainTypes.push_back(std::make_shared<MODULUSmodule>(dt, npm, numHSL));
