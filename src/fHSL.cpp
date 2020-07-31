@@ -7,7 +7,7 @@
 #include <iostream>
 #include <chrono>
 
-#include <mshr.h>
+//#include <mshr.h>
 //using namespace dolfin;
 //using namespace mshr;
 
@@ -28,7 +28,7 @@ fenicsInterface::fenicsInterface(const eQ::diffusionSolver::params &initParams)
         : myParams(initParams), isDataRecordingNode(true)
 {
     //the shell class consists of the mesh, functions, solvers etc...
-    shell = std::make_shared<fenicsShell>();
+    shell = std::make_shared<fenicsData>();
     //the init function will distinguish signaling and data recording via boolean isDataRecordingNode
     fenicsClassInit();
 }
@@ -253,10 +253,9 @@ void fenicsInterface::fenicsClassInit()
         //================================================================
         //              //FLOW CHANNEL MESH
         //================================================================
-//        topChannel      = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
-//        bottomChannel   = std::make_shared<fenicsBaseClass<AdvectionDiffusion::FunctionSpace, AdvectionDiffusion::Form_L, AdvectionDiffusion::Form_a>>();
-        topChannel      = std::make_shared<fenicsChannel>();
-        bottomChannel   = std::make_shared<fenicsChannel>();
+        //pass the trap data structure for use by channels:
+        topChannel      = std::make_shared<fenicsChannel>(shell->data);
+        bottomChannel   = std::make_shared<fenicsChannel>(shell->data);
 
         //TOP/BOTTOM CHANNELS MESH GENERATION:
         //use Robin BC instead of computing entire channel:
@@ -327,9 +326,47 @@ void fenicsInterface::fenicsClassInit()
         dolfin::set_log_level(dolfin::WARNING);
     }
 }
+
+//public:
+void fenicsInterface::setRobinBoundaryConditions()
+{
+    fenicsVariables &data = shell->data;
+
+//      ======= MEDIA FLOW RATE SETTING =======
+        channelFlowVelocity = double(eQ::data::parameters["simulationFlowRate"]);
+        data.v     = std::make_shared<dolfin::Constant>(channelFlowVelocity);//units: um/min
+
+
+        double channelLengthLeft    = double(eQ::data::parameters["simulationChannelLengthLeft"]);//channel length is in simulation units
+        double channelLengthRight    = double(eQ::data::parameters["simulationChannelLengthRight"]);//channel length is in simulation units
+        double lvdl        = (channelLengthLeft * channelFlowVelocity)/myDiffusionConstant;
+        double lvdr        = (channelLengthRight * channelFlowVelocity)/myDiffusionConstant;
+
+
+
+        //Robin boundary condition rates for left,right of trap (or channel)
+        //see my Overleaf writeup for this derivation:
+        if(channelFlowVelocity > 1.0e-6)
+        {
+            leftRate = channelFlowVelocity * (1.0/(1.0 - exp(-lvdl)));
+            rightRate = channelFlowVelocity * (1.0/(exp(lvdr) - 1.0));
+        }
+        else
+        {//set to a linear slope to the channel left/right boundary:
+            leftRate = myDiffusionConstant/channelLengthLeft;
+            rightRate = myDiffusionConstant/channelLengthRight;
+        }
+        data.s_left     = std::make_shared<dolfin::Constant>(0.0);
+        data.s_right    = std::make_shared<dolfin::Constant>(0.0);
+        data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
+        data.r_right    = std::make_shared<dolfin::Constant>(rightRate);
+
+}
+
 //private:
 void fenicsInterface::createHSL()
 {
+    fenicsVariables &data = shell->data;
 
     //PERIMETER BOUNDARY BC:
     //SUBDOMAINS TO MARK LEFT/RIGHT BOUNDARIES:
@@ -341,7 +378,6 @@ void fenicsInterface::createHSL()
     //================================================================
     //              //CLASS VARIABLES
     //================================================================
-    fenicsVariable::data data;
 
     data.dt     = std::make_shared<dolfin::Constant>(myParams.dt);
     data.D      = std::make_shared<dolfin::Constant>(myDiffusionConstant);
@@ -356,36 +392,7 @@ void fenicsInterface::createHSL()
                 D12, size_t(myParams.nodesPerMicron), nodesH, nodesW, 0.0);
 
 
-//                              ======= MEDIA FLOW RATE SETTING =======
-    double channelFlowVelocity = double(eQ::data::parameters["simulationFlowRate"]);
-    data.v     = std::make_shared<dolfin::Constant>(channelFlowVelocity);//units: um/min
-
-
-    double channelLengthLeft    = double(eQ::data::parameters["simulationChannelLengthLeft"]);//channel length is in simulation units
-    double channelLengthRight    = double(eQ::data::parameters["simulationChannelLengthRight"]);//channel length is in simulation units
-    double lvdl        = (channelLengthLeft * channelFlowVelocity)/myDiffusionConstant;
-    double lvdr        = (channelLengthRight * channelFlowVelocity)/myDiffusionConstant;
-
-    double rightRate = 0.0;
-    double leftRate = 0.0;
-
-
-    //Robin boundary condition rates for left,right of trap (or channel)
-    //see my Overleaf writeup for this derivation:
-    if(channelFlowVelocity > 1.0e-6)
-    {
-        leftRate = channelFlowVelocity * (1.0/(1.0 - exp(-lvdl)));
-        rightRate = channelFlowVelocity * (1.0/(exp(lvdr) - 1.0));
-    }
-    else
-    {//set to a linear slope to the channel left/right boundary:
-        rightRate = myDiffusionConstant/channelLengthLeft;
-        leftRate = myDiffusionConstant/channelLengthRight;
-    }
-    data.s_left     = std::make_shared<dolfin::Constant>(0.0);
-    data.s_right    = std::make_shared<dolfin::Constant>(0.0);
-    data.r_left     = std::make_shared<dolfin::Constant>(leftRate);
-    data.r_right    = std::make_shared<dolfin::Constant>(rightRate);
+    setRobinBoundaryConditions();
 
 //================================================================
 //             FUNCTION SPACES, FORMS, FUNCTIONS:
@@ -405,18 +412,13 @@ void fenicsInterface::createHSL()
     data.meshFunctionChannel = std::make_shared<MeshFunction<size_t>>(topChannel->mesh, topChannel->mesh->topology().dim()-1, 0);
     leftWall->mark(*data.meshFunctionChannel, 1);
     rightWall->mark(*data.meshFunctionChannel, 2);
-    //set the .ufl form parameters from data:
-        topChannel->setFormParameters(data);
-        topChannel->createLinearVariationalSolver();
-        topChannel->createGridCoordinatesToDofMapping();
+        topChannel->createLinearProblem();//copy data struct from shell
 
     //repeat for bottom channel
     data.meshFunctionChannel = std::make_shared<MeshFunction<size_t>>(bottomChannel->mesh, bottomChannel->mesh->topology().dim()-1, 0);
     leftWall->mark(*data.meshFunctionChannel, 1);
     rightWall->mark(*data.meshFunctionChannel, 2);
-        bottomChannel->setFormParameters(data);
-        bottomChannel->createLinearVariationalSolver();
-        bottomChannel->createGridCoordinatesToDofMapping();
+        bottomChannel->createLinearProblem();//copy data struct from shell
 
     //actual #dofs are in Function sizes (excludes ghost cells)
     topChannel->u->vector()->get_local(solution_vectorTopChannel);
@@ -519,7 +521,7 @@ void fenicsInterface::createHSL()
         }
         //NEUMANN:  do nothing...
 
-        //BOTTOMR WALL
+        //BOTTOM WALL
         thisData = eQ::data::parameters["boundaries"]["bottom"][1].get<std::vector<double>>();
         if(0.0 == thisData[0])//DIRICHLET
         {
@@ -575,9 +577,7 @@ void fenicsInterface::createHSL()
 //             FORMS, VARIATIONAL PROBLEMS AND SOLVERS::
 ////////////////////////////////////////////////////////////////////////////////
     //call the derived-class method to set parameters into the .ufl file
-    shell->setFormParameters(data);
-    shell->createLinearVariationalSolver();
-    shell->createGridCoordinatesToDofMapping();
+    shell->createLinearProblem();
 
     //actual #dofs are in Function sizes (excludes ghost cells)
     shell->u->vector()->get_local(solution_vector);

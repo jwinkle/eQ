@@ -189,6 +189,16 @@ class simulationTiming
     public:
 
     static constexpr double HOURS(double hours) { return 60.0 * hours; }
+    class triggerEvent
+    {
+    public:
+        triggerEvent(std::string which, double when) : event{which, when} {}
+        virtual ~triggerEvent()=default;
+        virtual bool operator()(double simTime)=0;
+        std::pair<std::string, double> event;
+        static std::vector<std::shared_ptr<triggerEvent>> list;
+    };
+
 
         simulationTiming()=default;
         void dt(double dt)
@@ -224,15 +234,19 @@ class simulationTiming
         {
             return (_timeSteps%(mins*stepsPerMin) == 0);
         }
-        void    setTimerFlag(std::string key, double when)
-        {
-            flags.insert({key, {when, false, false}});
-        }
-        void    setTimerFlag(std::string key)
-        {//overload with no timer ==> check every step
-            flags.insert({key, {-1.0, false, false}});
-        }
-        bool    flagThrown(std::string key)
+//        void    setTimerFlag(const std::pair<std::string, double> event)
+//        {
+//            flags.insert({event.first, alarm{event.second, false, false}});
+//        }
+//        void    setTimerFlag(const std::string &key, double when)
+//        {
+//            flags.insert({key, alarm{when, false, false}});
+//        }
+//        void    setTimerFlag(const std::string &key)
+//        {//overload with no timer ==> check every step
+//            flags.insert({key, alarm{-1.0, false, false}});
+//        }
+        bool    flagThrown(const std::string &key) const
         {
             if(0 == flags.count(key)) return false;
             return (flags.at(key).thrown && !flags.at(key).ignore);
@@ -242,17 +256,47 @@ class simulationTiming
             if(0 == flags.count(key)) return;
             flags.at(key).ignore = true;
         }
+        void    updateFlag(const std::string &key, const double when)
+        {//by default, set ignore to false if the flag is updated with new time:
+            if(0 == flags.count(key)) return;
+            flags.at(key).when = when;
+            flags.at(key).ignore = false;
+        }
+
+        void setFlags(std::vector<std::shared_ptr<triggerEvent>> eventList)
+        {
+            for(auto flag : eventList)
+            {
+                flags.insert({flag->event.first, alarm{flag->event.second, false, false, flag}});
+            }
+        }
+        void checkTimerFlags()
+        {
+            for(alarm_t &flag : flags)
+            {
+                if(flagThrown(flag.first))
+                {
+                    flag.second.ignore = flag.second.call->operator()(simTime());
+                }
+            }
+
+        }
+
+        using params_t    = eQ::data::parametersType;
+        friend
+        params_t & operator<<(params_t &params, const eQ::simulationTiming &timer);
 
         size_t stepsPerMin, stepsPerHour;
 
     private:
-        struct alarm { double when; bool thrown; bool ignore; };
+        struct alarm { double when; bool thrown; bool ignore; std::shared_ptr<triggerEvent> call;};
         double  _dt;
         size_t  _simulationTimeMinutes;
         size_t  _timeSteps=0;
         double  _timeTare;
         double  _timer;
         std::map<std::string, alarm> flags;
+        using alarm_t = std::pair<const std::string, alarm>;
     };
 //=======================================================================================
 class diffusionSolver
