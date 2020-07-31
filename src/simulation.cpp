@@ -602,24 +602,28 @@ void Simulation::computeBoundaryWell()
         diffusionSolver->setBoundaryValues(boundaryWellConcentration);
     }
 }
+void Simulation::setBoundaryRate()
+{
+    boundaryDecayRate =  //units: min^-1; = linearFlowRate/trapLength = 100/2000=0.05sec^-1
+            double(eQ::data::parameters["simulationFlowRate"])
+            / double(eQ::data::parameters["simulationTrapWidthMicrons"]);
+
+    if((double(eQ::data::parameters["dt"]) * boundaryDecayRate) >= 1.0)
+        std::cout<<"ERROR!  timestep too large for decay of boundary well concentration: "
+                <<(double(eQ::data::parameters["dt"]) * boundaryDecayRate)<<std::endl;
+}
 void Simulation::initBoundaryWell()
 {
     //BOUNDARY WELL MODEL INITIALIZATION
     //initialization w.r.t. the trap boundary (if used)
     boundaryWellConcentration = 0.0;
     boundaryUnderFlow = 0;
-    boundaryDecayRate =  //units: min^-1; = linearFlowRate/trapLength = 100/2000=0.05sec^-1
-            double(eQ::data::parameters["simulationFlowRate"])
-            / double(eQ::data::parameters["simulationTrapWidthMicrons"]);
 
     //compute volume of flow channels (+ left/right sides in first approximation)
     wellScaling = 2.0 * 10.0 * (15.0/double(eQ::data::parameters["lengthScaling"])) //10um z-height, 15um y-height
             * (double(eQ::data::parameters["simulationTrapWidthMicrons"]) + double(eQ::data::parameters["simulationTrapHeightMicrons"]));//x channelThickness x channelHeight x #
 
-    if((double(eQ::data::parameters["dt"]) * boundaryDecayRate) >= 1.0)
-        std::cout<<"ERROR!  timestep too large for decay of boundary well concentration: "
-                <<(double(eQ::data::parameters["dt"]) * boundaryDecayRate)<<std::endl;
-
+    setBoundaryRate();
 }
 void Simulation::mpiAssignCommunicators()
 {

@@ -234,19 +234,19 @@ class simulationTiming
         {
             return (_timeSteps%(mins*stepsPerMin) == 0);
         }
-        void    setTimerFlag(const std::pair<std::string, double> event)
-        {
-            flags.insert({event.first, alarm{event.second, false, false}});
-        }
-        void    setTimerFlag(const std::string &key, double when)
-        {
-            flags.insert({key, {when, false, false}});
-        }
-        void    setTimerFlag(std::string key)
-        {//overload with no timer ==> check every step
-            flags.insert({key, {-1.0, false, false}});
-        }
-        bool    flagThrown(std::string key)
+//        void    setTimerFlag(const std::pair<std::string, double> event)
+//        {
+//            flags.insert({event.first, alarm{event.second, false, false}});
+//        }
+//        void    setTimerFlag(const std::string &key, double when)
+//        {
+//            flags.insert({key, alarm{when, false, false}});
+//        }
+//        void    setTimerFlag(const std::string &key)
+//        {//overload with no timer ==> check every step
+//            flags.insert({key, alarm{-1.0, false, false}});
+//        }
+        bool    flagThrown(const std::string &key) const
         {
             if(0 == flags.count(key)) return false;
             return (flags.at(key).thrown && !flags.at(key).ignore);
@@ -255,6 +255,12 @@ class simulationTiming
         {
             if(0 == flags.count(key)) return;
             flags.at(key).ignore = true;
+        }
+        void    updateFlag(const std::string &key, const double when)
+        {//by default, set ignore to false if the flag is updated with new time:
+            if(0 == flags.count(key)) return;
+            flags.at(key).when = when;
+            flags.at(key).ignore = false;
         }
 
         void setFlags(std::vector<std::shared_ptr<triggerEvent>> eventList)

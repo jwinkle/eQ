@@ -36,11 +36,8 @@
 //#include <mshr.h>
 //using namespace mshr;
 
-class fenicsVariable
+struct fenicsVariables
 {//superset of all possible constants and expression classess for the diffusion solvers
-public:
-    struct data
-    {
         std::shared_ptr<dolfin::Constant> zero;
         std::shared_ptr<dolfin::Constant> one;
         std::shared_ptr<dolfin::Constant> dt;
@@ -58,8 +55,6 @@ public:
 
         std::shared_ptr<MeshFunction<size_t>> meshFunction;
         std::shared_ptr<MeshFunction<size_t>> meshFunctionChannel;
-
-    };
 };
 
 class fenicsShell
@@ -68,8 +63,11 @@ public:
     typedef  std::shared_ptr<eQ::gridFunction<size_t>>  HSLgrid;
 
     virtual ~fenicsShell()=default;
-    virtual void createSpaceFormsFunctions() {}
-    virtual void setFormParameters(fenicsVariable::data &data) {}
+    virtual void createSpaceFormsFunctions()    {}
+    virtual void setFormParameters()            {}
+    virtual void updateSolver()                 {}
+    virtual void createLinearProblem()          {}
+    virtual void createLinearVariationalSolver(){}
 
     std::shared_ptr<Mesh>                       mesh;
     std::shared_ptr<dolfin::Function>           u;
@@ -81,29 +79,26 @@ public:
 
     std::shared_ptr<dolfin::FunctionSpace>              V;
 
-    //after derived classes create spaces and functions and populate forms, generate the problem+solver objects:
-    void createLinearVariationalSolver()
+    void getVertexMappings()
     {
-        LVP = std::make_shared<dolfin::LinearVariationalProblem>(_a, _L, u, dbc);
-        LVS = std::make_shared<dolfin::LinearVariationalSolver>(LVP);
-
         //sizes here are local and include ghost nodes:
         dof_from_vertex 	= dolfin::vertex_to_dof_map(*V);
         vertex_from_dof 	= dolfin::dof_to_vertex_map(*V);
         mesh_coords 		= mesh->coordinates();
-        numNodesLocal 		= mesh_coords.size()/2;//numNodes is for this process only
     }
-
     virtual void createGridCoordinatesToDofMapping()
     {
+        getVertexMappings();
+
         auto globalNodesH = size_t(eQ::data::parameters["simulationTrapHeightMicrons"])*size_t(eQ::data::parameters["nodesPerMicronSignaling"]) + 1;
         auto globalNodesW = size_t(eQ::data::parameters["simulationTrapWidthMicrons"])*size_t(eQ::data::parameters["nodesPerMicronSignaling"]) + 1;
 
         //CREATE THE LOOKUP TABLE FOR THIS DIFFUSION LAYER:
         dofLookupTable = std::make_shared<eQ::gridFunction<size_t>>(globalNodesH, globalNodesW);
 
+        //default grid is 2D rectangular:
         //we step through every other entry to get x,y values iteratively (total size 2*globalNodes size)
-        for (size_t i(0); i < numNodesLocal; i++)
+        for (size_t i(0); i < mesh_coords.size()/2; i++)
         {//mesh_coords is a 1D array of (x,y) pairs in vertex order (not in dof order):
             //convert to a 1D array of std::pair
             auto x = mesh_coords[2*i];
@@ -113,24 +108,25 @@ public:
             size_t iy = size_t(round(y * double(eQ::data::parameters["nodesPerMicronSignaling"])));
             //the point of this all is to have this mapping from physical node # to the fenics dof #,
             //allows to look that up the dof directly for read/write in the main acquisition loop
-//                dof_from_grid[grid]->grid[iy][jx] = gridDofs[grid][i];//note row,column = y,x
-
-            //WRITE THE DOF LOOKUP TABLE:
-            //write directly to the ABM parameters data structure:
             auto point = std::pair<size_t, size_t>{iy,jx};
-//            dofLookupTable->grid[iy][jx] = size_t(dof_from_vertex[i]);
             dofLookupTable->operator[](point) = size_t(dof_from_vertex[i]);
         }
     }
 
-    std::shared_ptr<dolfin::Form>           _L, _a;
-    size_t                                  numNodesLocal, nodesForChannels;
     std::vector<double>                     mesh_coords;
     std::vector<size_t>                     vertex_from_dof;//dof_to_vertex_map(const FunctionSpace& space);
     std::vector<int>                        dof_from_vertex;//vertex_to_dof_map(const FunctionSpace& space);
     HSLgrid                                 dofLookupTable;
+    fenicsVariables                         data;
 
 };
+
+
+class fenicsData : public fenicsShell
+{//for future expansion:
+public:
+};
+
 
 //Base class for working with Fenics .ufl files (PDE "forms") for linear problems:
 template <class FS, class LF, class BF>//FunctionSpace, LinearForm, BiLinearForm
@@ -139,9 +135,9 @@ class fenicsBaseClass : public fenicsShell
 public:
     //note: if defined outside class definition, add this to the signature:
     //template <class FS, class LF, class BF>
-    ~fenicsBaseClass();
-    fenicsBaseClass();
-
+    //necessary for each .ufl file implementation to define this for specific template class types:
+    void setFormParameters() override;
+    void updateSolver() override;
     void createSpaceFormsFunctions() override
     {
         V = std::make_shared<FS>(mesh);
@@ -150,36 +146,56 @@ public:
 
         u   = std::make_shared<dolfin::Function>(V);    u->set_allow_extrapolation(true);
         u0  = std::make_shared<dolfin::Function>(V);    u0->set_allow_extrapolation(true);
-
-        //copy to the shell's base class pointers (to use base class createLinearVariationalSolver() )
-        _L = L;
-        _a = a;
     }
-
-    //necessary for each .ufl file implementation to define this for specific template class types:
-    void setFormParameters(fenicsVariable::data &data) override;
-
+    void createLinearProblem() override
+    {
+        setFormParameters();
+        createLinearVariationalSolver();
+        createGridCoordinatesToDofMapping();
+    }
+    void createLinearVariationalSolver() override
+    {
+        LVP = std::make_shared<dolfin::LinearVariationalProblem>(a, L, u, dbc);
+        LVS = std::make_shared<dolfin::LinearVariationalSolver>(LVP);
+    }
     //we need template versions of these to set ufl form parameters for each unique .ufl file:
     std::shared_ptr<LF>                       L;
     std::shared_ptr<BF>                       a;
-
 };
 
 template <class FS, class LF, class BF>
-fenicsBaseClass<FS,LF,BF>::fenicsBaseClass() {}
-
-template <class FS, class LF, class BF>
-fenicsBaseClass<FS,LF,BF>::~fenicsBaseClass() {}
-
-template <class FS, class LF, class BF>
-void fenicsBaseClass<FS,LF,BF>::setFormParameters(fenicsVariable::data &data)
+void fenicsBaseClass<FS,LF,BF>::
+setFormParameters()
 {
     std::cout<<"ERROR: fenicsBaseClass<FS,LF,BF>::setFormParameters NOT IMPLEMENTED FOR THIS TEMPLATE!"<<std::endl;
 }
+template <class FS, class LF, class BF>
+void fenicsBaseClass<FS,LF,BF>::
+updateSolver()
+{
+    std::cout<<"ERROR: fenicsBaseClass<FS,LF,BF>::updateSolver NOT IMPLEMENTED FOR THIS TEMPLATE!"<<std::endl;
+}
+
 
 template<> inline
-void fenicsBaseClass<hslD::FunctionSpace, hslD::LinearForm, hslD::BilinearForm>::setFormParameters(fenicsVariable::data &data)
+void fenicsBaseClass<hslD::FunctionSpace, hslD::LinearForm, hslD::BilinearForm>::
+updateSolver()
 {
+    L->f    =  data.zero;
+    L->r1    =  data.r_left;
+    L->r2    =  data.r_right;
+
+    a->D    =  data.D;
+    a->r1    =  data.r_left;
+    a->r2    =  data.r_right;
+}
+
+template<> inline
+void fenicsBaseClass<hslD::FunctionSpace, hslD::LinearForm, hslD::BilinearForm>::
+setFormParameters()
+{
+    std::cout<<"called template<> inline setFormParameters() override"<<std::endl;
+
     L->u0   =  u0;
     L->dt   =  data.dt;
     L->f    =  data.zero;
@@ -201,7 +217,8 @@ void fenicsBaseClass<hslD::FunctionSpace, hslD::LinearForm, hslD::BilinearForm>:
 }
 
 template<> inline
-void fenicsBaseClass<AD1Dss::FunctionSpace, AD1Dss::LinearForm, AD1Dss::BilinearForm>::setFormParameters(fenicsVariable::data &data)
+void fenicsBaseClass<AD1Dss::FunctionSpace, AD1Dss::LinearForm, AD1Dss::BilinearForm>::
+setFormParameters()
 {
 //    L->D = data.D;
 //    L->dt = data.dt;
@@ -215,38 +232,52 @@ void fenicsBaseClass<AD1Dss::FunctionSpace, AD1Dss::LinearForm, AD1Dss::Bilinear
 
 }
 
-class fenicsChannel
-        : public fenicsBaseClass<
-            AdvectionDiffusion::FunctionSpace,
-            AdvectionDiffusion::Form_L,
-            AdvectionDiffusion::Form_a>
+using baseAdvDiff = fenicsBaseClass<
+                AdvectionDiffusion::FunctionSpace,
+                AdvectionDiffusion::Form_L,
+                AdvectionDiffusion::Form_a>;
+
+class fenicsChannel : public baseAdvDiff
 {
 public:
-    void setFormParameters(fenicsVariable::data &data) override
+    fenicsChannel(fenicsVariables &dataRef) : cdata(dataRef) {} //tie channel data dirctly to the trap data
+    void updateSolver() override
     {
-        L->D = data.D;
-        L->dt = data.dt;
-        L->v  = data.v;
+        L->v  = cdata.v;
+        a->v  = cdata.v;
+        L->r1    =  cdata.r_left;
+        L->r2    =  cdata.r_right;
+        a->r1    =  cdata.r_left;
+        a->r2    =  cdata.r_right;
+    }
+    void setFormParameters() override
+    {
+        std::cout<<"called channel setFormParameters() override"<<std::endl;
+        L->D = cdata.D;
+        L->dt = cdata.dt;
+        L->v  = cdata.v;
         L->u0 = u0;
 
-        a->D = data.D;
-        a->dt = data.dt;
-        a->v  = data.v;
+        a->D = cdata.D;
+        a->dt = cdata.dt;
+        a->v  = cdata.v;
 
-        L->r1    =  data.r_left;
-        L->s1    =  data.s_left;
-        L->r2    =  data.r_right;
-        L->s2    =  data.s_right;
-        a->r1    =  data.r_left;
-        a->r2    =  data.r_right;
+        L->r1    =  cdata.r_left;
+        L->s1    =  cdata.s_left;
+        L->r2    =  cdata.r_right;
+        L->s2    =  cdata.s_right;
+        a->r1    =  cdata.r_left;
+        a->r2    =  cdata.r_right;
 
-        L->ds =     data.meshFunctionChannel;
-        a->ds =     data.meshFunctionChannel;
+        L->ds =     cdata.meshFunctionChannel;
+        a->ds =     cdata.meshFunctionChannel;
 
     }
 
     void createGridCoordinatesToDofMapping() override
     {
+        getVertexMappings();
+
         //dimensions are simulation scale:
         auto uleft = double(0.0);
         auto uright = double(0.0);
@@ -295,7 +326,9 @@ public:
     std::vector<size_t>                     dofLookupTableChannel;
     std::vector<size_t>                     boundaryDofChannel;
     std::vector<double>                     zerovecChannel;
-
+    size_t                                  nodesForChannels;
+private:
+    fenicsVariables             &cdata;
 };
 class fenicsInterface : public eQ::diffusionSolver
 {
@@ -327,6 +360,18 @@ public:
     void writeDiffusionFiles(double dt) override;
     void finalize(void) override;
     void setBoundaryValues(const double);
+    void setRobinBoundaryConditions();
+
+    void updateRobinParameters()
+    {
+        topChannel->updateSolver();
+        topChannel->createLinearVariationalSolver();
+            bottomChannel->updateSolver();
+            bottomChannel->createLinearVariationalSolver();
+        shell->updateSolver();
+        shell->createLinearVariationalSolver();
+
+    }
 
     void updateChannels();
     void writeDataFiles(double dt);
@@ -385,6 +430,10 @@ private:
 
     std::shared_ptr<data::FunctionSpace> VscalarData;
     std::shared_ptr<vdata::FunctionSpace> VvectorData;
+
+    double rightRate = 0.0;
+    double leftRate = 0.0;
+    double channelFlowVelocity = 0.0;
 
     //BOUNDARY CONDITIONS:
     //the boundary resolution in simulation units:

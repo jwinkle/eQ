@@ -41,11 +41,11 @@ public:
 //    void create_DSOgrid();
     void init_kinetics_DSO();
 
-//    void init_ABM(int);
     void init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>> &strains);
 
     void stepSimulation(double simTime);
     void stepFinalize();
+    void setBoundaryRate();
 
     void waitMPI();
     void printData();

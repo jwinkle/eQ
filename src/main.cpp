@@ -412,11 +412,14 @@ int main(int argc, char* argv[])
         eQ::data::parameters << bcs;
 
     };
-    auto checkAdvectionDiffusionStability = [&](double D)
+    auto checkAdvectionDiffusionStability = [&]()
     {
+        double D = double(eQ::data::physicalDiffusionRates["C4"][0]);
+        double vc = double(eQ::data::parameters["trapChannelLinearFlowRate"]);
+
         //nodes per micron must be adjust by length scaling to get "physical" node size
         double h = double(eQ::data::parameters["lengthScaling"])/double(eQ::data::parameters["nodesPerMicronSignaling"]);
-        double v = double(eQ::data::parameters["trapChannelLinearFlowRate"]) * 60.0;//use physical rate (um/min)
+        double v = vc * 60.0;//use physical rate (um/min)
         double dt = double(eQ::data::parameters["dt"]);
 
         double h_stability = 2.0*D/(v * h);
@@ -425,9 +428,13 @@ int main(int argc, char* argv[])
         size_t timeLoops = ceil(dt/t_stability);
         eQ::data::parameters["channelSolverNumberIterations"] = timeLoops;
 
-        std::cout<<"\t  ADVECTION-DIFFUSION STABILITY (h,t) > 1 => OK"
-                <<h_stability<<", "<<t_stability
-               <<", < 1  ==>  x"<<timeLoops<<" loops for channel solver."<<std::endl;
+        if(eQ::data::isControllerNode)
+        {
+            std::cout<<"\n\t(v="<<vc<<"um/sec) ADVECTION-DIFFUSION STABILITY (h,t) > 1 => OK: "
+                    <<h_stability<<", "<<t_stability
+                   <<", < 1  ==>  x"<<timeLoops<<" loops for channel solver."
+                  <<std::endl<<std::endl;
+        }
 
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
@@ -550,7 +557,7 @@ int main(int argc, char* argv[])
         if(bool(eQ::data::parameters["hslSignaling"]))
         {
             computeEffectiveDegradationRates(eQ::data::physicalDiffusionRates);
-            checkAdvectionDiffusionStability(eQ::data::physicalDiffusionRates["C4"][0]);//send max. D, sets channel loop iterations
+            checkAdvectionDiffusionStability();//send max. D, sets channel loop iterations
 
             eQ::data::parameters["hslProductionRate_C4"]
                     = (hslPeakValue * double(eQ::data::parameters["gammaT_C4"]));//
