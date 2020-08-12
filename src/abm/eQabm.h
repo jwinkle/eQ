@@ -59,6 +59,7 @@ public:
     {
         RANDOM,
         BANDED,
+        THIRDS,
         NUM_INITTYPES
     };
 

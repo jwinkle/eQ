@@ -121,10 +121,26 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
             //randomly selects a strain
             whichStrain = size_t(floor(rn() * numStrains));
         }
-        if(eQabm::initType::BANDED == howToInit)
+        else if(eQabm::initType::BANDED == howToInit)
         {
             //selects strain based on x location:
             whichStrain = size_t(floor(rx * double(numStrains)/trapWidthMicrons));
+        }
+        else if(eQabm::initType::THIRDS == howToInit)
+        {
+            //selects strain based on x location:
+            //type 0 strain in outside thirds, random in middle
+            double oneThird = trapWidthMicrons/3.0;
+            double twoThirds = 2.0*trapWidthMicrons/3.0;
+            if( (rx < oneThird) || (rx > twoThirds) )
+                whichStrain = 0;
+            else
+                whichStrain = size_t(floor(rn() * (numStrains-1)) + 1);
+            if(whichStrain > (numStrains - 1))
+            {
+                whichStrain = numStrains - 1;
+                std::cout<<"Index error for strain on eQabm::initType::THIRDS in eQabm::initCells"<<std::endl;
+            }
         }
 
         //clone the strain object from the objects passed in:
