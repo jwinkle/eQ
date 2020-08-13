@@ -362,8 +362,9 @@ void eQabm::updateCells()
             //H1 = [(H0*xum^2) + #HSL]/xum^2 = H0 + #HSL/xum^2, where #HSL = [HSL]*cellVolume
 
             //note:  use simulation units throughout since length scaling cancels:
-            double numberHSL = eQ::Cell::nanoMolarToMoleculeNumber(HSL, cellLength);
-            double updatePerSquareMicron = numberHSL/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
+//            double numberHSL = eQ::Cell::nanoMolarToMoleculeNumber(HSL, cellLength);
+//            double updatePerSquareMicron = numberHSL/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
+            double updatePerSquareMicron = HSL * eQ::Cell::computeIntraCellularVolumeFraction(cellLength)/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
             double updateForOneGridPoint = updatePerSquareMicron * nodesPerMicron * nodesPerMicron;
 
             //distribute over interior points of the cell:

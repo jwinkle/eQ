@@ -463,19 +463,20 @@ int main(int argc, char* argv[])
 //        simulationTimer.setSimulationTimeHours(40);
         simulationTimer.setSimulationTimeHours(60);
 
+        using sim_t = std::shared_ptr<Simulation>;
         struct AspectRatioFixation : public event_t
         {
-            Simulation              &simulation;
+            sim_t                   &simulation;
             MPI_Comm                &world;
             eQ::simulationTiming    &simulationTimer;
-            AspectRatioFixation(Simulation &sim, MPI_Comm &worldComm, eQ::simulationTiming &timer)
+            AspectRatioFixation(sim_t &sim, MPI_Comm &worldComm, eQ::simulationTiming &timer)
                 : triggerEvent("AspectRatioFixation", -1.0), simulation(sim), world(worldComm), simulationTimer(timer){}
             bool operator()(double simTime) override
             {
                 //all nodes arrive here:
                 bool terminateSimulation = false;
 
-                if(eQ::data::isControllerNode) terminateSimulation = simulation.ABM->cellList.strainFixation();
+                if(eQ::data::isControllerNode) terminateSimulation = simulation->ABM->cellList.strainFixation();
                 //send ABM status (only known to controller) to all other nodes:
                 eQ::mpi(world, 0) >> eQ::mpi::method::BROADCAST >> terminateSimulation;
 
@@ -492,7 +493,7 @@ int main(int argc, char* argv[])
                     simulationTimer.setSimulationTimeMinutes(simTime + timeToTerminate);
                 }
                 std::cout<<"strain fractions: ";
-                for(auto frac: simulation.ABM->cellList.strainFractions())
+                for(auto frac: simulation->ABM->cellList.strainFractions())
                 {
                     std::cout<<"  "<<frac;
                 }
@@ -519,7 +520,7 @@ int main(int argc, char* argv[])
             }
         };
         event_t::list.push_back(std::make_shared<AspectRatioInduction>());
-        event_t::list.push_back(std::make_shared<AspectRatioFixation>(*simulation, world, simulationTimer));
+        event_t::list.push_back(std::make_shared<AspectRatioFixation>(simulation, world, simulationTimer));
 
         //scale factors are relative to "WT" division length of ecoli, defined in Cell.h:
 //        double defaultAR[] = {1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
@@ -534,11 +535,12 @@ int main(int argc, char* argv[])
         eQ::data::parameters["defaultAspectRatioFactor"]     = 1.0;
 //        eQ::data::parameters["defaultAspectRatioFactor"]     = 1.6;
         double mutantAspectRatio[] = {0.6, 0.65, 0.7, 0.75, 0.8, 0.85};
-        eQ::data::parameters["mutantAspectRatioScale"]     =
-        (fileIO.isArrayCluster)
-                ? mutantAspectRatio[fileIO.slurmArrayIndex]
-                    * (1.0/double(eQ::data::parameters["defaultAspectRatioFactor"]))
-                : 1.0;
+        if(fileIO.isArrayCluster)
+        {
+            eQ::data::parameters["mutantAspectRatioScale"]
+                    = mutantAspectRatio[fileIO.slurmArrayIndex]
+                        * (1.0/double(eQ::data::parameters["defaultAspectRatioFactor"]));
+        }
 
         //        double WTAspectRatio[] = {1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
 //        eQ::data::parameters["defaultAspectRatioFactor"]     =
@@ -591,8 +593,8 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["lengthScaling"] = 1.0;//150mins
 //        eQ::data::parameters["lengthScaling"] = 2.0;//150mins
-//        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
-        eQ::data::parameters["lengthScaling"] = 4.0;//150mins
+        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
+//        eQ::data::parameters["lengthScaling"] = 4.0;//150mins
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
