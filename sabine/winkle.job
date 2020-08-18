@@ -1,0 +1,28 @@
+#!/bin/bash
+
+
+#SBATCH -N 1  #Nodes
+#SBATCH -n 3  #numTasks
+
+#SBATCH --mem=6GB
+
+#SBATCH --mail-type=ALL                 # Type of email notification- BEGIN,END,FAIL,ALL 
+#SBATCH --mail-user=winkle@math.uh.edu  # Email to which notifications will be sent   
+
+#SBATCH -J winkle
+
+#SBATCH -t 0-01:59:59    #days-hours:mins:secs
+#  #SBATCH -t  2-00:00:00    #days-hours:mins:secs
+
+# #SBATCH -o v01_%A_%a_log.txt # Standard output 
+
+
+
+module purge
+module load FENICS
+
+
+echo "running: 
+	mpirun -n 3 -display-allocation ~/eQ/run/eQ opuntia.cacds.uh.edu ${SLURM_ARRAY_TASK_ID}"
+
+mpirun -n 3 -display-allocation ~/eQ/run/eQ opuntia.cacds.uh.edu "${SLURM_ARRAY_TASK_ID}"
