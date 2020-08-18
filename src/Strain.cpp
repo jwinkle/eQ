@@ -5,6 +5,7 @@
 std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasionStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> aspectRatioOscillator::inductionFlags     = {aspectRatioOscillator::NUM_INDUCTIONFLAGS, false};
 
 
 std::vector<double>
@@ -106,6 +107,7 @@ std::vector<double>
 aspectRatioOscillator::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+
     double aspectRatioThresh    = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
     double aspectRatioScaling   = double( eQ::data::parameters["defaultAspectRatioFactor"]);
     double mutantScaling        = double(eQ::data::parameters["mutantAspectRatioScale"]);
@@ -123,7 +125,12 @@ aspectRatioOscillator::computeProteins
             if(!flagCheck)
             {
                 flagCheck = true;
-                std::cout<<"\t hit aspect ratio flag...changing to: "<<aspectRatioScaling<<std::endl;
+                std::cout<<std::endl;
+                std::cout<<"\t hit aspect ratio flag...changing to: "
+                        <<aspectRatioScaling
+                       <<" with strain: "<<getStrainType()
+                       <<std::endl;
+                std::cout<<std::endl;
             }
         }
 //    }

@@ -130,7 +130,10 @@ public:
                 , cell->getAngle()
                 , cell->getLengthMicrons()
                 , cell->getSpringCompression()
-//                , eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(Strain::concentrations::FP),  cell->getLengthMicrons())
+                //C4, C14, lacI
+                , cell->strain->getDelayedHSL(Strain::hsl::C4)
+                , cell->strain->getDelayedHSL(Strain::hsl::C14)
+                , eQ::Cell::moleculeNumberToNanoMolar(cell->strain->getProteinNumber(Strain::concentrations::L),  cell->getLengthMicrons())
             };
 
             if(sim->HSL_signaling)
@@ -443,25 +446,25 @@ int main(int argc, char* argv[])
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
+        simNum *= 1;//removes "variable not used" error
+
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
 
-//        eQ::data::parameters["simType"]       = "SENDER_RECEIVER";
-//        int numberOfDiffusionNodes      = 1;
-//        setSimulationTimeStep(0.1);//resets the timer object
-//        simulationTimer.setSimulationTimeMinutes(10);
 
-        eQ::data::parameters["mutantAspectRatioScale"] = 0.6;
+        eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
 
-        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
+        eQ::data::parameters["simType"]       = "ASPECTRATIO_OSCILLATOR";
+//        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
-        int numberOfDiffusionNodes              = 0;
+        int numberOfDiffusionNodes              = 2;
 
-        setSimulationTimeStep(0.05);//resets the timer object
-//        setSimulationTimeStep(0.1);//resets the timer object
+//        setSimulationTimeStep(0.05);//resets the timer object
+        setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(40);
-        simulationTimer.setSimulationTimeHours(60);
+//        simulationTimer.setSimulationTimeHours(60);
+        simulationTimer.setSimulationTimeHours(80);
 
         using sim_t = std::shared_ptr<Simulation>;
         struct AspectRatioFixation : public event_t
@@ -492,12 +495,15 @@ int main(int argc, char* argv[])
                     }
                     simulationTimer.setSimulationTimeMinutes(simTime + timeToTerminate);
                 }
-                std::cout<<"strain fractions: ";
-                for(auto frac: simulation->ABM->cellList.strainFractions())
+                if(eQ::data::isControllerNode)
                 {
-                    std::cout<<"  "<<frac;
+                    std::cout<<"strain fractions: ";
+                    for(auto frac: simulation->ABM->cellList.strainFractions())
+                    {
+                        std::cout<<"  "<<frac;
+                    }
+                    std::cout<<std::endl;
                 }
-                std::cout<<std::endl;
                 return terminateSimulation;//ignore
             }
         };
@@ -553,17 +559,18 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 0.6;
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 1.0;
-        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
+//        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
+        eQ::data::parameters["aspectRatioThresholdHSL"]      = 100.0;
 
 
         //target max HSL in bulk:
         double hslPeakValue = 1.0e3;
         double trapFlowRate = 10.0;//um/sec
 
-//        numSimulations = 1;
+        numSimulations = 1;
     //    numSimulations = 2;
     //    numSimulations = 4;
-        numSimulations = 20;
+//        numSimulations = 20;
 
 //****************************************************************************************
                         //GEOMETRY
@@ -576,8 +583,8 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
-        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
-//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
+//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
+        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
 //        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
@@ -672,8 +679,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["numberSeedCells"] = 32;
 
 //        eQ::data::parameters["cellInitType"] = "RANDOM";
-//        eQ::data::parameters["cellInitType"] = "BANDED";
-        eQ::data::parameters["cellInitType"] = "THIRDS";
+        eQ::data::parameters["cellInitType"] = "BANDED";
+//        eQ::data::parameters["cellInitType"] = "THIRDS";
 
 
         Strain::Params strainA {eQ::Cell::strainType::ACTIVATOR,
@@ -682,8 +689,8 @@ int main(int argc, char* argv[])
                     dt, npm, numHSL, eQ::Cell::DEFAULT_PROMOTER_DELAY_TIME_MINUTES, nullptr};//nullptr is for cell data, not yet created the cell
 
         //ASPECT RATIO:
-        strainTypes.push_back(std::make_shared<aspectRatioInvasionStrain>(strainA));
-        strainTypes.push_back(std::make_shared<aspectRatioInvasionStrain>(strainB));
+        strainTypes.push_back(std::make_shared<aspectRatioOscillator>(strainA));
+        strainTypes.push_back(std::make_shared<aspectRatioOscillator>(strainB));
 
         //SENDER-RECEIVER:
 //        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
@@ -734,9 +741,9 @@ int main(int argc, char* argv[])
 //                params.dataFiles->push_back(eQ::gridData
 //                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::H, std::string("h.pvd"),
 //                     std::make_shared<eQ::tensorData>(n,y,x,eQ::tensorData::rank::SCALAR)});
-//                params.dataFiles->push_back(eQ::data::record
-//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
-//                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
+                params.dataFiles->push_back(eQ::data::record
+                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
+                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
 
         }
     };//end assignSimulationParameters() lambda function
@@ -872,18 +879,19 @@ int main(int argc, char* argv[])
         {
             std::cout<<"step: "
                     <<simulationTimer.steps()<<" = "
-                   <<simulationTimer.simTime();
+                   <<simulationTimer.simTime()<<"("
+                <<simulationTimer.steps()/60<<")";
             if(simulation->simulateABM)
             {
                 std::cout
-                        <<" minutes. Cell count: "
+                        <<" mins(hrs). Cell count: "
                        <<simulation->ABM->cellList.cellCount()
-                      <<", erased: "<<simulation->ABM->cellList.eraseCounter()
-                     <<";  STRAIN RATIO:";
-                for(auto frac: simulation->ABM->cellList.strainFractions())
-                {
-                    std::cout<<"  "<<frac;
-                }
+                      <<", erased: "<<simulation->ABM->cellList.eraseCounter();
+//                     <<";  STRAIN RATIO:";
+//                for(auto frac: simulation->ABM->cellList.strainFractions())
+//                {
+//                    std::cout<<"  "<<frac;
+//                }
                 std::cout
                         <<";  maxSpring: "<<simulation->ABM->maxSpringCompression
                        <<";  meanPointsPerCell: "<<simulation->ABM->averagePointsPerCell;
@@ -939,22 +947,21 @@ int main(int argc, char* argv[])
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
-        if(simulationTimer.periodicTimeMinutes(10))
+//        if(simulationTimer.periodicTimeMinutes(10))
+        if(simulationTimer.periodicTimeMinutes(5))
         {
             recordFrame();
-            simulationTimer.checkTimerFlags();
-            simulation->printOverWrites();
+            simulation->writeHSLFiles(simulationTimer.simTime());
+            simulation->writeDataFiles(simulationTimer.simTime());
         }
         MPI_Barrier(world);
 
         if(simulationTimer.periodicTimeMinutes(10))
         {
+            simulationTimer.checkTimerFlags();
+            simulation->printOverWrites();
             displayDataStep();
-
             simulation->resetTimers();
-            simulation->writeHSLFiles(simulationTimer.simTime());
-            simulation->writeDataFiles(simulationTimer.simTime());
-
         }
 
         simulation->stepFinalize();
