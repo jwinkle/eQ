@@ -9,11 +9,10 @@ module list
 
 echo $PETSC_DIR
 
-touch ./eQ/CMakeLists.txt  #re-scans git branch and hash
-touch ./eQ/src/inputOutput.cpp
+touch ~/eQ/CMakeLists.txt  #re-scans git branch and hash
+touch ~/eQ/src/inputOutput.cpp
 
-cd eQ/build
+cd ~/eQ/build
 
-#  cmake -D CMAKE_CXX_COMPILER=icc ..
 make
 

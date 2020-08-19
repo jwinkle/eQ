@@ -4,7 +4,7 @@
 #SBATCH -N 1  #Nodes
 #SBATCH -n 3  #numTasks
 
-#SBATCH --mem=6GB
+#SBATCH --mem=1GB
 
 #SBATCH --mail-type=ALL                 # Type of email notification- BEGIN,END,FAIL,ALL 
 #SBATCH --mail-user=winkle@math.uh.edu  # Email to which notifications will be sent   
