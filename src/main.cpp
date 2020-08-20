@@ -464,7 +464,8 @@ int main(int argc, char* argv[])
 
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
-        simulationTimer.setSimulationTimeHours(80);
+//        simulationTimer.setSimulationTimeHours(80);
+        simulationTimer.setSimulationTimeHours(10);
 
         using sim_t = std::shared_ptr<Simulation>;
         struct AspectRatioFixation : public event_t
@@ -880,7 +881,7 @@ int main(int argc, char* argv[])
             std::cout<<"step: "
                     <<simulationTimer.steps()<<" = "
                    <<simulationTimer.simTime()<<"("
-                <<simulationTimer.steps()/60<<")";
+                <<simulationTimer.simTime()/60<<")";
             if(simulation->simulateABM)
             {
                 std::cout
@@ -936,8 +937,8 @@ int main(int argc, char* argv[])
 //**************************************************************************//
     displayDataStep();
     recordFrame();
-    simulation->writeHSLFiles(simulationTimer.simTime());
-    simulation->writeDataFiles(simulationTimer.simTime());
+//    simulation->writeHSLFiles(simulationTimer.simTime());
+//    simulation->writeDataFiles(simulationTimer.simTime());
     MPI_Barrier(world);
 
     while(simulationTimer.stepTimer())
@@ -951,14 +952,14 @@ int main(int argc, char* argv[])
         if(simulationTimer.periodicTimeMinutes(5))
         {
             recordFrame();
-            simulation->writeHSLFiles(simulationTimer.simTime());
-            simulation->writeDataFiles(simulationTimer.simTime());
+//            simulation->writeHSLFiles(simulationTimer.simTime());
+//            simulation->writeDataFiles(simulationTimer.simTime());
         }
         MPI_Barrier(world);
 
         if(simulationTimer.periodicTimeMinutes(10))
         {
-            simulationTimer.checkTimerFlags();
+//            simulationTimer.checkTimerFlags();
             simulation->printOverWrites();
             displayDataStep();
             simulation->resetTimers();
