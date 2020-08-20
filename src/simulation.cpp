@@ -556,7 +556,7 @@ void Simulation::writeHSLFiles(double simTime)
 
         //print the l2 norm and boundary flux of the HSL:
 //        auto thisNorm = diffusionSolver->u->vector()->norm("l2");
-        auto flux = diffusionSolver->getBoundaryFlux();
+//        auto flux = diffusionSolver->getBoundaryFlux();
         std::cout<<"\t boundaryFlux assemble result: ("<<my_PE_num<<") "<<diffusionSolver->totalBoundaryFlux
 //                    <<"  u norm: "<<thisNorm
                    <<" well conc.: "<<boundaryWellConcentration
