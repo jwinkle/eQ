@@ -80,7 +80,8 @@ void inputOutput::setSimulationNumber(size_t simNumber)
       fbase += "/";
     }
     else if(isOpuntiaCluster){
-        fbase.assign("/project/josic/winkle/images/");
+        fbase.assign("./images/");
+//        fbase.assign("/project/josic/winkle/images/");
 //                fbase.assign("/home/jjwinkle/images/");
       fbase += uniqueString;
         fbase += ("-" + std::to_string(slurmArrayIndex));

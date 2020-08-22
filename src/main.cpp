@@ -948,8 +948,8 @@ int main(int argc, char* argv[])
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
-//        if(simulationTimer.periodicTimeMinutes(10))
-        if(simulationTimer.periodicTimeMinutes(5))
+        if(simulationTimer.periodicTimeMinutes(10))
+//        if(simulationTimer.periodicTimeMinutes(5))
         {
             recordFrame();
 //            simulation->writeHSLFiles(simulationTimer.simTime());

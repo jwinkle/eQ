@@ -22,6 +22,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
       "Choose the type of build, options are: Debug MinSizeRel Release RelWithDebInfo." FORCE)
 endif()
+message("CMAKE_BUILD_TYPE = " ${CMAKE_BUILD_TYPE} )
 
 # Do not throw error for 'multi-line comments' (these are typical in
 # rst which includes LaTeX)
