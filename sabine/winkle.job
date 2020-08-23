@@ -2,7 +2,7 @@
 
 
 #SBATCH -N 1  #Nodes
-#SBATCH -n 3  #numTasks
+#SBATCH -n 1  #numTasks
 
 #SBATCH --mem=1GB
 
@@ -23,9 +23,9 @@ module load FENICS
 
 
 echo "running: 
-    mpirun -n 3   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
+    mpirun -n 1   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
 "
 
 #mpirun -n 3 -display-allocation ~/eQ/run/eQ opuntia.cacds.uh.edu "${SLURM_ARRAY_TASK_ID}"
 
-mpirun -n 3   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
+mpirun -n 1   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
