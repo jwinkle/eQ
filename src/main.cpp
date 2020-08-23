@@ -439,7 +439,7 @@ int main(int argc, char* argv[])
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
 //****************************************************************************************
-            //assignSimulationParameters: SENDER_RECEIVER
+            //assignSimulationParameters: INDUCED_DYNAMIC_ASPECTRATIO
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
@@ -519,7 +519,7 @@ int main(int argc, char* argv[])
                 return true;//ignore
             }
         };
-//        event_t::list.push_back(std::make_shared<AspectRatioInduction>());
+        event_t::list.push_back(std::make_shared<AspectRatioInduction>());
         event_t::list.push_back(std::make_shared<AspectRatioFixation>(simulation, world, simulationTimer));
 
         //scale factors are relative to "WT" division length of ecoli, defined in Cell.h:
