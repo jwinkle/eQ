@@ -4,7 +4,7 @@ C_FILES := $(wildcard Chipmunk-7.0.1/src/*.c)
 OBJ_DIR := obj_c99
 OBJ_FILES := $(addprefix $(OBJ_DIR)/,$(notdir $(C_FILES:.c=.o)))
 LD_FLAGS := ...
-CC_FLAGS := -c -DNDEBUG -IChipmunk-7.0.1/include -Wall -O -std=c99 -pthread -g
+CC_FLAGS := -c -DNDEBUG -IChipmunk-7.0.1/include -Wall -O3 -std=c99 -pthread
 # CC_FLAGS := -c  -IChipmunk-7.0.1/include -Wall -O -std=c99 -pthread 
 
 

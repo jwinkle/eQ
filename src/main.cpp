@@ -442,7 +442,7 @@ int main(int argc, char* argv[])
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
 //****************************************************************************************
-            //assignSimulationParameters: SENDER_RECEIVER
+            //assignSimulationParameters: ASPECTRATIO_OSCILLATOR
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
@@ -462,10 +462,10 @@ int main(int argc, char* argv[])
 //        setSimulationTimeStep(0.05);//resets the timer object
         setSimulationTimeStep(0.1);//resets the timer object
 
+//        simulationTimer.setSimulationTimeHours(10);
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
-//        simulationTimer.setSimulationTimeHours(80);
-        simulationTimer.setSimulationTimeHours(10);
+        simulationTimer.setSimulationTimeHours(80);
 
         using sim_t = std::shared_ptr<Simulation>;
         struct AspectRatioFixation : public event_t
@@ -701,7 +701,8 @@ int main(int argc, char* argv[])
 //        strainTypes.push_back(std::make_shared<MODULUSmodule>(dt, npm, numHSL));
 
 
-        eQ::data::parameters["divisionCorrelationAlpha"] = 0.5;
+//        eQ::data::parameters["divisionCorrelationAlpha"] = 0.5;
+        eQ::data::parameters["divisionCorrelationAlpha"] = 0.1;
 
         eQ::data::parameters["divisionNoiseScale"] = 0.1;// = +/- 0.05
 //        eQ::data::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
@@ -937,9 +938,11 @@ int main(int argc, char* argv[])
 //**************************************************************************//
     displayDataStep();
     recordFrame();
-//    simulation->writeHSLFiles(simulationTimer.simTime());
-//    simulation->writeDataFiles(simulationTimer.simTime());
+    simulation->writeHSLFiles(simulationTimer.simTime());
+    simulation->writeDataFiles(simulationTimer.simTime());
     MPI_Barrier(world);
+
+    auto recordingInterval = size_t(eQ::data::parameters["recordingInterval"]);
 
     while(simulationTimer.stepTimer())
     {
@@ -948,18 +951,17 @@ int main(int argc, char* argv[])
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
-        if(simulationTimer.periodicTimeMinutes(10))
-//        if(simulationTimer.periodicTimeMinutes(5))
+        if(simulationTimer.periodicTimeMinutes(recordingInterval))
         {
             recordFrame();
-//            simulation->writeHSLFiles(simulationTimer.simTime());
-//            simulation->writeDataFiles(simulationTimer.simTime());
+            simulation->writeHSLFiles(simulationTimer.simTime());
+            simulation->writeDataFiles(simulationTimer.simTime());
         }
         MPI_Barrier(world);
 
         if(simulationTimer.periodicTimeMinutes(10))
         {
-//            simulationTimer.checkTimerFlags();
+            simulationTimer.checkTimerFlags();
             simulation->printOverWrites();
             displayDataStep();
             simulation->resetTimers();

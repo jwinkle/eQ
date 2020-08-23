@@ -9,8 +9,8 @@ JOB_DIR="/project/josic/winkle/job"
 
 ./jbuild.sh
 
-mkdir -p ~/eQ/run
-cp ~/eQ/build/eQ ~/eQ/run/
+mkdir -p ${JOB_DIR}
+cp ~/eQ/build/eQ ${JOB_DIR}
 cp ./winkle.job ${JOB_DIR}/
 
 
