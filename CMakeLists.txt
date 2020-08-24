@@ -72,8 +72,15 @@ execute_process(
   OUTPUT_VARIABLE GIT_COMMIT_HASH
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+execute_process(
+  COMMAND git tag --points-at HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_TAG
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 message("GIT_BRANCH = " ${GIT_BRANCH} )
 message("GIT_COMMIT_HASH = " ${GIT_COMMIT_HASH} )
+message("GIT_TAG = " ${GIT_TAG} )
 
 
 configure_file(

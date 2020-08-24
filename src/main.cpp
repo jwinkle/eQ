@@ -15,6 +15,7 @@
 //auto-generated branch/hash in "version.h" file (see CMakeLists.txt)
 static std::string gitBranch    = std::string(GIT_BRANCH);
 static std::string gitHash      = std::string(GIT_COMMIT_HASH);
+static std::string gitTag      = std::string(GIT_TAG);
 
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
@@ -439,12 +440,13 @@ int main(int argc, char* argv[])
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
 //****************************************************************************************
-            //assignSimulationParameters: INDUCED_DYNAMIC_ASPECTRATIO
+            //assignSimulationParameters: STATIC_ASPECTRATIO
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
+        eQ::data::parameters["_GIT_BRANCH"]          = gitTag;
 
 //        eQ::data::parameters["simType"]       = "SENDER_RECEIVER";
 //        int numberOfDiffusionNodes      = 1;
@@ -453,8 +455,8 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["mutantAspectRatioScale"] = 0.6;
 
-        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
-//        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
+//        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
+        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 0;
 
         setSimulationTimeStep(0.05);//resets the timer object
