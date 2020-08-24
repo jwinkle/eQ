@@ -688,9 +688,9 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["numberSeedCells"] = 16;
         eQ::data::parameters["numberSeedCells"] = 32;
 
-//        eQ::data::parameters["cellInitType"] = "RANDOM";
+        eQ::data::parameters["cellInitType"] = "RANDOM";
 //        eQ::data::parameters["cellInitType"] = "BANDED";
-        eQ::data::parameters["cellInitType"] = "THIRDS";
+//        eQ::data::parameters["cellInitType"] = "THIRDS";
 
 
         Strain::Params strainA {eQ::Cell::strainType::ACTIVATOR,
