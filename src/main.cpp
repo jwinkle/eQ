@@ -20,6 +20,8 @@ static std::string gitTag      = std::string(GIT_TAG);
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
 
+static std::string jxps15Path = "/media/winkle/SD200GB/eQData/";
+
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
 
@@ -171,6 +173,7 @@ public:
 //        std::cout<<std::setw(4)<<jfile<<std::endl;
         std::ofstream logFile;
         std::string fname =
+                jxps15Path + "/" +
                 compileTime
                 +"-" + std::to_string(nodeID)
                 +"_" + std::to_string(simNumber)
@@ -239,7 +242,19 @@ int main(int argc, char* argv[])
                     <<std::endl;
             return 0;
     }
-    fileIO.initOutputFiles("./images/");//pass path to write relative to root path
+    auto p2 = boost::filesystem::path(jxps15Path);//path defined at top of this file
+    if (boost::filesystem::exists(p2))
+    {
+        jxps15Path += std::to_string(timeSinceEpoch) + "/";
+        auto p3 = boost::filesystem::path(jxps15Path);//path defined at top of this file
+        boost::filesystem::create_directory(p3);
+        std::cout<<"Writing data to jxps15: "<<jxps15Path<<std::endl;
+    }
+    else
+    {
+        jxps15Path = "./images";
+    }
+    fileIO.initOutputFiles(jxps15Path);//pass path to write relative to root path
 
 
     if(1 == npes)
@@ -868,7 +883,7 @@ int main(int argc, char* argv[])
                 <<std::setw(4)<<eQ::data::parameters
                   <<std::endl<<std::endl;
 
-        fileIO.writeParametersToFile("./", simulationNumber, eQ::data::parameters);
+        fileIO.writeParametersToFile(jxps15Path + "/", simulationNumber, eQ::data::parameters);
 
         std::cout<<std::endl<<"\t Starting simulation loop... "<<std::endl;
         std::cout<<"\t stepsPerMin = "<<simulationTimer.stepsPerMin<<std::endl;
