@@ -4,8 +4,9 @@
 # $>  ./jlaunch.sh 0 3
 
 
-
-JOB_DIR="/project/josic/winkle/job"
+TIME_SINCE_EPOCH=$(date +%s)
+BASE_DIR="/project/josic/winkle/job/"
+JOB_DIR="${BASE_DIR}${TIME_SINCE_EPOCH}"
 
 ./jbuild.sh
 
@@ -29,3 +30,4 @@ echo "sbatch job launched...reading squeue -u jjwinkle..."
 sleep 2
 squeue -u jjwinkle -v
 
+ls -l ${BASE_DIR}
