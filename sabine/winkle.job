@@ -23,9 +23,9 @@ module purge
 module load FENICS/2019.1.0-foss-2019b-Python-3.7.4
 echo "module list: $(module list)"
 echo "running: 
-    mpirun -n 1   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
+    mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu  "${SLURM_ARRAY_TASK_ID}"
 "
 
-#mpirun -n 3 -display-allocation ~/eQ/run/eQ opuntia.cacds.uh.edu "${SLURM_ARRAY_TASK_ID}"
+mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}"
 
-mpirun -n 1   -v -display-allocation --bind-to core  -display-map -report-bindings  ./eQ  opuntia.cacds.uh.edu  "${SLURM_ARRAY_TASK_ID}"
+# note: removed -n 3 switch to mpirun with bind-to core
