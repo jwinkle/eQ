@@ -242,18 +242,7 @@ int main(int argc, char* argv[])
                     <<std::endl;
             return 0;
     }
-    auto p2 = boost::filesystem::path(jxps15Path);//path defined at top of this file
-    if (boost::filesystem::exists(p2))
-    {
-        jxps15Path += std::to_string(timeSinceEpoch) + "/";
-        auto p3 = boost::filesystem::path(jxps15Path);//path defined at top of this file
-        boost::filesystem::create_directory(p3);
-        std::cout<<"Writing data to jxps15: "<<jxps15Path<<std::endl;
-    }
-    else
-    {
-        jxps15Path = "./images";
-    }
+
     fileIO.initOutputFiles(jxps15Path);//pass path to write relative to root path
 
 

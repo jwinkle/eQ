@@ -99,21 +99,39 @@ void inputOutput::setSimulationNumber(size_t simNumber)
     }
 
 }
-std::string inputOutput::initOutputFiles(std::string root)
+std::string inputOutput::initOutputFiles(std::string &root)
 {
-
-    imageFilesRoot = root;
     timeString = __TIME__;//only populates at compile time
     std::replace( timeString.begin(), timeString.end(), ':', '_'); // replace all 'x' to 'y'
     dateString = __DATE__;//only populates at compile time
-	std::replace( dateString.begin(), dateString.end(), ' ', '_'); // replace all 'x' to 'y'
-
+    std::replace( dateString.begin(), dateString.end(), ' ', '_'); // replace all 'x' to 'y'
     uniqueString =
             std::to_string(timeStamp)
             + "-"
             + timeString
             + "-"
             + dateString;
+
+    auto p2 = boost::filesystem::path(root);//path defined at top of this file
+    if (boost::filesystem::exists(p2))
+    {
+        root += uniqueString + "/";
+        auto p3 = boost::filesystem::path(root);//path defined at top of this file
+        boost::filesystem::create_directory(p3);
+    }
+    else
+    {
+        auto p3 = boost::filesystem::path("./images");//path defined at top of this file
+        if (false == boost::filesystem::exists(p3))
+        {
+            boost::filesystem::create_directory(p3);
+        }
+        root = "./images";
+    }
+    std::cout<<"Writing data to jxps15: "<<root<<std::endl;
+
+    imageFilesRoot = root;
+
 
     setSimulationNumber(0);
 	return fbase;

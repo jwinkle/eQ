@@ -11,6 +11,7 @@
 #include <sstream>      // std::stringstream
 #include <iomanip>      // std::setw()
 
+#include <boost/filesystem.hpp>
 
 #include "eQ.h"
 
@@ -22,7 +23,7 @@ class inputOutput
     inputOutput(long time) : timeStamp(time) {}
 
 	int parseInputLine(int argc, char* argv[]);
-    std::string initOutputFiles(std::string imageFilesRoot);
+    std::string initOutputFiles(std::string &imageFilesRoot);
     long getTimeStamp(){return timeStamp;}
     void writeParametersToFile(std::string paramsRoot, size_t simNumber, eQ::data::parametersType &params);
     void setSimulationNumber(size_t simNumber);
