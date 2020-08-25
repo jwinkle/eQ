@@ -20,7 +20,7 @@ static std::string gitTag      = std::string(GIT_TAG);
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
 
-static std::string jxps15Path = "/media/winkle/SD200GB/eQData/";
+static std::string rootPath = "/media/winkle/SD200GB/eQData";
 
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
@@ -173,7 +173,7 @@ public:
 //        std::cout<<std::setw(4)<<jfile<<std::endl;
         std::ofstream logFile;
         std::string fname =
-                jxps15Path + "/" +
+                rootPath + "/" +
                 compileTime
                 +"-" + std::to_string(nodeID)
                 +"_" + std::to_string(simNumber)
@@ -243,7 +243,7 @@ int main(int argc, char* argv[])
             return 0;
     }
 
-    fileIO.initOutputFiles(jxps15Path);//pass path to write relative to root path
+    fileIO.initOutputFiles(rootPath);//pass path to write relative to root path
 
 
     if(1 == npes)
@@ -872,7 +872,7 @@ int main(int argc, char* argv[])
                 <<std::setw(4)<<eQ::data::parameters
                   <<std::endl<<std::endl;
 
-        fileIO.writeParametersToFile(jxps15Path + "/", simulationNumber, eQ::data::parameters);
+        fileIO.writeParametersToFile(rootPath + "/", simulationNumber, eQ::data::parameters);
 
         std::cout<<std::endl<<"\t Starting simulation loop... "<<std::endl;
         std::cout<<"\t stepsPerMin = "<<simulationTimer.stepsPerMin<<std::endl;

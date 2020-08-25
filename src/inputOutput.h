@@ -18,9 +18,7 @@
 class inputOutput
 {
 	public:	
-//    inputOutput()  {timeStamp = time(nullptr);}
-    //better to synchronize the timestamp across nodes for filenames:
-    inputOutput(long time) : timeStamp(time) {}
+    inputOutput(long time);
 
 	int parseInputLine(int argc, char* argv[]);
     std::string initOutputFiles(std::string &imageFilesRoot);
@@ -47,7 +45,7 @@ private:
 	std::stringstream sstream;
 	std::ofstream logFile;
 	std::string fpath;
-    std::string imageFilesRoot;
+    std::string froot;
 
 };
 #endif
