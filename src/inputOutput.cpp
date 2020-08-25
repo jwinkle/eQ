@@ -74,7 +74,7 @@ std::string inputOutput::initOutputFiles(std::string &root)//root is laptop path
     }
     else
     {
-        root = ".";
+        root = "./";
     }
     std::cout<<"Writing data to: "<<root<<std::endl;
     froot.assign(root);
@@ -129,7 +129,7 @@ void inputOutput::setSimulationNumber(size_t simNumber)
 //    }
     else
     {
-        fbase.assign(froot + "./images/");
+        fbase.assign(froot + "images/");
         if(isArrayLocal)
             fbase += (std::to_string(localArrayIndex) + "_" + std::to_string(simNumber));
         else if(isArrayCluster)
