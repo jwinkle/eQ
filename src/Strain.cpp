@@ -87,48 +87,67 @@ std::vector<double>
 aspectRatioInvasionStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+    double dummy = membraneRate.size() * eHSL.size() * lengthMicrons;
+    dummy *= dummy;//removes "unused variable" wornings
     //===========================================================================
     //STATIC_ASPECTRATIO
     //===========================================================================
 
+    if("STATIC_ASPECTRATIO" == eQ::data::parameters["simType"])
+    {
+        if( inductionFlags[ASPECTRATIO_INDUCTION] )
+        {
+            params.baseData->meanDivisionLength
+                    = double( eQ::data::parameters["mutantAspectRatioScale"])
+                                               * double( eQ::data::parameters["defaultAspectRatioFactor"])
+                                               * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    //        params.baseData->divisionLength
+    //                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        }
+
+    }
     //===========================================================================
     //INDUCED_DYNAMIC_ASPECTRATIO
     //===========================================================================
-    if( inductionFlags[ASPECTRATIO_INDUCTION] && (eQ::Cell::strainType::ACTIVATOR == getStrainType()) )
+    else if("INDUCED_DYNAMIC_ASPECTRATIO" == eQ::data::parameters["simType"])
     {
-        params.baseData->meanDivisionLength
-                = double( eQ::data::parameters["mutantAspectRatioScale"])
-                                           * double( eQ::data::parameters["defaultAspectRatioFactor"])
-                                           * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
-//        params.baseData->divisionLength
-//                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        if( inductionFlags[ASPECTRATIO_INDUCTION] && (eQ::Cell::strainType::ACTIVATOR == getStrainType()) )
+        {
+            params.baseData->meanDivisionLength
+                    = double( eQ::data::parameters["mutantAspectRatioScale"])
+                                               * double( eQ::data::parameters["defaultAspectRatioFactor"])
+                                               * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    //        params.baseData->divisionLength
+    //                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        }
     }
 
-    if(eHSL.empty()) return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
-
-    //===========================================================================
-    //ASPECTRATIO_INVASION
-    //===========================================================================
-    double aspectRatioThresh = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
-    double aspectRatioScaling = double( eQ::data::parameters["defaultAspectRatioFactor"]);
+    return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
+}
+std::vector<double>
+aspectRatioOscillator::computeProteins
+    (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+{
+    double aspectRatioThresh    = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
+    double aspectRatioScaling   = double( eQ::data::parameters["defaultAspectRatioFactor"]);
+    double mutantScaling        = double(eQ::data::parameters["mutantAspectRatioScale"]);
 
     static bool flagCheck=false;
 
-    if(inductionFlags[ASPECTRATIO_INDUCTION])
-    {
+//    if(inductionFlags[ASPECTRATIO_INDUCTION])
+//    {
         double hslValue = (eQ::Cell::strainType::REPRESSOR == getStrainType())
                 ? getDelayedHSL(Strain::hsl::C4) : getDelayedHSL(Strain::hsl::C14);
 
         if(hslValue > aspectRatioThresh)
         {
-            aspectRatioScaling *= double(eQ::data::parameters["mutantAspectRatioScale"]);
+            aspectRatioScaling *= mutantScaling;
             if(!flagCheck)
             {
                 flagCheck = true;
                 std::cout<<"\t hit aspect ratio flag...changing to: "<<aspectRatioScaling<<std::endl;
             }
         }
-    }
 
 
     params.baseData->meanDivisionLength = aspectRatioScaling * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;

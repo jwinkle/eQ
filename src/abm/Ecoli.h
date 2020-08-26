@@ -46,10 +46,7 @@ public:
     using eQ::Cell::computeDivisionLength;
     void computeDivisionLength(double birthLength)
     {
-        double alpha = 0.5;
-//        double alpha = 0.25;
-//        double alpha = 0.75;
-        params.divisionLength =  eQ::Cell::computeDivisionLength(birthLength, 0.5*params.meanDivisionLength, alpha);
+        params.divisionLength =  eQ::Cell::computeDivisionLength(birthLength, 0.5*params.meanDivisionLength, params.divisionCorrelationAlpha);
     };
 
     double     getSpringCompression()   {return double(cpmCell->compression);}//length in microns

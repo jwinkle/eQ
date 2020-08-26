@@ -93,6 +93,8 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
 
     cellParams.meanDivisionLength =
             double(eQ::data::parameters["defaultAspectRatioFactor"]) * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    cellParams.divisionCorrelationAlpha =
+            double(eQ::data::parameters["divisionCorrelationAlpha"]);
 
 
     overWrites.clear();
@@ -119,10 +121,26 @@ eQabm::initCells(eQabm::initType howToInit, int numCellsToInit, std::vector<std:
             //randomly selects a strain
             whichStrain = size_t(floor(rn() * numStrains));
         }
-        if(eQabm::initType::BANDED == howToInit)
+        else if(eQabm::initType::BANDED == howToInit)
         {
             //selects strain based on x location:
             whichStrain = size_t(floor(rx * double(numStrains)/trapWidthMicrons));
+        }
+        else if(eQabm::initType::THIRDS == howToInit)
+        {
+            //selects strain based on x location:
+            //type 0 strain in outside thirds, random in middle
+            double oneThird = trapWidthMicrons/3.0;
+            double twoThirds = 2.0*trapWidthMicrons/3.0;
+            if( (rx < oneThird) || (rx > twoThirds) )
+                whichStrain = 0;
+            else
+                whichStrain = size_t(floor(rn() * (numStrains-1)) + 1);
+            if(whichStrain > (numStrains - 1))
+            {
+                whichStrain = numStrains - 1;
+                std::cout<<"Index error for strain on eQabm::initType::THIRDS in eQabm::initCells"<<std::endl;
+            }
         }
 
         //clone the strain object from the objects passed in:
@@ -195,9 +213,9 @@ void eQabm::updateCellData(double simTime)
         (habitat->outsideTrap(cell->cpmCell))
                 ? --cellList : ++cellList;
     }
-    for(auto &cell : newDaughterCells)
+    for(auto &newCell : newDaughterCells)
     {//add daughter cells to main cell list:
-        cellList << cell;
+        cellList << newCell;
     }
 
     //new positions and daughter cells are set; update x,y grid for pointers:
@@ -259,7 +277,7 @@ void eQabm::updateCells()
 
         gridPoint = eQ::data::ij_from_xy(x,y,nodesPerMicron);//uses full scaling
         dataPoint = eQ::data::ij_from_xy(x,y,nodesPerMicronData);//uses data scaling
-        //keep tally of "hits" at this grid point for averaging:
+        //keep tally of "hits" at this grid point for averaging:        
         ++(gridDataCounter->operator[](dataPoint));
 
         std::vector<eQ::nodePoint>  cellPoints;//vector of (i,j) pairs
@@ -366,8 +384,9 @@ void eQabm::updateCells()
             //H1 = [(H0*xum^2) + #HSL]/xum^2 = H0 + #HSL/xum^2, where #HSL = [HSL]*cellVolume
 
             //note:  use simulation units throughout since length scaling cancels:
-            double numberHSL = eQ::Cell::nanoMolarToMoleculeNumber(HSL, cellLength);
-            double updatePerSquareMicron = numberHSL/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
+//            double numberHSL = eQ::Cell::nanoMolarToMoleculeNumber(HSL, cellLength);
+//            double updatePerSquareMicron = numberHSL/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
+            double updatePerSquareMicron = HSL * eQ::Cell::computeIntraCellularVolumeFraction(cellLength)/eQ::Cell::computeExtraCellularVolumeFraction(cellLength);
             double updateForOneGridPoint = updatePerSquareMicron * nodesPerMicron * nodesPerMicron;
 
             //distribute over interior points of the cell:

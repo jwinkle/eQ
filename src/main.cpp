@@ -15,9 +15,12 @@
 //auto-generated branch/hash in "version.h" file (see CMakeLists.txt)
 static std::string gitBranch    = std::string(GIT_BRANCH);
 static std::string gitHash      = std::string(GIT_COMMIT_HASH);
+static std::string gitTag      = std::string(GIT_TAG);
 
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
+
+static std::string rootPath = "/media/winkle/SD200GB/eQData";
 
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
@@ -139,6 +142,7 @@ public:
                 {
                     cellData.push_back(
                                 eQ::Cell::moleculeNumberToNanoMolar(hsl,  cell->getLengthMicrons()));
+
                 }
             }
             jcells.push_back({cellID, cellData});
@@ -154,7 +158,7 @@ public:
                 sim->hslVector[grid].clear();
                 for(auto dof: sim->hslLookup[grid])
                 {
-                    sim->hslVector[grid].push_back(sim->ABM->hslSolutionBuffer[grid]->at(dof));
+                    sim->hslVector[grid].push_back(sim->ABM->hslSolutionBuffer[grid]->operator[](dof));
                 }
             }
         }
@@ -167,6 +171,7 @@ public:
 //        std::cout<<std::setw(4)<<jfile<<std::endl;
         std::ofstream logFile;
         std::string fname =
+                rootPath + "/" +
                 compileTime
                 +"-" + std::to_string(nodeID)
                 +"_" + std::to_string(simNumber)
@@ -235,7 +240,8 @@ int main(int argc, char* argv[])
                     <<std::endl;
             return 0;
     }
-    fileIO.initOutputFiles("./images/");//pass path to write relative to root path
+
+    fileIO.initOutputFiles(rootPath);//pass path to write relative to root path
 
 
     if(1 == npes)
@@ -439,12 +445,13 @@ int main(int argc, char* argv[])
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
 //****************************************************************************************
-            //assignSimulationParameters: SENDER_RECEIVER
+            //assignSimulationParameters: STATIC_ASPECTRATIO
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
+        eQ::data::parameters["_GIT_BRANCH"]          = gitTag;
 
         eQ::data::parameters["simType"]         = "SENDER_RECEIVER";
         int numberOfDiffusionNodes              = 1;
@@ -454,16 +461,17 @@ int main(int argc, char* argv[])
 
         simulationTimer.setSimulationTimeHours(10);
 
+        using sim_t = std::shared_ptr<Simulation>;
         struct changeFlowRate : public event_t
         {
-            const std::shared_ptr<Simulation>   &simulation;
+            sim_t                   &simulation;
             eQ::simulationTiming                &simulationTimer;
             std::vector<double>                 changeRates;
             double                              changeTime;
             std::function<bool()>               checkStability;
             size_t                              count;
 
-            changeFlowRate(const std::shared_ptr<Simulation> &sim, eQ::simulationTiming &timer, double time,
+            changeFlowRate(std::shared_ptr<Simulation> &sim, eQ::simulationTiming &timer, double time,
                            std::vector<double> rates, double deltaT, std::function<bool()> f)
                 : triggerEvent("changeFlowRate", time),
                   simulation(sim), simulationTimer(timer), changeRates(rates), changeTime(deltaT), checkStability(f),
@@ -617,6 +625,7 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["cellInitType"] = "RANDOM";
         eQ::data::parameters["cellInitType"] = "BANDED";
+//        eQ::data::parameters["cellInitType"] = "THIRDS";
 
 
         Strain::Params strainA {eQ::Cell::strainType::ACTIVATOR,
@@ -624,21 +633,15 @@ int main(int argc, char* argv[])
         Strain::Params strainB {eQ::Cell::strainType::REPRESSOR,
                     dt, npm, numHSL, eQ::Cell::DEFAULT_PROMOTER_DELAY_TIME_MINUTES, nullptr};//nullptr is for cell data, not yet created the cell
 
-        //ASPECT RATIO:
-//        strainTypes.push_back(std::make_shared<aspectRatioInvasionStrain>(strainA));
-//        strainTypes.push_back(std::make_shared<aspectRatioInvasionStrain>(strainB));
-
         //SENDER-RECEIVER:
-//        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
-//        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainB));
-
-        //QUORUM-SENSING:
         strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
+//        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainB));
 
         //MODULUS:
 //        strainTypes.push_back(std::make_shared<MODULUSmodule>(dt, npm, numHSL));
 
 
+        eQ::data::parameters["divisionCorrelationAlpha"] = 0.5;
 
         eQ::data::parameters["divisionNoiseScale"] = 0.1;// = +/- 0.05
 //        eQ::data::parameters["divisionNoiseScale"] = 0.05;// = +/- 0.025
@@ -802,7 +805,7 @@ int main(int argc, char* argv[])
                 <<std::setw(4)<<eQ::data::parameters
                   <<std::endl<<std::endl;
 
-        fileIO.writeParametersToFile("./", simulationNumber, eQ::data::parameters);
+        fileIO.writeParametersToFile(rootPath + "/", simulationNumber, eQ::data::parameters);
 
         std::cout<<std::endl<<"\t Starting simulation loop... "<<std::endl;
         std::cout<<"\t stepsPerMin = "<<simulationTimer.stepsPerMin<<std::endl;

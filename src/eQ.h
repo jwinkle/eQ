@@ -223,7 +223,7 @@ class simulationTiming
         bool    stepTimer()
         {
             _timer = _dt * ++_timeSteps;
-            for(alarm_t &flag : flags)
+            for(auto &flag : flags)
             {
                 flag.second.thrown = (_timer >= flag.second.when);
             }
@@ -249,13 +249,9 @@ class simulationTiming
         bool    flagThrown(const std::string &key) const
         {
             if(0 == flags.count(key)) return false;
-            return (flags.at(key).thrown && !(flags.at(key).ignore));
+            return (flags.at(key).thrown && !flags.at(key).ignore);
         }
-        void    flagIgnore(const std::string &key)
-        {
-            if(0 == flags.count(key)) return;
-            flags.at(key).ignore = true;
-        }
+
         void    updateFlag(const std::string &key, const double when)
         {//by default, set ignore to false if the flag is updated with new time:
             if(0 == flags.count(key)) return;
@@ -279,7 +275,6 @@ class simulationTiming
                     flag.second.ignore = flag.second.call->operator()(simTime());
                 }
             }
-
         }
 
         using params_t    = eQ::data::parametersType;
@@ -295,8 +290,7 @@ class simulationTiming
         size_t  _timeSteps=0;
         double  _timeTare;
         double  _timer;
-        //must be const key!
-        std::map<const std::string, alarm> flags;
+        std::map<std::string, alarm> flags;
         using alarm_t = std::pair<const std::string, alarm>;
     };
 //=======================================================================================

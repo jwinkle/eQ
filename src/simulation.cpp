@@ -338,6 +338,10 @@ void Simulation::create_HSLgrid()
         hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
         hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
 
+        //added an hsl array to record to json file:
+        hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
+        hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
+
         MPI_Barrier(world);
         for(auto &node : mpiHSL)
         {
@@ -401,13 +405,18 @@ void Simulation::init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>>
     //ONLY THE CONTROLLER OWNS THE ABM MODEL:
     if(isControllerNode)
     {
-        if("RANDOM" == eQ::data::parameters["cellInitType"])
-        {
-            ABM->initCells(eQabm::initType::RANDOM, numSeedCells, strains);
-        }
-        else
+        if("BANDED" == eQ::data::parameters["cellInitType"])
         {
             ABM->initCells(eQabm::initType::BANDED, numSeedCells, strains);
+        }
+        else if("THIRDS" == eQ::data::parameters["cellInitType"])
+        {
+            ABM->initCells(eQabm::initType::THIRDS, numSeedCells, strains);
+        }
+//        if("RANDOM" == eQ::data::parameters["cellInitType"])
+        else
+        {
+            ABM->initCells(eQabm::initType::RANDOM, numSeedCells, strains);
         }
         simulateABM = true;
     }

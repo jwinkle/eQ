@@ -35,8 +35,6 @@ if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
  set(CMAKE_CXX_FLAGS "-fopenmp ${CMAKE_CXX_FLAGS}")
 endif()
 
-
-
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
 message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS} )
@@ -74,8 +72,15 @@ execute_process(
   OUTPUT_VARIABLE GIT_COMMIT_HASH
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+execute_process(
+  COMMAND git tag --points-at HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_TAG
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 message("GIT_BRANCH = " ${GIT_BRANCH} )
 message("GIT_COMMIT_HASH = " ${GIT_COMMIT_HASH} )
+message("GIT_TAG = " ${GIT_TAG} )
 
 
 configure_file(
