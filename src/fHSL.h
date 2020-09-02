@@ -316,8 +316,8 @@ public:
             boundaryDofChannel[j++] = (dofLookupTableChannel[i]);
         }
 
-//        std::cout<<"dofLookupTableChannel, size = "<<dofLookupTableChannel.size()<<std::endl;
-//        for(auto dof : dofLookupTableChannel)
+//        std::cout<<"boundaryDofChannel, size = "<<boundaryDofChannel.size()<<std::endl;
+//        for(auto dof : boundaryDofChannel)
 //            std::cout<<dof<<", ";
 //        std::cout<<std::endl;
 
@@ -368,9 +368,11 @@ public:
         topChannel->createLinearVariationalSolver();
             bottomChannel->updateSolver();
             bottomChannel->createLinearVariationalSolver();
-        shell->updateSolver();
-        shell->createLinearVariationalSolver();
-
+            if(false == lateralNeumann)
+            {
+                shell->updateSolver();
+                shell->createLinearVariationalSolver();
+            }
     }
 
     void updateChannels();
@@ -393,6 +395,7 @@ public:
     std::vector<std::pair<double, double>>  coords;
 
     std::vector<double> solution_vector;
+    std::vector<double> solution_vectorModified;
     std::vector<double> solution_vectorTopChannel;
     std::vector<double> solution_vectorBottomChannel;
     std::vector<double> topChannelData;
@@ -433,6 +436,9 @@ private:
 
     double rightRate = 0.0;
     double leftRate = 0.0;
+
+    bool    lateralNeumann = false;
+
     double channelFlowVelocity = 0.0;
 
     //BOUNDARY CONDITIONS:

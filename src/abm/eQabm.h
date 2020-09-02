@@ -204,7 +204,9 @@ public:
     //its size is determined at runtime and it is instantiated after data transfer of the DOF mappings via MPI
     std::vector<HSLgrid>                dofLookupTable;
     std::vector<HSLsolution>            hslSolutionVector;
-    std::vector<channelHSLsolution>     channelSolutionVector;
+    std::vector<HSLsolution>            hslSolutionBuffer;
+    std::vector<channelHSLsolution>     topChannelSolutionVector;
+    std::vector<channelHSLsolution>     bottomChannelSolutionVector;
     std::vector<double>                 membraneDiffusionRates;
     std::vector<HSLgrid>                petscLookupTable;
     std::vector<HSLsolution>            petscSolutionVector;
@@ -212,6 +214,9 @@ public:
     void createDataVectors(eQ::nodeType globalNodesH, eQ::nodeType globalNodesW) override
     {
         hslSolutionVector.push_back(std::make_shared<HSLdata>(globalNodesH*globalNodesW));
+        hslSolutionBuffer.push_back(std::make_shared<HSLdata>(globalNodesH*globalNodesW));
+        topChannelSolutionVector.push_back(std::make_shared<HSLdata>(globalNodesW));
+        bottomChannelSolutionVector.push_back(std::make_shared<HSLdata>(globalNodesW));
         //this will map x,y position directly to dof
         //CREATE THE LOOKUP TABLE FOR THIS DIFFUSION LAYER:
         dofLookupTable.push_back(std::make_shared<HSLgridNodes>(globalNodesH, globalNodesW));
