@@ -99,14 +99,6 @@ void fenicsInterface::stepDiffusion()
 {
     //note: trap top and bottom boundary conditions are in the solution to the prevous advection/diffusion solution of the channel
 
-
-    //copies modified solution_vector to u0; solution_vector updated by ABM via mpi transfer    /*    /*
-    shell->u0->vector()->set_local(solution_vector);//sets u0 to contents of solution_vector
-    //solve the system (rate-limiting step)
-    shell->LVS->solve();
-    //sets solution_vector to contents of the new solution u (solution_vector is sent to, and then updated by, the ABM layer)
-    shell->u->vector()->get_local(solution_vector);
-
     if( ("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"]) && ("H_TRAP" != eQ::data::parameters["trapType"]) )
     {
         //now compute new flux into the channel boundaries and scale to channel volume element:
@@ -150,6 +142,13 @@ void fenicsInterface::stepDiffusion()
             bottomChannelData[j] = solution_vectorBottomChannel[dofc];
         }
     }
+
+    //copies modified solution_vector to u0; solution_vector updated by ABM via mpi transfer    /*    /*
+    shell->u0->vector()->set_local(solution_vectorModified);//sets u0 to contents of solution_vector
+    //solve the system (rate-limiting step)
+    shell->LVS->solve();
+    //sets solution_vector to contents of the new solution u (solution_vector is sent to, and then updated by, the ABM layer)
+    shell->u->vector()->get_local(solution_vector);
 
     //old boundary method:
     //compute boundary flux and scale to channel volume
@@ -477,6 +476,8 @@ void fenicsInterface::createHSL()
             //ONLY SET HOMOGENEOUS NEUMANN...
             data.s_left     = std::make_shared<dolfin::Constant>(0.0);
             data.r_left     = std::make_shared<dolfin::Constant>(0.0);
+            lateralNeumann = true;
+//            std::cout<<"LEFT WALL NEUMANN: "<<0<<std::endl;
         }
         else
         {//ROBIN, only set to rate computed, above
@@ -496,6 +497,8 @@ void fenicsInterface::createHSL()
             //ONLY SET HOMOGENEOUS NEUMANN...
             data.s_right     = std::make_shared<dolfin::Constant>(0.0);
             data.r_right     = std::make_shared<dolfin::Constant>(0.0);
+            lateralNeumann = true;
+//            std::cout<<"RIGHT WALL NEUMANN: "<<0<<std::endl;
         }
         else
         {//ROBIN:
@@ -582,6 +585,7 @@ void fenicsInterface::createHSL()
     //actual #dofs are in Function sizes (excludes ghost cells)
     shell->u->vector()->get_local(solution_vector);
     solution_vector.assign(solution_vector.size(), 0.0);//initialize the vector to xfer data
+    solution_vectorModified.assign(solution_vector.size(), 0.0);//initialize the vector to xfer data
 
     if(isFenicsRootNode)
         std::cout<<"solution_vector.size() = "<<solution_vector.size()<<std::endl<<std::endl;

@@ -111,6 +111,7 @@ public:
         thisFrame["divisions"]      = sim->ABM->divisionList;
         thisFrame["cells"]          = getCellData();
         thisFrame["externalHSL"]    = getHSLData();
+        getChannelHSL(thisFrame);
         jframes.push_back(thisFrame);
         sim->ABM->divisionList.clear();
     }
@@ -165,6 +166,19 @@ public:
             }
         }
         return sim->hslVector;//may be empty if no signaling
+    }
+    void getChannelHSL(json &record)
+    {
+        jsonHSL data;
+        if(sim->HSL_signaling)
+        {
+            for(size_t grid(0); grid < sim->numHSLGrids; ++grid)
+            {
+                data.push_back(*sim->ABM->topChannelSolutionVector[grid]);
+                data.push_back(*sim->ABM->bottomChannelSolutionVector[grid]);
+            }
+        }
+        record["channelHSL"] = data;
     }
     void finalize()
     {
@@ -455,7 +469,7 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
-        eQ::data::parameters["_GIT_BRANCH"]          = gitTag;
+        eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
 
         eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
@@ -586,8 +600,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["PETSC_SIMULATION"]  =  false;
 
         eQ::data::parameters["modelType"]         = "OFF_LATTICE_ABM";
-        eQ::data::parameters["trapType"]          = "NOWALLED";
-//        eQ::data::parameters["trapType"]      = "TWOWALLED";
+//        eQ::data::parameters["trapType"]          = "NOWALLED";
+        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
@@ -612,12 +626,15 @@ int main(int argc, char* argv[])
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
+//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
 
 
 
-        eQ::data::parameters["mediaChannelMicronsLeft"] = 100;
-        eQ::data::parameters["mediaChannelMicronsRight"] = 100;
+//        eQ::data::parameters["mediaChannelMicronsLeft"] = 100;
+//        eQ::data::parameters["mediaChannelMicronsRight"] = 100;
+        eQ::data::parameters["mediaChannelMicronsLeft"] = 500;
+        eQ::data::parameters["mediaChannelMicronsRight"] = 500;
 
         setBoundaryConditions(trapFlowRate);
         computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
@@ -948,7 +965,7 @@ int main(int argc, char* argv[])
     simulation->writeDataFiles(simulationTimer.simTime());
     MPI_Barrier(world);
 
-    auto recordingInterval = size_t(eQ::data::parameters["recordingInterval"]);
+    auto recordingIntervalMinutes = size_t(eQ::data::parameters["recordingInterval"]);
 
     while(simulationTimer.stepTimer())
     {
@@ -957,7 +974,7 @@ int main(int argc, char* argv[])
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
-        if(simulationTimer.periodicTimeMinutes(recordingInterval))
+        if(simulationTimer.periodicTimeMinutes(recordingIntervalMinutes))
         {
             recordFrame();
             simulation->writeHSLFiles(simulationTimer.simTime());
