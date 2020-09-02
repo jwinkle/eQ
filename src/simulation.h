@@ -62,6 +62,8 @@ public:
     std::vector<std::vector<double>>    gridCoords;
 
     std::vector<std::vector<double>>        hslVector;
+    std::vector<std::vector<double>>        hslChannelTop;
+    std::vector<std::vector<double>>        hslChannelBottom;
     std::vector<std::vector<eQ::nodeType>>  hslLookup;
 
     std::vector<double>                 D11Grid;

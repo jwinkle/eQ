@@ -336,11 +336,10 @@ void Simulation::create_HSLgrid()
 
         //added an hsl array to record to json file:
         hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
+        hslChannelTop.assign(numHSLGrids, std::vector<double>(nodesForChannels, 0.0));
+        hslChannelBottom.assign(numHSLGrids, std::vector<double>(nodesForChannels, 0.0));
         hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
 
-        //added an hsl array to record to json file:
-        hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
-        hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
 
         MPI_Barrier(world);
         for(auto &node : mpiHSL)
@@ -441,6 +440,8 @@ void Simulation::stepSimulation(double simTime)
             {
                 node >> eQ::mpi::method::IRECV;
                 node >> ABM->hslSolutionVector[node.index()];
+                node >> ABM->topChannelSolutionVector[node.index()];
+                node >> ABM->bottomChannelSolutionVector[node.index()];
             }
         }
 
@@ -513,6 +514,8 @@ void Simulation::stepSimulation(double simTime)
 
             mpiController << eQ::mpi::method::ISEND;
             mpiController << diffusionSolver->solution_vector;
+            mpiController << diffusionSolver->topChannelData;
+            mpiController << diffusionSolver->bottomChannelData;
 
             computeBoundaryWell();
 
@@ -521,7 +524,7 @@ void Simulation::stepSimulation(double simTime)
             MPI_Barrier(world);
 
             mpiController >> eQ::mpi::method::IRECV;
-            mpiController >> diffusionSolver->solution_vector;
+            mpiController >> diffusionSolver->solution_vectorModified;
 
             mpiController >> diffusionSolver->D11
                             >> diffusionSolver->D22

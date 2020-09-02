@@ -111,6 +111,7 @@ public:
         thisFrame["divisions"]      = sim->ABM->divisionList;
         thisFrame["cells"]          = getCellData();
         thisFrame["externalHSL"]    = getHSLData();
+        getChannelHSL(thisFrame);
         jframes.push_back(thisFrame);
         sim->ABM->divisionList.clear();
     }
@@ -163,6 +164,19 @@ public:
             }
         }
         return sim->hslVector;//may be empty if no signaling
+    }
+    void getChannelHSL(json &record)
+    {
+        jsonHSL data;
+        if(sim->HSL_signaling)
+        {
+            for(size_t grid(0); grid < sim->numHSLGrids; ++grid)
+            {
+                data.push_back(*sim->ABM->topChannelSolutionVector[grid]);
+                data.push_back(*sim->ABM->bottomChannelSolutionVector[grid]);
+            }
+        }
+        record["channelHSL"] = data;
     }
     void finalize()
     {
@@ -445,13 +459,13 @@ int main(int argc, char* argv[])
         return( (h_stability > 1.0) && (t_stability > 1.0) );
     };
 //****************************************************************************************
-            //assignSimulationParameters: STATIC_ASPECTRATIO
+            //assignSimulationParameters: SENDER_RECEIVER
 //****************************************************************************************
     auto assignSimulationParameters = [&](size_t simNum)
     {
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
-        eQ::data::parameters["_GIT_BRANCH"]          = gitTag;
+        eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
         eQ::data::parameters["simType"]         = "SENDER_RECEIVER";
         int numberOfDiffusionNodes              = 1;
@@ -503,13 +517,16 @@ int main(int argc, char* argv[])
         };
 
         double trapFlowRate = 1;//um/sec
-        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};
-        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);
-        event_t::list.push_back(std::make_shared<changeFlowRate>(simulation, simulationTimer, eQ::simulationTiming::HOURS(3),
+        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
+        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);//converted to mins
+        size_t              flowRateChangeT0 = eQ::simulationTiming::HOURS(3);//converted to mins
+        eQ::data::parameters["flowRateChanges"]     =  flowRateChanges;
+        eQ::data::parameters["flowRateDeltaT"]      =  flowRateDeltaT;
+        eQ::data::parameters["flowRateT0Hours"]     =  flowRateChangeT0;
+
+        event_t::list.push_back(std::make_shared<changeFlowRate>(simulation, simulationTimer, flowRateChangeT0,
                                                                  flowRateChanges, flowRateDeltaT, checkAdvectionDiffusionStability));
 
-        eQ::data::parameters["flowRateChanges"]  =  flowRateChanges;
-        eQ::data::parameters["flowRateDeltaT"]  =  flowRateDeltaT;
 
         //target max HSL in bulk:
         double hslPeakValue = 1.0e3;
@@ -526,8 +543,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["PETSC_SIMULATION"]  =  false;
 
         eQ::data::parameters["modelType"]         = "OFF_LATTICE_ABM";
-        eQ::data::parameters["trapType"]          = "NOWALLED";
-//        eQ::data::parameters["trapType"]      = "TWOWALLED";
+//        eQ::data::parameters["trapType"]          = "NOWALLED";
+        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
@@ -552,12 +569,15 @@ int main(int argc, char* argv[])
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
+//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
 
 
 
-        eQ::data::parameters["mediaChannelMicronsLeft"] = 100;
-        eQ::data::parameters["mediaChannelMicronsRight"] = 100;
+//        eQ::data::parameters["mediaChannelMicronsLeft"] = 100;
+//        eQ::data::parameters["mediaChannelMicronsRight"] = 100;
+        eQ::data::parameters["mediaChannelMicronsLeft"] = 500;
+        eQ::data::parameters["mediaChannelMicronsRight"] = 500;
 
         setBoundaryConditions(trapFlowRate);
         computeSimulationScalings();//sets simulation trap h,w and diffusion scaling from above
@@ -880,6 +900,8 @@ int main(int argc, char* argv[])
     simulation->writeDataFiles(simulationTimer.simTime());
     MPI_Barrier(world);
 
+    auto recordingIntervalMinutes = size_t(eQ::data::parameters["recordingInterval"]);
+
     while(simulationTimer.stepTimer())
     {
 
@@ -887,21 +909,20 @@ int main(int argc, char* argv[])
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
-        if(simulationTimer.periodicTimeMinutes(10))
+        if(simulationTimer.periodicTimeMinutes(recordingIntervalMinutes))
         {
             recordFrame();
-            simulationTimer.checkTimerFlags();
-            simulation->printOverWrites();
+            simulation->writeHSLFiles(simulationTimer.simTime());
+            simulation->writeDataFiles(simulationTimer.simTime());
         }
         MPI_Barrier(world);
 
         if(simulationTimer.periodicTimeMinutes(10))
         {
             displayDataStep();
-
+            simulationTimer.checkTimerFlags();
+            simulation->printOverWrites();
             simulation->resetTimers();
-            simulation->writeHSLFiles(simulationTimer.simTime());
-            simulation->writeDataFiles(simulationTimer.simTime());
 
         }
 
