@@ -151,7 +151,7 @@ Simulation::Simulation(MPI_Comm commWorld, const Simulation::Params &initParams)
         paramsABM.zeroOne = params.zeroOne;
         //note:  these were first the dual-strain osc. parameters.
         //TODO:  define a class to pass rates as needed, or leave this to the Strain class
-            init_kinetics_DSO();
+//            init_kinetics_DSO();
 
         paramsABM.dataFiles = params.dataFiles;//a list of cell parameters to record using fenics
         ABM = std::make_shared<eQabm>(paramsABM);
@@ -754,78 +754,3 @@ void Simulation::printData()
         }
     }
 }
-void Simulation::init_kinetics_DSO()
-{
-    //writes the master table (defined in *strain.cpp file):
-    initRates(basalRate, rates);
-    //loads rates chosen for this simulation; pA,pR are the global rate tables:
-    loadParams(eQ::Cell::strainType::ACTIVATOR,pA,rates);
-    loadParams(eQ::Cell::strainType::REPRESSOR,pR,rates);
-
-    if("DUALSTRAIN_OSCILLATOR" == eQ::data::parameters["simType"])
-    {
-        //make rhlI production in sender more sensitive to autoinduce:
-        pA.K.H /= 20.0;//result ~=300 nM
-        pR.K.H /= 20.0;//for promoter in receiver
-        pA.K.L /= 10.0;
-//        pR.K.L /= 10.0;//for promoter in receiver
-        pA.K.I /= 40.0;
-//        pR.K.I /= 10.0;//for promoter in receiver
-    }
-    else
-    {
-//        //make rhlI production in sender more sensitive to autoinduce:
-//        pA.K.H /= 20.0;//result ~=300 nM
-//        pR.K.H /= 20.0;//for promoter in receiver
-    }
-
-    //scale HSL production rate (due to diffusion boundaries)
-//    double rateScale = 1.0e4;
-
-    //zero rate scale:
-//    rateScale = 1.0;
-//    pA.phi    *= rateScale;
-//    pR.phi    *= rateScale;
-//    pA.K.H    *= rateScale;   //set to decrease response to  C4 in Activator (n=4)
-//    pR.K.I    *= rateScale;    //sets higher thresh for repressor C14 repression (n=4)
-
-    //when using ABM model for DSO:
-//    pA.K.I    /= 100.0;   //set to increase response to low C14 in Activator (n=4)
-//    pR.K.H    /= 100.0;   //set to increase response to low C4 in repressor (n=4)
-
-    //test cutting C14 membrane diffusion rate:
-//    pA.DI /= 10.0;
-//    pR.DI /= 10.0;
-}
-//TODO:  need to make this pass the strain type, or switch on it to use for more than just DSO
-/*
-void Simulation::create_DSOgrid()
-{
-    //only the controller node should call this:
-    //note:  without ABM, the controller node will also be an hsl node.
-    computeGridParameters();
-    init_kinetics_DSO();
-
-    std::cout<<"Creating dsoGrid of size H, W (dt):"<<globalNodesH<<", "<<globalNodesW
-            <<" ("<<eQ::data::parameters["dt"]<<")"<<std::endl;
-
-    //CREATE 2D GRID OF STRAIN POINTERS AND INSTANTIATE WITH STRAIN TYPE:
-    //for DSO, use two grids (one activator, one repressor at each lattice point)
-    dsoGrid.push_back(std::make_shared<eQ::gridFunction<std::shared_ptr<Strain>>>(globalNodesH, globalNodesW));
-    dsoGrid.push_back(std::make_shared<eQ::gridFunction<std::shared_ptr<Strain>>>(globalNodesH, globalNodesW));
-    for(size_t i(0); i<globalNodesH; i++)
-    {
-        for(size_t j(0); j<globalNodesW; j++)
-        {
-            dsoGrid[0]->grid[i][j] =
-                        std::make_shared<Strain>(eQ::Cell::strainType::ACTIVATOR, &pA,
-                                                 eQ::data::parameters["dt"], eQ::data::parameters["nodesPerMicronSignaling"]);
-            dsoGrid[1]->grid[i][j] =
-                        std::make_shared<Strain>(eQ::Cell::strainType::REPRESSOR, &pR,
-                                                 eQ::data::parameters["dt"], eQ::data::parameters["nodesPerMicronSignaling"]);
-        }
-    }
-
-    simulateABM = false;
-}
-*/

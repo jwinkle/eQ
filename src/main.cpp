@@ -472,9 +472,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
 
-        eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
-
-        eQ::data::parameters["simType"]       = "ASPECTRATIO_OSCILLATOR";
+        eQ::data::parameters["simType"]       = "PARB_GRANT_SIMULATION";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
@@ -483,24 +481,30 @@ int main(int argc, char* argv[])
         setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
+        simulationTimer.setSimulationTimeHours(25);
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
-        simulationTimer.setSimulationTimeHours(80);
+//        simulationTimer.setSimulationTimeHours(80);
 
         using sim_t = std::shared_ptr<Simulation>;
-        struct AspectRatioFixation : public event_t
+        struct DaughterCellFixation : public event_t
         {
             sim_t                   &simulation;
             MPI_Comm                &world;
             eQ::simulationTiming    &simulationTimer;
-            AspectRatioFixation(sim_t &sim, MPI_Comm &worldComm, eQ::simulationTiming &timer)
-                : triggerEvent("AspectRatioFixation", -1.0), simulation(sim), world(worldComm), simulationTimer(timer){}
+            DaughterCellFixation(sim_t &sim, MPI_Comm &worldComm, eQ::simulationTiming &timer)
+                : triggerEvent("DaughterCellFixation", -1.0), simulation(sim), world(worldComm), simulationTimer(timer){}
             bool operator()(double simTime) override
             {
                 //all nodes arrive here:
                 bool terminateSimulation = false;
 
-                if(eQ::data::isControllerNode) terminateSimulation = simulation->ABM->cellList.strainFixation();
+                if(eQ::data::isControllerNode)
+                {
+                    //only terminate if differentiated daughter cells fix the population:
+                    auto strainFractions = simulation->ABM->cellList.strainFractions();
+                    terminateSimulation = (0.0 == strainFractions[0]);
+                }
                 //send ABM status (only known to controller) to all other nodes:
                 eQ::mpi(world, 0) >> eQ::mpi::method::BROADCAST >> terminateSimulation;
 
@@ -528,65 +532,29 @@ int main(int argc, char* argv[])
                 return terminateSimulation;//ignore
             }
         };
-        struct AspectRatioInduction : public event_t
+        struct Induction : public event_t
         {
-            AspectRatioInduction() : triggerEvent("Induction", eQ::simulationTiming::HOURS(6)) {}
+            Induction() : triggerEvent("Induction", eQ::simulationTiming::HOURS(6)) {}
             bool operator()(double simTime) override
             {
                 if(eQ::data::isControllerNode)
                 {
-                    aspectRatioInvasionStrain::setFlag(aspectRatioInvasionStrain::ASPECTRATIO_INDUCTION);
+                    parB_MotherStrain::setFlag(parB_MotherStrain::INDUCTION);
 
                     std::cout<<std::endl<<std::endl;
-                    std::cout<<"Trigger of aspect ratio change to: "
-                            <<eQ::data::parameters["mutantAspectRatioScale"]
+                    std::cout<<"Trigger of parB induction : "
                             <<" at simTime="<<simTime<<std::endl;
                     std::cout<<std::endl<<std::endl;
                 }
                 return true;//ignore
             }
         };
-        event_t::list.push_back(std::make_shared<AspectRatioInduction>());
-        event_t::list.push_back(std::make_shared<AspectRatioFixation>(simulation, world, simulationTimer));
-
-        //scale factors are relative to "WT" division length of ecoli, defined in Cell.h:
-//        double defaultAR[] = {1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
-//        double defaultAR[] = {0.6, 0.7, 0.8, 0.9, 1.0,
-//                              1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
-//        eQ::data::parameters["defaultAspectRatioFactor"]     =
-//                (fileIO.isArrayCluster) ? defaultAR[fileIO.slurmArrayIndex] : 1.0;
-//                (fileIO.isArrayLocal) ? defaultAR[fileIO.localArrayIndex] : 1.0;
-//        eQ::data::parameters["defaultAspectRatioFactor"]     = 1.0;
-
-        //compare mutant AR sizes vs. larger WT size:
-        eQ::data::parameters["defaultAspectRatioFactor"]     = 1.0;
-//        eQ::data::parameters["defaultAspectRatioFactor"]     = 1.6;
-        double mutantAspectRatio[] = {0.6, 0.65, 0.7, 0.75, 0.8, 0.85};
-        if(fileIO.isArrayCluster)
-        {
-            eQ::data::parameters["mutantAspectRatioScale"]
-                    = mutantAspectRatio[fileIO.slurmArrayIndex]
-                        * (1.0/double(eQ::data::parameters["defaultAspectRatioFactor"]));
-        }
-
-        //        double WTAspectRatio[] = {1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
-//        eQ::data::parameters["defaultAspectRatioFactor"]     =
-//                (fileIO.isArrayCluster)
-//                        ? WTAspectRatio[fileIO.slurmArrayIndex]
-//                        : 1.0;
-//        eQ::data::parameters["mutantAspectRatioScale"]     =
-//                    0.6 * (1.0/double(eQ::data::parameters["defaultAspectRatioFactor"]));
-
-
-//        eQ::data::parameters["mutantAspectRatioScale"]       = 0.6;
-//        eQ::data::parameters["mutantAspectRatioScale"]       = 1.0;
-//        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
-        eQ::data::parameters["aspectRatioThresholdHSL"]      = 100.0;
+        event_t::list.push_back(std::make_shared<Induction>());
+        event_t::list.push_back(std::make_shared<DaughterCellFixation>(simulation, world, simulationTimer));
 
 
         //target max HSL in bulk:
         double hslPeakValue = 1.0e3;
-        double trapFlowRate = 10.0;//um/sec
 
         numSimulations = 1;
     //    numSimulations = 2;
@@ -600,13 +568,13 @@ int main(int argc, char* argv[])
         eQ::data::parameters["PETSC_SIMULATION"]  =  false;
 
         eQ::data::parameters["modelType"]         = "OFF_LATTICE_ABM";
-//        eQ::data::parameters["trapType"]          = "NOWALLED";
-        eQ::data::parameters["trapType"]      = "TWOWALLED";
+        eQ::data::parameters["trapType"]          = "NOWALLED";
+//        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
-        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-//        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
+//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
+        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
 //        double trapFlowRate = 0.0;//um/sec
@@ -616,7 +584,7 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 25.0;//um/sec
 //        double trapFlowRate = 50.0;//um/sec
 //        double trapFlowRate = 100.0;//um/sec
-//        double trapFlowRate = 150.0;
+        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
 
 //        eQ::data::parameters["lengthScaling"] = 1.0;//150mins
@@ -700,21 +668,22 @@ int main(int argc, char* argv[])
 
 
 //        eQ::data::parameters["numberSeedCells"] = 16;
-        eQ::data::parameters["numberSeedCells"] = 32;
+//        eQ::data::parameters["numberSeedCells"] = 32;
+        eQ::data::parameters["numberSeedCells"] = 64;
 
-//        eQ::data::parameters["cellInitType"] = "RANDOM";
-        eQ::data::parameters["cellInitType"] = "BANDED";
+        eQ::data::parameters["cellInitType"] = "RANDOM";
+//        eQ::data::parameters["cellInitType"] = "BANDED";
 //        eQ::data::parameters["cellInitType"] = "THIRDS";
 
 
         Strain::Params strainA {eQ::Cell::strainType::ACTIVATOR,
                     dt, npm, numHSL, eQ::Cell::DEFAULT_PROMOTER_DELAY_TIME_MINUTES, nullptr};//nullptr is for cell data, not yet created the cell
-        Strain::Params strainB {eQ::Cell::strainType::REPRESSOR,
-                    dt, npm, numHSL, eQ::Cell::DEFAULT_PROMOTER_DELAY_TIME_MINUTES, nullptr};//nullptr is for cell data, not yet created the cell
+//        Strain::Params strainB {eQ::Cell::strainType::REPRESSOR,
+//                    dt, npm, numHSL, eQ::Cell::DEFAULT_PROMOTER_DELAY_TIME_MINUTES, nullptr};//nullptr is for cell data, not yet created the cell
 
         //ASPECT RATIO:
-        strainTypes.push_back(std::make_shared<aspectRatioOscillator>(strainA));
-        strainTypes.push_back(std::make_shared<aspectRatioOscillator>(strainB));
+        strainTypes.push_back(std::make_shared<parB_MotherStrain>(strainA));
+//        strainTypes.push_back(std::make_shared<aspectRatioOscillator>(strainB));
 
         //SENDER-RECEIVER:
 //        strainTypes.push_back(std::make_shared<sendRecvStrain>(strainA));
@@ -766,8 +735,11 @@ int main(int argc, char* argv[])
 //                params.dataFiles->push_back(eQ::gridData
 //                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::H, std::string("h.pvd"),
 //                     std::make_shared<eQ::tensorData>(n,y,x,eQ::tensorData::rank::SCALAR)});
+//                params.dataFiles->push_back(eQ::data::record
+//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
+//                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
                 params.dataFiles->push_back(eQ::data::record
-                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
+                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::tetR, std::string("tetR.pvd"),
                      std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
 
         }

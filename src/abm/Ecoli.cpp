@@ -21,7 +21,7 @@ Ecoli::Ecoli(const Ecoli::Params &p)
     //note:  strain object has already been created
     strain = params.strain;
     strain->params.baseData = &params;//allows the Strain class to access the eQ::Cell::Params by reference
-
+    strain->init();
 }
 void Ecoli::setDampingGamma()
 {
@@ -63,13 +63,16 @@ void Ecoli::updatePoleCenters(void)
 }
 void Ecoli::updateGrowth()
 {
+    //allow the strain to scale the growth rate ( \in [0,1] )
+    double growthScale = strain->growthRateScaling();
+
     //call the chipmunk model
     int status;
     //set the growth force, with (generally) updated rest-length expansion rate
     //Exponential growth: l(t) = l0 * 2^(t/Td) ==> dl = dt * l * 2^(dt/20) * ln(2)/20
     //NOTE: 2^(dt/20) =~ 1 so skip that in the calculation
     const double expScale = (log(2.0)/params.doublingPeriodMinutes) * double(eQ::data::parameters["dt"]);
-    status = cpmCell->updateExpansionForce(expScale * getLengthMicrons());
+    status = cpmCell->updateExpansionForce(growthScale * expScale * getLengthMicrons());
 }
 
 std::shared_ptr<Ecoli> Ecoli::updatePhysicsModel(eQ::uniformRandomNumber  &zeroOne)

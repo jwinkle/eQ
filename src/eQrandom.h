@@ -12,20 +12,20 @@ class uniformRandomNumber
 public:
 	uniformRandomNumber()
 	{
-//      use a random device generator to generate seed:
-//            std::random_device rdev{};
-//            generator.seed(rdev());
-//            distribution =  std::make_shared<std::uniform_real_distribution<double>>(0.0,1.0);
 		// construct a trivial random generator engine from a time-based seed:
 		auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 		std::cout<<"Called eQ::uniformRandomNumber() default constructor, which generated seed="<<seed<<std::endl;
 		init(size_t(seed));
 	}
-	uniformRandomNumber(size_t seed)
-	{
-		init(seed);
-	}
-	void init(size_t seed)
+    uniformRandomNumber(std::random_device &rdev)
+    {//use a random device generator to generate seed:
+        init(rdev());
+    }
+    uniformRandomNumber(size_t seed)
+    {
+        init(seed);
+    }
+    void init(size_t seed)
 	{
 		generator.seed(unsigned(seed));
 		distribution =  std::make_shared<std::uniform_real_distribution<double>>(0.0,1.0);
@@ -39,6 +39,10 @@ public:
 	{
 		return (*distribution)(generator);
 	}
+    bool successCoinFlip()
+    {
+        return randomNumber() > 0.5;
+    }
 private:
 	std::default_random_engine generator;
 	std::shared_ptr<std::uniform_real_distribution<double>> distribution;

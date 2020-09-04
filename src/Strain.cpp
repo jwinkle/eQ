@@ -6,6 +6,7 @@ std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasi
 std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> aspectRatioOscillator::inductionFlags     = {aspectRatioOscillator::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> parB_MotherStrain::inductionFlags         = {parB_MotherStrain::NUM_INDUCTIONFLAGS, false};
 
 
 std::vector<double>
@@ -229,7 +230,51 @@ aspectRatioOscillator::computeProteins
     return dHSL;
 }
 
+double parB_MotherStrain::growthRateScaling()
+{
+    const double growthArrestThreshold = 1000;
+//    const double growthArrestThreshold = 500;
+    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < 0.5)
+            ? 0 : 1;
+}
+std::vector<double>
+parB_MotherStrain::computeProteins
+    (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+{
+    computeConcentrations(eHSL, membraneRate, lengthMicrons);
 
+    const double hTet = 4;
+    const double KTet = 0.25;
+    double ratioTetR = pow(tPROTEIN[_tetR]/KTet, hTet);
+
+    const double hCin = 4;
+    const double KCin = 200;
+    double ratioCin = pow(tHSL[C14]/KCin, hCin);
+
+//    const double parBThreshold = 1000;
+//    const double parBThreshold = 500;
+    const double parBThreshold = 900;
+
+    if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
+    {
+        deltaHSL[C4]  = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
+        if(inductionFlags[INDUCTION])
+            parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);
+        deltaPROTEIN[_tetR] = params.dt * tetR_productionRate;
+    }
+
+    if(inductionFlags[INDUCTION])
+        deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"])
+                        * ( 2 * ratioCin/(1 + ratioCin) //feedback
+                            +  1/(1 + ratioTetR));//hill function
+
+    conc[tetR] = iPROTEIN[_tetR];//copy to old data structure for now (for recording)
+
+    deltaHSL[C4]  -=  dHSL[C4];                                               //MEMBRANE DIFFUSION
+    deltaHSL[C14]  -=  dHSL[C14];                                               //MEMBRANE DIFFUSION
+    pushConcentrations();
+    return dHSL;
+}
 
 double modulusUpdate(double x);
 std::vector<double>
@@ -425,176 +470,3 @@ double modulusUpdate(double x)
         return  double(eQ::data::parameters["MODULUS_IPTG"]);
 }
 
-
-/*
-void Strain::solveLinearSystem(double &H_i, double &H_e, double y1, double y2, double cellFraction)
-{
-    //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
-    //                double newHi, newHe;
-    //                solveLinearSystem(newHi, newHe, dt*double(eQ::data::parameters["hslProductionRate_C4"]) * conc[S] + conc[H], C4ext, rho_cell);
-    //                delta[H] = newHi - conc[H];
-    //                dC4HSL = newHe  - C4ext;
-    double a,b,c,d;
-
-    double ri = 0.5/cellFraction;
-    double re = 0.5/(1.0 - cellFraction);
-    double di = params->DH * ri;
-    double de = params->DH * re;
-    a = 1.0 + dt*(di);
-    b = -dt*di;
-    c = -dt*de;
-    d = 1.0 + dt*de;
-
-    H_e = (y1 - y2*a/c)/(b - a*d/c);
-    H_i = (y1 - b*H_e)/a;
-}
-*/
-////////////////////////////////////////////////////////////////////////////////
-//				loadParams():
-////////////////////////////////////////////////////////////////////////////////
-void loadParams(eQ::Cell::strainType which, struct dso_parameters &params, struct rates &rates)
-{//SELECT PROMOTER STRENGTHS HERE:
-    if(eQ::Cell::strainType::ACTIVATOR == which)
-	{//ACTIVATOR:
-		params.eta.S0 	= rates.eta[R0][STRONG];
-		params.eta.S1 	= rates.eta[R1][STRONG];
-		params.eta.FP0 	= rates.eta[F0][STRONG];
-		params.eta.FP1 	= rates.eta[F1][STRONG];
-
-		params.K.H 		= rates.K[STRONG].H;
-		params.K.I 		= rates.K[WEAK].I;
-		params.K.L  	= rates.K[WEAK].L;
-
-		params.phi 		= rates.phiH;
-	}
-    else if(eQ::Cell::strainType::REPRESSOR == which)
-	{//REPRESSOR:
-		params.eta.S0 	= rates.eta[C0][WEAK];
-		params.eta.S1 	= rates.eta[C1][WEAK];
-		params.eta.FP0 	= rates.eta[Y0][WEAK];
-		params.eta.FP1 	= rates.eta[Y1][WEAK];
-
-		params.K.H 		= rates.K[STRONG].H;
-		params.K.I 		= rates.K[WEAK].I;
-		params.K.L  	= rates.K[WEAK].L;
-
-		params.phi 		= rates.phiI;
-	}
-	//THESE HAVE ONLY ONE VALUE: POPULATE params directly:
-	params.eta.L0 	= rates.eta[L0][ONLY];
-	params.eta.L1 	= rates.eta[L1][ONLY];
-	params.eta.A0 	= rates.eta[A0][ONLY];
-	params.eta.A1 	= rates.eta[A1][ONLY];
-
-	params.K.A 			= rates.K[ONLY].A;
-	params.K.C 			= rates.K[ONLY].C;
-
-	params.nH 			= rates.nH;
-	params.nL 			= rates.nL;
-	params.nI 			= rates.nI;
-	params.dC 			= rates.dC;
-	params.dA 			= rates.dA;
-	params.dilution 	= rates.dilution;
-	params.mu_e 		= rates.mu_e;
-	params.DH 			= rates.DH;
-	params.DI 			= rates.DI;
-	params.m 			= rates.m;
-}
-////////////////////////////////////////////////////////////////////////////////
-//				initRates():
-////////////////////////////////////////////////////////////////////////////////
-void initRates(double *basalRate, struct rates &rates)
-{
-// MASTER TABLE OF RATES FROM CHEN (2015)
-
-	// //basal rate chosen from histogram in Chen:
-	// basalRate[SR] = 10.0;
-	// basalRate[SC] = 10.0;
-	// basalRate[SL] = 10.0;
-	// basalRate[SA] = 10.0;
-	// basalRate[SF] = 10.0;
-	// basalRate[SY] = 2.0;
-	// basalRate[ClpXP] = 1400.0;
-
-	//values posted in Jae Kim's update paper:
-	basalRate[SR] = 3.06;
-	basalRate[SC] = 37.23;
-	basalRate[SL] = 4.52;
-//    basalRate[SA] = 258.0;
-    basalRate[SA] = 9.54;
-    basalRate[SF] = 113.0;
-	basalRate[SY] = 6.8;
-	basalRate[ClpXP] = 1820.0;
-
-	rates.eta[R0][WEAK] 		= 1.0 * basalRate[SR];
-	rates.eta[R0][MEDIUM] 		= 3.04 * basalRate[SR];
-	rates.eta[R0][STRONG] 		= 20.13 * basalRate[SR];
-	rates.eta[R0][LAC]			= 177.44 * basalRate[SR];
-
-	rates.eta[R1][WEAK] 		= 624.44 * basalRate[SR];
-	rates.eta[R1][MEDIUM] 		= 574.97 * basalRate[SR];
-	rates.eta[R1][STRONG] 		= 367.48 * basalRate[SR];
-	rates.eta[R1][LAC]			= 0.0 * basalRate[SR];
-
-	rates.eta[C0][WEAK] 		= 1.0 * basalRate[SC];
-	rates.eta[C0][MEDIUM] 		= 3.04 * basalRate[SC];
-	rates.eta[C0][STRONG] 		= 20.13 * basalRate[SC];
-
-	rates.eta[C1][WEAK] 		= 624.44 * basalRate[SC];
-	rates.eta[C1][MEDIUM] 		= 574.97 * basalRate[SC];
-	rates.eta[C1][STRONG] 		= 367.48 * basalRate[SC];
-
-	rates.eta[F0][WEAK] 		= 1.0 * basalRate[SF];
-	rates.eta[F0][MEDIUM] 		= 3.04 * basalRate[SF];
-	rates.eta[F0][STRONG] 		= 20.13 * basalRate[SF];
-	rates.eta[F0][LAC]			= 177.44 * basalRate[SF];
-
-	rates.eta[F1][WEAK] 		= 624.44 * basalRate[SF];
-	rates.eta[F1][MEDIUM] 		= 574.97 * basalRate[SF];
-	rates.eta[F1][STRONG] 		= 367.48 * basalRate[SF];
-	rates.eta[F1][LAC]			= 0.0 * basalRate[SF];
-
-	rates.eta[Y0][WEAK] 		= 1.0 * basalRate[SY];
-	rates.eta[Y0][MEDIUM] 		= 41.8 * basalRate[SY];
-	rates.eta[Y1][WEAK] 		= 1713.0 * basalRate[SY];
-	rates.eta[Y1][MEDIUM] 		= 197.49 * basalRate[SY];
-
-	//THESE HAVE ONLY ONE VALUE: POPULATE params directly:
-	rates.eta[L0][ONLY] 		= 1.0 * basalRate[SL]; 
-	rates.eta[L1][ONLY] 		= 1735.47 * basalRate[SL]; 
-	rates.eta[A0][ONLY] 		= 27.03 * basalRate[SA]; 
-	rates.eta[A1][ONLY] 		= 141.61 * basalRate[SA];
-
-	rates.K[WEAK].H				= 16599.0;
-	rates.K[MEDIUM].H			= 10333.0;
-	rates.K[STRONG].H			= 5937.0;
-
-	rates.K[WEAK].L				= 47.7;
-	rates.K[LAC].L				= 85.38;
-
-	rates.K[WEAK].I				= 2357.3;
-	rates.K[MEDIUM].I			= 594.23;
-
-	//THESE HAVE ONLY ONE VALUE: POPULATE params directly:
-    rates.K[ONLY].A				= 5110.0 * 1000.0;
-    rates.K[ONLY].C 			= 1300.0;
-
-//    rates.nH = 4;
-//	rates.nL = 2;
-//	rates.nI = 4;
-    rates.nH = 4.;
-    rates.nL = 2.;
-    rates.nI = 4.;
-
-    rates.dC = 1.8 * basalRate[ClpXP];
-	rates.dA = 2257.0;
-	rates.dilution = log(2.0)/25.0;
-	rates.mu_e = 0.1;
-	// rates.mu_e = 0.01;
-
-	rates.DH = 3.0;
-	rates.DI = 2.1;
-	rates.phiH = 16.0;
-	rates.phiI = 2.0;
-	rates.m = log(2.0)/3.0;
-}

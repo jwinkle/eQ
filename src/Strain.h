@@ -8,10 +8,11 @@
 #include <string>
 #include <iostream>
 #include <math.h>
+#include <memory>
 
 #include "eQ.h"
 #include "eQcell.h"
-
+#include "eQrandom.h"
 
 //PARAMETER SET FOR PRODUCTION RATES = "eta" (BASAL, ACTIVE)
 enum etas
@@ -87,7 +88,7 @@ public:
         S, L, A, FP, M,
         H_T, HR, R_T, R,
         H, I, LEGI_C, LEGI_A, LEGI_R,
-        AraC,
+        AraC, tetR,
         CFP,YFP,RFP,GFP,
         NUM_CONCENTRATIONS
     };
@@ -97,7 +98,7 @@ public:
         NUM_HSL
     };
 
-  public:
+
     struct Params
     {
         eQ::Cell::strainType	whichType;
@@ -114,15 +115,12 @@ public:
 
 	//clone will call default copy constructor (duplicates all objects by value)
     virtual std::shared_ptr<Strain>
-        clone() const {return std::make_shared<Strain>(*this);}
+        clone()  {return std::make_shared<Strain>(*this);}
+
+    virtual void    init(){}
+    virtual double  growthRateScaling(){return 1.0;}
 
     //Note: must declare methods virtual if you want to over-ride them in subclasses
-//    virtual std::vector<double>
-//        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons);
-//	virtual void
-//		divideProteins(std::shared_ptr<Strain> daughter, double fracToDaughter);
-
-
     virtual double	getProteinNumber(concentrations which)	const {return conc[which];}
     virtual double	getHSL(hsl which)						const {return iHSL[which];}
     virtual double	getDelayedHSL(hsl which)				const {return tHSL[which];}
@@ -386,7 +384,7 @@ public:
     }
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
-        clone() const override {return std::make_shared<sendRecvStrain>(*this);}  // requires C++ 14
+        clone()  override {return std::make_shared<sendRecvStrain>(*this);}  // requires C++ 14
     std::vector<double>
         computeProteins(
             const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
@@ -430,7 +428,7 @@ public:
     }
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
-        clone() const override {return std::make_shared<aspectRatioInvasionStrain>(*this);}  // requires C++ 14
+        clone()  override {return std::make_shared<aspectRatioInvasionStrain>(*this);}  // requires C++ 14
 
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
@@ -466,9 +464,65 @@ public:
     }
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
-        clone() const override {return std::make_shared<aspectRatioOscillator>(*this);}  // requires C++ 14
+        clone()  override {return std::make_shared<aspectRatioOscillator>(*this);}  // requires C++ 14
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
+};
+class parB_MotherStrain : public Strain
+{
+private:
+    enum  qProteins
+    {
+        _tetR = 0,
+        NUM_QUEUES
+    };
+public:
+    enum hslType
+    {
+        C4HSL   = 0,
+        C14HSL  = 1,
+        NUM_HSLTYPES
+    };
+    enum inductionFlag
+    {
+        INDUCTION,
+        NUM_INDUCTIONFLAGS
+    };
+    static std::vector<bool> inductionFlags;
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
+
+    parB_MotherStrain(const Strain::Params &p) : Strain(p)
+    {
+        initializeDataStructures(params.numHSL, qProteins::NUM_QUEUES);
+        inductionFlags.assign(NUM_INDUCTIONFLAGS, false);
+        std::random_device rdev;
+        rn = std::make_shared<eQ::uniformRandomNumber>(rdev);
+    }
+    //calls default copy constructor for derived class:
+    std::shared_ptr<Strain> clone()  override  // requires C++ 14
+    {
+        auto clone = std::make_shared<parB_MotherStrain>(*this);
+        if(parB_losePlasmid)
+        {
+            clone->parB_losePlasmid = false;//reset for daughter cell
+            clone->params.whichType = eQ::Cell::strainType::REPRESSOR;
+//            if(rn->successCoinFlip())   clone->params.whichType = eQ::Cell::strainType::REPRESSOR;
+//            else                        params.whichType = eQ::Cell::strainType::REPRESSOR;
+        }
+        return clone;
+    }
+    void init () override
+    {//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
+        tetR_productionRate = log(2)/params.baseData->doublingPeriodMinutes;
+    }
+    std::vector<double>
+        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
+
+    double growthRateScaling() override;
+private:
+    bool parB_losePlasmid = false;
+    std::shared_ptr<eQ::uniformRandomNumber> rn;
+    double tetR_productionRate;
 };
 class MODULUSmodule : public Strain
 {
@@ -517,7 +571,7 @@ public:
     }
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
-        clone() const override {return std::make_shared<MODULUSmodule>(*this);}  // requires C++ 14
+        clone()  override {return std::make_shared<MODULUSmodule>(*this);}  // requires C++ 14
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
 
@@ -592,113 +646,8 @@ public:
 
 };
 
-void initRates(double *, struct rates &);
-void loadParams(eQ::Cell::strainType which, struct dso_parameters &params, struct rates &rates);
+//void initRates(double *, struct rates &);
+//void loadParams(eQ::Cell::strainType which, struct dso_parameters &params, struct rates &rates);
 	
 
-/*
-std::vector<double>
-Strain::computeProteins
-    (double C4ext, double C14ext, double lengthMicrons)
-{
-
-    //data:  conc[i] stores protein # for each protein between timesteps (covert to conc. first)
-//    double explicitDilution = params->dilution;
-    double explicitDilution         = 0.0;//set to zero when using ABM  with cell growth
-    //we store protein count, convert to nanoMolar concentration: 0.602 protein/um^3 = 1nM
-    double oneProteinToNanoMolar = eQ::proteinNumberToNanoMolar(1.0, lengthMicrons);
-
-    if(lengthMicrons == 0.0)
-    {
-        std::cout<<"ERROR: scale for computeProteins() set to 0!"<<std::endl;
-        return std::vector<double>{};
-    }
-    for(int i=0; i<numConcentrations; i++)
-    {
-        conc[i] *= oneProteinToNanoMolar;//convert to proper concentration
-    }
-    //reactions on promoters use delayed concentrations (stored as t-tau concentrations, not #, thus no scaling):
-    //promoter Hill functions "started" transcription/translation  tau time ago, so use those concentrations
-    H_tau = qH_tau.front();  qH_tau.pop();
-    L_tau = qL_tau.front();  qL_tau.pop();
-    I_tau = qI_tau.front();  qI_tau.pop();
-    //compute Hill function ratios once:
-     ratio_H_tau = pow(H_tau/params->K.H, params->nH);
-     ratio_L_tau = pow(L_tau/params->K.L, params->nL);
-     ratio_I_tau = pow(I_tau/params->K.I, params->nI);
-
-    totalProtein =
-            params->K.C + conc[S]+ conc[L] + conc[A] + conc[FP] + conc[M];
-    totalHSL =
-            params->K.A + conc[H] + conc[I];
-    degradationProtein =
-            (params->dC / totalProtein) + explicitDilution;//explicitly model dilution here
-    degradationHSL =
-            (params->dA / totalHSL) * conc[A] + explicitDilution;//explicitly model dilution here
-
-    //C4 or C14 synthase:
-    delta[S] = dt * ( //rhlI or cinI both have rhl/lac hybrid promoter
-            (params->eta.S0 + params->eta.S1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
-            - degradationProtein * conc[S] );
-    //LacI
-    delta[L] = dt * ( //lacI has cin promoter
-            (params->eta.L0 + params->eta.L1 * ratio_I_tau)/(1.0 + ratio_I_tau)
-            - degradationProtein * conc[L] );
-    //AiiA
-    delta[A] = dt * ( //aiiA has cin promoter
-            (params->eta.A0 + params->eta.A1 * ratio_I_tau)/(1.0 + ratio_I_tau)
-            - degradationProtein * conc[A] );
-    //Mature FP
-    delta[M] = dt * (
-            params->m * conc[FP]
-            - degradationProtein * conc[M] );
-    //MEMBRANE DIFFUSION OF HSL (degradation via spatial diffusion is done on grid)
-    dC4HSL = dt * (
-            params->DH * (conc[H] - C4ext));    //MEMBRANE DIFFUSION
-    dC14HSL = dt * (
-            params->DI * (conc[I] - C14ext));   //MEMBRANE DIFFUSION
-
-    if(eQ::Cell::strainType::ACTIVATOR == whichType)
-    {
-        //CFP --> tracks C4HSL synthase:
-        delta[FP] = dt * ( //activator has rhl/lac hybrid promoter
-                (params->eta.FP0 + params->eta.FP1 * ratio_H_tau)/(1.0 + ratio_H_tau + ratio_L_tau)
-                - (degradationProtein + params->m) * conc[FP] );
-        delta[H] = dt * (//C4HSL
-                params->phi * conc[S]									//PRODUCTION
-                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
-                - dC4HSL;                                               //MEMBRANE DIFFUSION
-        delta[I] = dt * (//C14HSL
-                - degradationHSL * conc[I] ) 							//DEGRADATION+DILUTION
-                - dC14HSL;                                               //MEMBRANE DIFFUSION
-    }
-    else if(eQ::Cell::strainType::REPRESSOR == whichType)
-    {
-        //YFP --> tracks C14HSL synthase:
-        delta[FP] = dt * ( //repressor has cin/lac promoter
-                (params->eta.FP0 + params->eta.FP1 * ratio_I_tau)/(1.0 + ratio_I_tau + ratio_L_tau)
-                - (degradationProtein + params->m) * conc[FP] );
-        delta[I] = dt * (//C14HSL
-                params->phi * conc[S]									//PRODUCTION
-                - degradationHSL * conc[I] )							//DEGRADATION+DILUTION
-                - dC14HSL;                                               //MEMBRANE DIFFUSION
-        delta[H] = dt * (//C4HSL
-                - degradationHSL * conc[H] )							//DEGRADATION+DILUTION
-                - dC4HSL;                                               //MEMBRANE DIFFUSION
-    }
-
-    for(int i=0;i<numConcentrations;i++)
-    {
-        conc[i] += delta[i];
-        if (conc[i] < 0.0)  conc[i] = 0.0;
-        else conc[i] /= oneProteinToNanoMolar;//store as protein #
-    }
-    //push new HSL and LacI values to queue: [STORE AS CONCENTRATION in nM]:
-    qH_tau.push(conc[H] * oneProteinToNanoMolar);
-    qL_tau.push(conc[L] * oneProteinToNanoMolar);
-    qI_tau.push(conc[I] * oneProteinToNanoMolar);
-
-    return std::vector<double> {dC4HSL/oneProteinToNanoMolar, dC14HSL/oneProteinToNanoMolar};//return HSL # changes
-}
-*/
 #endif
