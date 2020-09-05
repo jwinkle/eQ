@@ -48,8 +48,7 @@ int inputOutput::parseInputLine(int argc, char* argv[])
     return 1;//normal return value
 }
 
-
-std::string inputOutput::initOutputFiles(std::string &root)//root is laptop path to check
+std::string inputOutput::initOutputFiles(std::string &root, const std::string &gitBranch)//root is laptop path to check
 {
     //sets time,date string (using epoch time + compile time stamps):
     timeString = __TIME__;//only populates at compile time
@@ -61,7 +60,9 @@ std::string inputOutput::initOutputFiles(std::string &root)//root is laptop path
             + "-"
             + timeString
             + "-"
-            + dateString;
+            + dateString
+            + "-"
+            + gitBranch;
 
     auto p2 = boost::filesystem::path(root);//path defined at top of this file
     if (boost::filesystem::exists(p2))

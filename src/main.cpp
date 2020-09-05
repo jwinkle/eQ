@@ -257,7 +257,7 @@ int main(int argc, char* argv[])
             return 0;
     }
 
-    fileIO.initOutputFiles(rootPath);//pass path to write relative to root path
+    fileIO.initOutputFiles(rootPath, gitBranch);//pass path to write relative to root path
 
 
     if(1 == npes)
@@ -471,6 +471,9 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
+        eQ::data::parameters["parBThreshold"]           = 1000;
+        eQ::data::parameters["growthArrestThreshold"]   = 1000;
+        eQ::data::parameters["tetRThreshold"]           = 0.5;
 
         eQ::data::parameters["simType"]       = "PARB_GRANT_SIMULATION";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
@@ -485,6 +488,18 @@ int main(int argc, char* argv[])
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
 //        simulationTimer.setSimulationTimeHours(80);
+
+
+
+        double parBThresholds[] = {1200,1100,1000,900,800,700};
+        if(fileIO.isArrayCluster)
+        {
+            eQ::data::parameters["parBThreshold"]
+                    = parBThresholds[fileIO.slurmArrayIndex];
+        }
+
+
+
 
         using sim_t = std::shared_ptr<Simulation>;
         struct DaughterCellFixation : public event_t
@@ -572,9 +587,9 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
-//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
+        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
+//        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
 //        double trapFlowRate = 0.0;//um/sec

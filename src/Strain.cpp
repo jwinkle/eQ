@@ -232,9 +232,10 @@ aspectRatioOscillator::computeProteins
 
 double parB_MotherStrain::growthRateScaling()
 {
-    const double growthArrestThreshold = 1000;
-//    const double growthArrestThreshold = 500;
-    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < 0.5)
+    const double growthArrestThreshold = double(eQ::data::parameters["growthArrestThreshold"]);
+    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
+
+    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < tetRThreshold)
             ? 0 : 1;
 }
 std::vector<double>
@@ -251,9 +252,7 @@ parB_MotherStrain::computeProteins
     const double KCin = 200;
     double ratioCin = pow(tHSL[C14]/KCin, hCin);
 
-//    const double parBThreshold = 1000;
-//    const double parBThreshold = 500;
-    const double parBThreshold = 900;
+    const double parBThreshold = double(eQ::data::parameters["parBThreshold"]);
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
@@ -264,9 +263,10 @@ parB_MotherStrain::computeProteins
     }
 
     if(inductionFlags[INDUCTION])
-        deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"])
-                        * ( 2 * ratioCin/(1 + ratioCin) //feedback
-                            +  1/(1 + ratioTetR));//hill function
+        deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"]) * (
+//                          2 * ratioCin/(1 + ratioCin) //feedback
+                            +  1/(1 + ratioTetR)//hill function
+                );
 
     conc[tetR] = iPROTEIN[_tetR];//copy to old data structure for now (for recording)
 
