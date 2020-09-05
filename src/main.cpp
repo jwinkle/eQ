@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 1000;
+        eQ::data::parameters["parBThreshold"]           = 900;
         eQ::data::parameters["growthArrestThreshold"]   = 1000;
         eQ::data::parameters["tetRThreshold"]           = 0.5;
 
@@ -491,11 +491,17 @@ int main(int argc, char* argv[])
 
 
 
-        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        if(fileIO.isArrayCluster)
+//        {
+//            eQ::data::parameters["parBThreshold"]
+//                    = parBThresholds[fileIO.slurmArrayIndex];
+//        }
+        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
         if(fileIO.isArrayCluster)
         {
-            eQ::data::parameters["parBThreshold"]
-                    = parBThresholds[fileIO.slurmArrayIndex];
+            eQ::data::parameters["growthArrestThreshold"]
+                    = growthArrestThreshold[fileIO.slurmArrayIndex];
         }
 
 
