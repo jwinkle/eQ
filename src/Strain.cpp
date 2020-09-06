@@ -233,10 +233,10 @@ aspectRatioOscillator::computeProteins
 double parB_MotherStrain::growthRateScaling()
 {
     const double growthArrestThreshold = double(eQ::data::parameters["growthArrestThreshold"]);
-//    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
+    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
 
-//    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < tetRThreshold)
-    return (tHSL[C14] > growthArrestThreshold)
+    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < tetRThreshold)
+//    return (tHSL[C14] > growthArrestThreshold)
             ? 0 : 1;
 }
 std::vector<double>
@@ -257,22 +257,23 @@ parB_MotherStrain::computeProteins
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
-        deltaHSL[C4]  = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
+        deltaPROTEIN[_tetR] = params.dt * tetR_productionRate;
+        deltaHSL[C4]        = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
         if(inductionFlags[INDUCTION])
             parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);
-        deltaPROTEIN[_tetR] = params.dt * tetR_productionRate;
     }
 
     if(inductionFlags[INDUCTION])
-        deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"]) * (
-                          2 * ratioCin/(1 + ratioCin) //feedback
-                            +  1/(1 + ratioTetR)//hill function
+        deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"])
+                *  1/(1 + ratioTetR)//hill function repressor
+                * ( 1
+                    +  1 * ratioCin/(1 + ratioCin) //feedback
                 );
 
     deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * tetR_decayRate);
 
     //LACTONASE DECAY OF HSL:
-    deltaHSL[C4]  -=  params.dt * (iHSL[C4] * aiiA_decayRate);
+//    deltaHSL[C4]  -=  params.dt * (iHSL[C4] * aiiA_decayRate);
     deltaHSL[C14]  -=  params.dt * (iHSL[C14] * aiiA_decayRate);
 
     //MEMBRANE DIFFUSION

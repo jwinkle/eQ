@@ -515,7 +515,7 @@ public:
     {//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
         tetR_productionRate = log(2)/params.baseData->doublingPeriodMinutes;
         tetR_decayRate = tetR_productionRate;
-        aiiA_decayRate = 0.5 * tetR_productionRate;//scale decay rate to cell growth rate
+        aiiA_decayRate = tetR_productionRate;//scale decay rate to cell growth rate
     }
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;

@@ -473,7 +473,7 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["parBThreshold"]           = 900;
         eQ::data::parameters["growthArrestThreshold"]   = 1000;
-        eQ::data::parameters["tetRThreshold"]           = 0.5;
+        eQ::data::parameters["tetRThreshold"]           = 0.25;
 
         eQ::data::parameters["simType"]       = "PARB_GRANT_SIMULATION";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
