@@ -233,9 +233,10 @@ aspectRatioOscillator::computeProteins
 double parB_MotherStrain::growthRateScaling()
 {
     const double growthArrestThreshold = double(eQ::data::parameters["growthArrestThreshold"]);
-    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
+//    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
 
-    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < tetRThreshold)
+//    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_tetR] < tetRThreshold)
+    return (tHSL[C14] > growthArrestThreshold)
             ? 0 : 1;
 }
 std::vector<double>
