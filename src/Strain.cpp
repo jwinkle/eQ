@@ -264,14 +264,20 @@ parB_MotherStrain::computeProteins
 
     if(inductionFlags[INDUCTION])
         deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"]) * (
-//                          2 * ratioCin/(1 + ratioCin) //feedback
+                          2 * ratioCin/(1 + ratioCin) //feedback
                             +  1/(1 + ratioTetR)//hill function
                 );
 
+    //LACTONASE DECAY OF HSL:
+    deltaHSL[C4]  -=  params.dt * (iHSL[C4] * aiiA_decayRate);
+    deltaHSL[C14]  -=  params.dt * (iHSL[C14] * aiiA_decayRate);
+
+    //MEMBRANE DIFFUSION
+    deltaHSL[C4]  -=  dHSL[C4];
+    deltaHSL[C14]  -=  dHSL[C14];
+
     conc[tetR] = iPROTEIN[_tetR];//copy to old data structure for now (for recording)
 
-    deltaHSL[C4]  -=  dHSL[C4];                                               //MEMBRANE DIFFUSION
-    deltaHSL[C14]  -=  dHSL[C14];                                               //MEMBRANE DIFFUSION
     pushConcentrations();
     return dHSL;
 }
