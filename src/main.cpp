@@ -474,6 +474,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["parBThreshold"]           = 900;
         eQ::data::parameters["growthArrestThreshold"]   = 1000;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
+        eQ::data::parameters["lacIThreshold"]           = 1.0;
 
         eQ::data::parameters["simType"]       = "PARB_GRANT_SIMULATION";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
@@ -756,9 +757,9 @@ int main(int argc, char* argv[])
 //                params.dataFiles->push_back(eQ::gridData
 //                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::H, std::string("h.pvd"),
 //                     std::make_shared<eQ::tensorData>(n,y,x,eQ::tensorData::rank::SCALAR)});
-//                params.dataFiles->push_back(eQ::data::record
-//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
-//                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
+                params.dataFiles->push_back(eQ::data::record
+                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
+                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
                 params.dataFiles->push_back(eQ::data::record
                     {eQ::dataParameterType::PROTEIN, Strain::concentrations::tetR, std::string("tetR.pvd"),
                      std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});

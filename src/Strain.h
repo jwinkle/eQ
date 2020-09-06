@@ -474,6 +474,7 @@ private:
     enum  qProteins
     {
         _tetR = 0,
+        _lacI,
         NUM_QUEUES
     };
 public:
@@ -513,9 +514,10 @@ public:
     }
     void init () override
     {//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
-        tetR_productionRate = log(2)/params.baseData->doublingPeriodMinutes;
-        tetR_decayRate = tetR_productionRate;
-        aiiA_decayRate = tetR_productionRate;//scale decay rate to cell growth rate
+        cellGrowthRate          = log(2)/params.baseData->doublingPeriodMinutes;
+        tetR_productionRate     = cellGrowthRate;
+        tetR_decayRate          = cellGrowthRate;
+        aiiA_decayRate          = cellGrowthRate;//scale decay rate to cell growth rate
     }
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
@@ -524,6 +526,7 @@ public:
 private:
     bool parB_losePlasmid = false;
     std::shared_ptr<eQ::uniformRandomNumber> rn;
+    double cellGrowthRate;
     double tetR_productionRate;
     double tetR_decayRate;
     double aiiA_decayRate;
