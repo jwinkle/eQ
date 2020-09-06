@@ -514,6 +514,7 @@ public:
     void init () override
     {//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
         tetR_productionRate = log(2)/params.baseData->doublingPeriodMinutes;
+        tetR_decayRate = tetR_productionRate;
         aiiA_decayRate = 0.5 * tetR_productionRate;//scale decay rate to cell growth rate
     }
     std::vector<double>
@@ -524,6 +525,7 @@ private:
     bool parB_losePlasmid = false;
     std::shared_ptr<eQ::uniformRandomNumber> rn;
     double tetR_productionRate;
+    double tetR_decayRate;
     double aiiA_decayRate;
 };
 class MODULUSmodule : public Strain

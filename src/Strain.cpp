@@ -269,6 +269,8 @@ parB_MotherStrain::computeProteins
                             +  1/(1 + ratioTetR)//hill function
                 );
 
+    deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * tetR_decayRate);
+
     //LACTONASE DECAY OF HSL:
     deltaHSL[C4]  -=  params.dt * (iHSL[C4] * aiiA_decayRate);
     deltaHSL[C14]  -=  params.dt * (iHSL[C14] * aiiA_decayRate);
