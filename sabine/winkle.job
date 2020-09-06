@@ -12,7 +12,7 @@
 #SBATCH -J winkle
 
 #   days-hours:mins:secs
-#SBATCH -t 0-01:59:59   #2 hours    
+#SBATCH -t 0-03:59:59   #4 hours    
 #  #SBATCH -t  2-00:00:00   #2 days
 
 # #SBATCH -o v01_%A_%a_log.txt # Standard output 

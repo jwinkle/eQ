@@ -484,14 +484,15 @@ int main(int argc, char* argv[])
         setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
-        simulationTimer.setSimulationTimeHours(25);
+//        simulationTimer.setSimulationTimeHours(25);
 //        simulationTimer.setSimulationTimeHours(40);
-//        simulationTimer.setSimulationTimeHours(60);
+        simulationTimer.setSimulationTimeHours(60);
 //        simulationTimer.setSimulationTimeHours(80);
 
 
 
-        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        double parBThresholds[] = {1200,1100,1000,900,800,700};
+        double parBThresholds[] = {1200,1150,1100,1050,1000,950};
         if(fileIO.isArrayCluster)
         {
             eQ::data::parameters["parBThreshold"]
