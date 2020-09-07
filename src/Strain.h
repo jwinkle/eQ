@@ -512,17 +512,11 @@ public:
         }
         return clone;
     }
-    void init () override
-    {//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
-        cellGrowthRate          = log(2)/params.baseData->doublingPeriodMinutes;
-        tetR_productionRate     = cellGrowthRate;
-        tetR_decayRate          = cellGrowthRate;
-        aiiA_decayRate          = cellGrowthRate;//scale decay rate to cell growth rate
-    }
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
 
-    double growthRateScaling() override;
+    void init()                 override;
+    double growthRateScaling()  override;
 private:
     bool parB_losePlasmid = false;
     std::shared_ptr<eQ::uniformRandomNumber> rn;
@@ -530,6 +524,10 @@ private:
     double tetR_productionRate;
     double tetR_decayRate;
     double aiiA_decayRate;
+    double growthArrestThreshold;
+    double lacIThreshold;
+    double parBThreshold;
+    double tetRThreshold;
 };
 class MODULUSmodule : public Strain
 {

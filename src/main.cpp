@@ -472,7 +472,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
         eQ::data::parameters["parBThreshold"]           = 900;
-        eQ::data::parameters["growthArrestThreshold"]   = 1000;
+        eQ::data::parameters["growthArrestThreshold"]   = 750;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
         eQ::data::parameters["lacIThreshold"]           = 1.0;
 

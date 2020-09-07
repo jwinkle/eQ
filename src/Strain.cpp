@@ -230,12 +230,19 @@ aspectRatioOscillator::computeProteins
     return dHSL;
 }
 
+void parB_MotherStrain::init ()
+{//called after seeding creation to set params dependent on the base data (otherwise invalid pointer)
+    cellGrowthRate          = log(2)/params.baseData->doublingPeriodMinutes;
+    tetR_productionRate     = cellGrowthRate;
+    tetR_decayRate          = cellGrowthRate;
+    aiiA_decayRate          = cellGrowthRate;//scale decay rate to cell growth rate
+    growthArrestThreshold = double(eQ::data::parameters["growthArrestThreshold"]);
+    tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
+    lacIThreshold = double(eQ::data::parameters["lacIThreshold"]);
+    parBThreshold = double(eQ::data::parameters["parBThreshold"]);
+}
 double parB_MotherStrain::growthRateScaling()
 {
-    const double growthArrestThreshold = double(eQ::data::parameters["growthArrestThreshold"]);
-//    const double tetRThreshold = double(eQ::data::parameters["tetRThreshold"]);
-    const double lacIThreshold = double(eQ::data::parameters["lacIThreshold"]);
-
     return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_lacI] < lacIThreshold)
 //    return (tHSL[C14] > growthArrestThreshold)
             ? 0 : 1;
@@ -254,7 +261,6 @@ parB_MotherStrain::computeProteins
     const double KCin = 200;
     double ratioCin = pow(tHSL[C14]/KCin, hCin);
 
-    const double parBThreshold = double(eQ::data::parameters["parBThreshold"]);
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
@@ -269,7 +275,7 @@ parB_MotherStrain::computeProteins
         deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"])
                 *  1/(1 + ratioTetR)//hill function repressor
                 * ( 1
-                    +  1 * ratioCin/(1 + ratioCin) //feedback
+                    +  2 * ratioCin/(1 + ratioCin) //feedback
                 );
 
     deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * cellGrowthRate);
