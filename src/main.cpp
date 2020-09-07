@@ -472,9 +472,9 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
         eQ::data::parameters["parBThreshold"]           = 900;
-        eQ::data::parameters["growthArrestThreshold"]   = 750;
+        eQ::data::parameters["growthArrestThreshold"]   = 250;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
-        eQ::data::parameters["lacIThreshold"]           = 1.0;
+        eQ::data::parameters["lacIThreshold"]           = 1.5;
 
         eQ::data::parameters["simType"]       = "PARB_GRANT_SIMULATION";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";

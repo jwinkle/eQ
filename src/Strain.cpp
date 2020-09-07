@@ -253,10 +253,12 @@ parB_MotherStrain::computeProteins
 {
     computeConcentrations(eHSL, membraneRate, lengthMicrons);
 
+    //tetR Hill function:
     const double hTet = 4;
     const double KTet = 0.25;
     double ratioTetR = pow(tPROTEIN[_tetR]/KTet, hTet);
 
+    //feedback Hill function:
     const double hCin = 4;
     const double KCin = 200;
     double ratioCin = pow(tHSL[C14]/KCin, hCin);
@@ -268,18 +270,23 @@ parB_MotherStrain::computeProteins
         deltaPROTEIN[_lacI] = params.dt * cellGrowthRate;
         deltaHSL[C4]        = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
         if(inductionFlags[INDUCTION])
-            parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);
+            parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);//becomes daughter cell on division (via clone() copy)
     }
 
     if(inductionFlags[INDUCTION])
+    {
         deltaHSL[C14]  = params.dt * double(eQ::data::parameters["hslProductionRate_C14"])
                 *  1/(1 + ratioTetR)//hill function repressor
-                * ( 1
-                    +  2 * ratioCin/(1 + ratioCin) //feedback
+                * (    1
+                    +  3 * ratioCin/(1 + ratioCin) //feedback
                 );
+        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate
+                *  1/(1 + ratioTetR)//hill function repressor
+                ;
+    }
 
     deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * cellGrowthRate);
-    deltaPROTEIN[_lacI]  -=  params.dt * (iPROTEIN[_lacI] * cellGrowthRate);
+//    deltaPROTEIN[_lacI]  -=  params.dt * (iPROTEIN[_lacI] * cellGrowthRate);
 
     //LACTONASE DECAY OF HSL:
 //    deltaHSL[C4]  -=  params.dt * (iHSL[C4] * aiiA_decayRate);
