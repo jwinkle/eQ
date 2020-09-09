@@ -481,8 +481,8 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
-//        setSimulationTimeStep(0.05);//resets the timer object
-        setSimulationTimeStep(0.1);//resets the timer object
+        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.1);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
 //        simulationTimer.setSimulationTimeHours(25);
