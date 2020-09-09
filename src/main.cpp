@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 1100;
+        eQ::data::parameters["parBThreshold"]           = 1300;
         eQ::data::parameters["growthArrestThreshold"]   = 250;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
         eQ::data::parameters["lacIThreshold"]           = 1.5;
@@ -481,8 +481,8 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
-        setSimulationTimeStep(0.05);//resets the timer object
-//        setSimulationTimeStep(0.1);//resets the timer object
+//        setSimulationTimeStep(0.05);//resets the timer object
+        setSimulationTimeStep(0.1);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
 //        simulationTimer.setSimulationTimeHours(25);
@@ -604,8 +604,8 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 5.0;//um/sec
 //        double trapFlowRate = 10.0;//um/sec
 //        double trapFlowRate = 25.0;//um/sec
-//        double trapFlowRate = 50.0;//um/sec
-        double trapFlowRate = 100.0;//um/sec
+        double trapFlowRate = 50.0;//um/sec
+//        double trapFlowRate = 100.0;//um/sec
 //        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
 
