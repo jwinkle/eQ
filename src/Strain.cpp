@@ -243,9 +243,10 @@ void parB_MotherStrain::init ()
 }
 double parB_MotherStrain::growthRateScaling()
 {
-    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_lacI] < lacIThreshold)
+    return 1; //no grg
+//    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_lacI] < lacIThreshold)
 //    return (tHSL[C14] > growthArrestThreshold)
-            ? 0 : 1;
+//            ? 0 : 1;
 }
 std::vector<double>
 parB_MotherStrain::computeProteins
@@ -267,7 +268,7 @@ parB_MotherStrain::computeProteins
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
         deltaPROTEIN[_tetR] = params.dt * cellGrowthRate;
-        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate;
+//        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate;
         deltaHSL[C4]        = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
         if(inductionFlags[INDUCTION])
             parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);//becomes daughter cell on division (via clone() copy)
@@ -280,12 +281,12 @@ parB_MotherStrain::computeProteins
                 * (    1
                     +  3 * ratioCin/(1 + ratioCin) //feedback
                 );
-        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate
-                *  1/(1 + ratioTetR)//hill function repressor
-                ;
+//        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate
+//                *  1/(1 + ratioTetR)//hill function repressor
+//                ;
     }
 
-    deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * cellGrowthRate);
+//    deltaPROTEIN[_tetR]  -=  params.dt * (iPROTEIN[_tetR] * cellGrowthRate);
 //    deltaPROTEIN[_lacI]  -=  params.dt * (iPROTEIN[_lacI] * cellGrowthRate);
 
     //LACTONASE DECAY OF HSL:
@@ -297,7 +298,7 @@ parB_MotherStrain::computeProteins
     deltaHSL[C14]  -=  dHSL[C14];
 
     conc[tetR] = iPROTEIN[_tetR];//copy to old data structure for now (for recording)
-    conc[L] = iPROTEIN[_lacI];//copy to old data structure for now (for recording)
+//    conc[L] = iPROTEIN[_lacI];//copy to old data structure for now (for recording)
 
     pushConcentrations();
     return dHSL;

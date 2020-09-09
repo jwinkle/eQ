@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 900;
+        eQ::data::parameters["parBThreshold"]           = 1100;
         eQ::data::parameters["growthArrestThreshold"]   = 250;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
         eQ::data::parameters["lacIThreshold"]           = 1.5;
@@ -484,8 +484,8 @@ int main(int argc, char* argv[])
 //        setSimulationTimeStep(0.05);//resets the timer object
         setSimulationTimeStep(0.1);//resets the timer object
 
-//        simulationTimer.setSimulationTimeHours(10);
-        simulationTimer.setSimulationTimeHours(25);
+        simulationTimer.setSimulationTimeHours(10);
+//        simulationTimer.setSimulationTimeHours(25);
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
 //        simulationTimer.setSimulationTimeHours(80);
@@ -594,9 +594,9 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
-        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
+//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-//        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
+        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
 //        double trapFlowRate = 0.0;//um/sec
@@ -605,8 +605,8 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 10.0;//um/sec
 //        double trapFlowRate = 25.0;//um/sec
 //        double trapFlowRate = 50.0;//um/sec
-//        double trapFlowRate = 100.0;//um/sec
-        double trapFlowRate = 150.0;
+        double trapFlowRate = 100.0;//um/sec
+//        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
 
 //        eQ::data::parameters["lengthScaling"] = 1.0;//150mins
@@ -750,16 +750,9 @@ int main(int argc, char* argv[])
                         {eQ::dataParameterType::HSL, Strain::hsl::C14, std::string("c14int.pvd"),
                          std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
                 }
-
 //                params.dataFiles->push_back(eQ::data::record
-//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::CFP, std::string("cfp.pvd"),
+//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
 //                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
-//                params.dataFiles->push_back(eQ::gridData
-//                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::H, std::string("h.pvd"),
-//                     std::make_shared<eQ::tensorData>(n,y,x,eQ::tensorData::rank::SCALAR)});
-                params.dataFiles->push_back(eQ::data::record
-                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::L, std::string("laci.pvd"),
-                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
                 params.dataFiles->push_back(eQ::data::record
                     {eQ::dataParameterType::PROTEIN, Strain::concentrations::tetR, std::string("tetR.pvd"),
                      std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
