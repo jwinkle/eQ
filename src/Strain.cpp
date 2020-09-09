@@ -252,6 +252,11 @@ std::vector<double>
 parB_MotherStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+    auto &c4q = HSL_tau[C4];
+    double meanC4=0;
+    for(auto sample : c4q) meanC4 += sample;
+    if(c4q.size()>0) meanC4 /= c4q.size();
+
     computeConcentrations(eHSL, membraneRate, lengthMicrons);
 
     //tetR Hill function:
@@ -271,7 +276,7 @@ parB_MotherStrain::computeProteins
 //        deltaPROTEIN[_lacI] = params.dt * cellGrowthRate;
         deltaHSL[C4]        = params.dt * double(eQ::data::parameters["hslProductionRate_C4"]);
         if(inductionFlags[INDUCTION])
-            parB_losePlasmid = (getDelayedHSL(Strain::hsl::C4) > parBThreshold);//becomes daughter cell on division (via clone() copy)
+            parB_losePlasmid = (meanC4 > parBThreshold);//becomes daughter cell on division (via clone() copy)
     }
 
     if(inductionFlags[INDUCTION])
