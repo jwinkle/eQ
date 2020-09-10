@@ -252,9 +252,18 @@ std::vector<double>
 parB_MotherStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+    //average over the queue for noise reduction
     auto &c4q = HSL_tau[C4];
+    double sample=0;
     double meanC4=0;
-    for(auto sample : c4q) meanC4 += sample;
+    for(size_t i(0); i<c4q.size(); ++i)
+    {
+        sample = c4q.front();
+            c4q.pop();
+            c4q.push(sample);
+        meanC4 += sample;
+    }
+
     if(c4q.size()>0) meanC4 /= c4q.size();
 
     computeConcentrations(eHSL, membraneRate, lengthMicrons);

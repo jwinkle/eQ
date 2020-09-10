@@ -146,11 +146,11 @@ public:
     double								conc[NUM_CONCENTRATIONS];
     std::vector<double>                 iHSL;
     std::vector<double>                 tHSL;
-    std::vector<std::deque<double>>     HSL_tau;
+    std::vector<std::queue<double>>     HSL_tau;
 
     std::vector<double>                 iPROTEIN;
     std::vector<double>                 tPROTEIN;
-    std::vector<std::deque<double>>     PROTEIN_tau;
+    std::vector<std::queue<double>>     PROTEIN_tau;
     //THE FOLLOWING NEED NOT BE RE-INITIALIZED:
 	std::vector<double>                 dHSL;//membrane diffusion value
 	std::vector<double>                 deltaHSL;//per-timestep production value
