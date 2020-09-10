@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 1300;
+        eQ::data::parameters["parBThreshold"]           = 1000;
         eQ::data::parameters["growthArrestThreshold"]   = 250;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
         eQ::data::parameters["lacIThreshold"]           = 1.5;
@@ -492,13 +492,19 @@ int main(int argc, char* argv[])
 //        simulationTimer.setSimulationTimeHours(80);
 
 
-
-        double parBThresholds[] = {1200,1100,1000,900,800,700};
+        double trapFlowRate = 50.0;//um/sec
+        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
         if(fileIO.isArrayCluster)
         {
-            eQ::data::parameters["parBThreshold"]
-                    = parBThresholds[fileIO.slurmArrayIndex];
+            trapFlowRate = flowRateChanges[fileIO.slurmArrayIndex];
         }
+
+//        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        if(fileIO.isArrayCluster)
+//        {
+//            eQ::data::parameters["parBThreshold"]
+//                    = parBThresholds[fileIO.slurmArrayIndex];
+//        }
 //        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
 //        if(fileIO.isArrayCluster)
 //        {
@@ -572,6 +578,7 @@ int main(int argc, char* argv[])
                 return true;//ignore
             }
         };
+
         event_t::list.push_back(std::make_shared<Induction>());
         event_t::list.push_back(std::make_shared<DaughterCellFixation>(simulation, world, simulationTimer));
 
@@ -605,7 +612,7 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 5.0;//um/sec
 //        double trapFlowRate = 10.0;//um/sec
 //        double trapFlowRate = 25.0;//um/sec
-        double trapFlowRate = 50.0;//um/sec
+//        double trapFlowRate = 50.0;//um/sec
 //        double trapFlowRate = 100.0;//um/sec
 //        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
