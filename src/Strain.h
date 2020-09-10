@@ -505,10 +505,12 @@ public:
         auto clone = std::make_shared<parB_MotherStrain>(*this);
         if(parB_losePlasmid)
         {
-            clone->parB_losePlasmid = false;//reset for daughter cell
-            clone->params.whichType = eQ::Cell::strainType::REPRESSOR;
-//            if(rn->successCoinFlip())   clone->params.whichType = eQ::Cell::strainType::REPRESSOR;
-//            else                        params.whichType = eQ::Cell::strainType::REPRESSOR;
+            if(++parBcounter > 1)
+            {
+                clone->parBcounter=0;
+                clone->parB_losePlasmid = false;//reset for daughter cell
+                clone->params.whichType = eQ::Cell::strainType::REPRESSOR;
+            }
         }
         return clone;
     }
@@ -519,6 +521,7 @@ public:
     double growthRateScaling()  override;
 private:
     bool parB_losePlasmid = false;
+    int parBcounter=0;
     std::shared_ptr<eQ::uniformRandomNumber> rn;
     double cellGrowthRate;
     double tetR_productionRate;
