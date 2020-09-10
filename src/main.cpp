@@ -484,26 +484,26 @@ int main(int argc, char* argv[])
 //        setSimulationTimeStep(0.05);//resets the timer object
         setSimulationTimeStep(0.1);//resets the timer object
 
-        simulationTimer.setSimulationTimeHours(10);
-//        simulationTimer.setSimulationTimeHours(25);
+//        simulationTimer.setSimulationTimeHours(10);
+        simulationTimer.setSimulationTimeHours(25);
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
 //        simulationTimer.setSimulationTimeHours(80);
 
 
 
-//        double parBThresholds[] = {1200,1100,1000,900,800,700};
-//        if(fileIO.isArrayCluster)
-//        {
-//            eQ::data::parameters["parBThreshold"]
-//                    = parBThresholds[fileIO.slurmArrayIndex];
-//        }
-        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
+        double parBThresholds[] = {1200,1100,1000,900,800,700};
         if(fileIO.isArrayCluster)
         {
-            eQ::data::parameters["growthArrestThreshold"]
-                    = growthArrestThreshold[fileIO.slurmArrayIndex];
+            eQ::data::parameters["parBThreshold"]
+                    = parBThresholds[fileIO.slurmArrayIndex];
         }
+//        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
+//        if(fileIO.isArrayCluster)
+//        {
+//            eQ::data::parameters["growthArrestThreshold"]
+//                    = growthArrestThreshold[fileIO.slurmArrayIndex];
+//        }
 
 
 
@@ -604,8 +604,8 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 5.0;//um/sec
 //        double trapFlowRate = 10.0;//um/sec
 //        double trapFlowRate = 25.0;//um/sec
-        double trapFlowRate = 50.0;//um/sec
-//        double trapFlowRate = 100.0;//um/sec
+//        double trapFlowRate = 50.0;//um/sec
+        double trapFlowRate = 100.0;//um/sec
 //        double trapFlowRate = 150.0;
 //        double trapFlowRate = 250.0;
 
