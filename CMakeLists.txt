@@ -31,6 +31,9 @@ if (HAVE_NO_MULTLINE)
   set(CMAKE_CXX_FLAGS "-Wno-comment ${CMAKE_CXX_FLAGS}")
 endif()
 
+if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
+ set(CMAKE_CXX_FLAGS "-fopenmp ${CMAKE_CXX_FLAGS}")
+endif()
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
@@ -44,8 +47,8 @@ link_directories(./lib)
 
 set(CPM_DIR ./Chipmunk-7.0.1/include)
 set(HEADERS
-	${CPM_DIR}/chipmunk/chipmunk.h
-	${CPM_DIR}/chipmunk/chipmunk_private.h)
+    ${CPM_DIR}/chipmunk/chipmunk.h
+    ${CPM_DIR}/chipmunk/chipmunk_private.h)
 
 message("CPM_DIR = " ${CPM_DIR} )
 message("HEADERS = " ${HEADERS} )
@@ -69,8 +72,15 @@ execute_process(
   OUTPUT_VARIABLE GIT_COMMIT_HASH
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+execute_process(
+  COMMAND git tag --points-at HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_TAG
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 message("GIT_BRANCH = " ${GIT_BRANCH} )
 message("GIT_COMMIT_HASH = " ${GIT_COMMIT_HASH} )
+message("GIT_TAG = " ${GIT_TAG} )
 
 
 configure_file(
@@ -84,7 +94,7 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 # Executable
 add_executable(${PROJECT_NAME}
 
-	${HEADERS}
+    ${HEADERS}
 
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/inputOutput.cpp
@@ -98,8 +108,8 @@ target_link_libraries(${PROJECT_NAME} libcp.a)
 # Target libraries
 target_link_libraries(
 #	${PROJECT_NAME} dolfin mshr petsc
-	${PROJECT_NAME} dolfin petsc
-	${Boost_LIBRARIES} boost_system boost_filesystem
+    ${PROJECT_NAME} dolfin petsc
+    ${Boost_LIBRARIES} boost_system boost_filesystem
 #	/usr/lib/x86_64-linux-gnu/libboost_system.a
 #	/usr/lib/x86_64-linux-gnu/libboost_filesystem.a
-	)
+    )
