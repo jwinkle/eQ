@@ -1,0 +1,32 @@
+#!/bin/bash
+
+
+#SBATCH -N 1  #Nodes
+#SBATCH -n 3  #numTasks
+
+#SBATCH --mem=1GB
+
+#SBATCH --mail-type=ALL                 # Type of email notification- BEGIN,END,FAIL,ALL 
+#SBATCH --mail-user=winkle@math.uh.edu  # Email to which notifications will be sent   
+
+#SBATCH -J winkle
+
+#   days-hours:mins:secs
+#SBATCH -t 0-05:59:59   #6 hours    
+#  #SBATCH -t 0-01:59:59   #2 hours    
+#  #SBATCH -t  2-00:00:00   #2 days
+
+# #SBATCH -o v01_%A_%a_log.txt # Standard output 
+
+
+
+module purge
+# module load FENICS
+module load FENICS/2019.1.0-foss-2019b-Python-3.7.4
+echo "module list: $(module list)"
+echo "running: 
+    mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu  "${SLURM_ARRAY_TASK_ID}" $1
+"
+
+mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
+# note: removed -n 3 switch to mpirun with bind-to core
