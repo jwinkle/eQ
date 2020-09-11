@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 1000;
+        eQ::data::parameters["parBThreshold"]           = 1100;
         eQ::data::parameters["growthArrestThreshold"]   = 250;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
         eQ::data::parameters["lacIThreshold"]           = 1.5;
