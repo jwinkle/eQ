@@ -201,6 +201,12 @@ class simulationTiming
 
 
         simulationTiming()=default;
+
+        //added for wall time simulation
+        simulationTiming(double totalMinutesCPU) : _wallTimeTotal(totalMinutesCPU){}
+        void wallStart(){_wallStart = getTime();}
+        bool wallTimer(){return ( getTime() - _wallStart) < _wallTimeTotal ;}
+
         void dt(double dt)
         {
             _dt = dt;
@@ -289,6 +295,9 @@ class simulationTiming
         size_t stepsPerMin, stepsPerHour;
 
     private:
+        double _wallTimeTotal=0;
+        double _wallStart=0;
+
         struct alarm { double when; bool thrown; bool ignore; std::shared_ptr<triggerEvent> call;};
         double  _dt;
         size_t  _simulationTimeMinutes;
@@ -324,7 +333,7 @@ public:
     virtual void initDiffusion(eQ::diffusionSolver::params &) =0;// {}
     virtual void stepDiffusion() {}
 //    virtual void setBoundaryValues(const eQ::data::parametersType &bvals) =0;
-	virtual eQ::data::parametersType getBoundaryFlux(void) {}; //must at least define value of "totalFlux"
+//	virtual eQ::data::parametersType getBoundaryFlux(void) {}; //must at least define value of "totalFlux"
     virtual void writeDiffusionFiles(double timestamp) =0;
     virtual void finalize(void) {}
 };

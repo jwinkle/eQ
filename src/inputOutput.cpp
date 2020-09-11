@@ -1,6 +1,95 @@
 
 #include "inputOutput.h"
 
+//timestamp is synchronized across mpi tasks:
+inputOutput::inputOutput(long time) : timeStamp(time) {}
+
+int inputOutput::parseInputLine(int argc, char* argv[])
+{
+    //sets flags for local or cluster + array index if present
+    launchData.clear();
+    if(argc > 1)
+    {
+        if(std::string(argv[1]) == std::string("cluster.math.uni-augsburg.de"))
+        {
+          isAugsburgCluster = true;
+          isLocalComputer = false;
+        }
+        else if(std::string(argv[1]) == std::string("sabine.rcdc.uh.edu"))
+        {
+          isOpuntiaCluster = true;
+          isLocalComputer = false;
+        }
+        else if(std::string(argv[1]) == std::string("test"))
+        {
+            std::cout<<"TESTING ACKNOWLEDGED"<<std::endl;
+            return 0;//test return value
+        }
+    }
+    if( (argc > 2) && (isOpuntiaCluster || isAugsburgCluster) )
+    {
+        isArrayCluster = true;
+        slurmArrayIndex = size_t(atoi(argv[2]));
+        std::cout<<"SLURM_ARRAY_TASK_ID = "<<slurmArrayIndex<<std::endl;
+        if(argc > 3)
+        {
+           timeMinutes = atoi(argv[3]);
+        }
+    }
+    else if(argc > 2)
+    {
+        if(std::string(argv[1]) == std::string("eQarray"))
+        {
+            localArrayIndex = size_t(atoi(argv[2]));
+            isArrayLocal = true;
+            return 1;
+        }
+    }
+    return 1;//normal return value
+}
+
+std::string inputOutput::initOutputFiles(std::string &&root, const std::string &gitBranch)//root is laptop path to check
+{
+    auto sroot(root);
+    return initOutputFiles(sroot, gitBranch);
+}
+
+std::string inputOutput::initOutputFiles(std::string &root, const std::string &gitBranch)//root is laptop path to check
+{
+    //sets time,date string (using epoch time + compile time stamps):
+    timeString = __TIME__;//only populates at compile time
+    std::replace( timeString.begin(), timeString.end(), ':', '_'); // replace all 'x' to 'y'
+    dateString = __DATE__;//only populates at compile time
+    std::replace( dateString.begin(), dateString.end(), ' ', '_'); // replace all 'x' to 'y'
+    uniqueString =
+            std::to_string(timeStamp)
+            + "-"
+            + timeString
+            + "-"
+            + dateString
+            + "-"
+            + gitBranch;
+
+    auto p2 = boost::filesystem::path(root);//path defined at top of this file
+    if (boost::filesystem::exists(p2))
+    {
+        root += "/" + uniqueString + "/";
+        auto p3 = boost::filesystem::path(root);//path defined at top of this file
+        if (false == boost::filesystem::exists(p3))
+        {
+            boost::filesystem::create_directory(p3);
+        }
+    }
+    else
+    {
+        root = "./";
+    }
+    std::cout<<"Writing data to: "<<root<<std::endl;
+    froot.assign(root);
+    setSimulationNumber(0);
+    return fbase;
+}
+
 void inputOutput::writeParametersToFile(std::string paramsRoot, size_t simNumber, eQ::data::parametersType &params)
 {
     std::ofstream logFile;
@@ -11,7 +100,7 @@ void inputOutput::writeParametersToFile(std::string paramsRoot, size_t simNumber
 
     if(isOpuntiaCluster || isAugsburgCluster)
         fname += ("-" + std::to_string(slurmArrayIndex));
-    if(isArrayLocal)
+    else
         fname += ("-" + std::to_string(localArrayIndex));
 
 
@@ -27,48 +116,6 @@ void inputOutput::writeParametersToFile(std::string paramsRoot, size_t simNumber
     std::cout<<std::endl;
 }
 
-int inputOutput::parseInputLine(int argc, char* argv[])
-{
-    launchData.clear();
-	if(argc > 1)
-	{
-        if(std::string(argv[1]) == std::string("cluster.math.uni-augsburg.de"))
-        {
-          isAugsburgCluster = true;
-          isLocalComputer = false;
-        }
-        else if(std::string(argv[1]) == std::string("opuntia.cacds.uh.edu"))
-        {
-          isOpuntiaCluster = true;
-          isLocalComputer = false;
-        }
-        else if(std::string(argv[1]) == std::string("test"))
-        {
-            std::cout<<"TESTING ACKNOWLEDGED"<<std::endl;
-            return 0;//test return value
-        }
-	}
-    if( (argc > 2) && (isOpuntiaCluster || isAugsburgCluster) )
-	{
-        isArrayCluster = true;
-        slurmArrayIndex = size_t(atoi(argv[2]));
-		std::cout<<"SLURM_ARRAY_TASK_ID = "<<slurmArrayIndex<<std::endl;
-        if(argc > 3)
-        {
-           launchData = std::string(argv[3]);
-        }
-	}	
-    else if(argc > 2)
-    {
-        if(std::string(argv[1]) == std::string("eQarray"))
-        {
-            localArrayIndex = size_t(atoi(argv[2]));
-            isArrayLocal = true;
-            return 1;
-        }
-    }
-    return 1;//normal return value
-}
 
 void inputOutput::setSimulationNumber(size_t simNumber)
 {
@@ -79,41 +126,26 @@ void inputOutput::setSimulationNumber(size_t simNumber)
       fbase += ("_" + std::to_string(simNumber));
       fbase += "/";
     }
-    else if(isOpuntiaCluster){
-        fbase.assign("/project/josic/images/");
-//                fbase.assign("/home/jjwinkle/images/");
-      fbase += uniqueString;
-        fbase += ("-" + std::to_string(slurmArrayIndex));
-      fbase += ("_" + std::to_string(simNumber));
-      fbase += "/";
-    }
+//    else if(isOpuntiaCluster){
+////        fbase.assign("/project/josic/winkle/job/images/");
+////        fbase.assign("/project/josic/winkle/images/");
+////                fbase.assign("/home/jjwinkle/images/");
+//      fbase += uniqueString;
+//        fbase += ("-" + std::to_string(slurmArrayIndex));
+//      fbase += ("_" + std::to_string(simNumber));
+//      fbase += "/";
+//    }
     else
     {
-        fbase.assign(imageFilesRoot);
-        fbase += uniqueString;
+        fbase.assign(froot + "images/");
         if(isArrayLocal)
-          fbase += ("-" + std::to_string(localArrayIndex));
-        fbase += ("_" + std::to_string(simNumber));
+            fbase += (std::to_string(localArrayIndex) + "_" + std::to_string(simNumber));
+        else if(isArrayCluster)
+            fbase += (std::to_string(slurmArrayIndex) + "_" + std::to_string(simNumber));
+        else
+            fbase += (std::to_string(simNumber));
+
       fbase += "/";
     }
 
-}
-std::string inputOutput::initOutputFiles(std::string root)
-{
-
-    imageFilesRoot = root;
-    timeString = __TIME__;//only populates at compile time
-    std::replace( timeString.begin(), timeString.end(), ':', '_'); // replace all 'x' to 'y'
-    dateString = __DATE__;//only populates at compile time
-	std::replace( dateString.begin(), dateString.end(), ' ', '_'); // replace all 'x' to 'y'
-
-    uniqueString =
-            std::to_string(timeStamp)
-            + "-"
-            + timeString
-            + "-"
-            + dateString;
-
-    setSimulationNumber(0);
-	return fbase;
 }

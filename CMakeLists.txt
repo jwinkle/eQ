@@ -86,19 +86,8 @@ add_executable(${PROJECT_NAME}
 
 	${HEADERS}
 
-	${SRC_DIR}/main.cpp
-	${SRC_DIR}/fHSL.cpp
-	${SRC_DIR}/inputOutput.cpp
-	${SRC_DIR}/simulation.cpp
-	${SRC_DIR}/Strain.cpp
-
-	${ABM_DIR}/eQabm.cpp
-	${ABM_DIR}/Ecoli.cpp
-	${ABM_DIR}/cpmHabitat.cpp
-	${ABM_DIR}/cpmTrap.cpp
-	${ABM_DIR}/cpmEcoli.cpp
-
-	diffuclass.cpp
+    ${SRC_DIR}/main.cpp
+    ${SRC_DIR}/inputOutput.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CPM_DIR})

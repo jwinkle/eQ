@@ -11,31 +11,34 @@
 #include <sstream>      // std::stringstream
 #include <iomanip>      // std::setw()
 
+#include <boost/filesystem.hpp>
 
 #include "eQ.h"
 
 class inputOutput
 {
-	public:	
-//    inputOutput()  {timeStamp = time(nullptr);}
-    //better to synchronize the timestamp across nodes for filenames:
-    inputOutput(long time) : timeStamp(time) {}
+    public:
+    inputOutput(long time);
 
-	int parseInputLine(int argc, char* argv[]);
-    std::string initOutputFiles(std::string imageFilesRoot);
+    int parseInputLine(int argc, char* argv[]);
+
+    std::string initOutputFiles(std::string &imageFilesRoot, const std::string &gitBranch);
+    std::string initOutputFiles(std::string &&imageFilesRoot, const std::string &gitBranch);
+
     long getTimeStamp(){return timeStamp;}
     void writeParametersToFile(std::string paramsRoot, size_t simNumber, eQ::data::parametersType &params);
     void setSimulationNumber(size_t simNumber);
 
-	bool isLocalComputer = true;
+    bool isLocalComputer = true;
     bool isAugsburgCluster = false;
     bool isOpuntiaCluster = false;
     bool isArrayCluster = false;
     bool isArrayLocal = false;
     size_t  slurmArrayIndex=0;
     size_t  localArrayIndex=0;
-	std::string fbase;
+    std::string fbase;
     long timeStamp;
+    int timeMinutes;
 
     std::string launchData;
     std::string timeString;
@@ -43,10 +46,10 @@ class inputOutput
     std::string uniqueString;
 
 private:
-	std::stringstream sstream;
-	std::ofstream logFile;
-	std::string fpath;
-    std::string imageFilesRoot;
+    std::stringstream sstream;
+    std::ofstream logFile;
+    std::string fpath;
+    std::string froot;
 
 };
 #endif
