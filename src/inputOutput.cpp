@@ -50,8 +50,8 @@ int inputOutput::parseInputLine(int argc, char* argv[])
 
 std::string inputOutput::initOutputFiles(std::string &&root, const std::string &gitBranch)//root is laptop path to check
 {
-    auto sroot(root);
-    return initOutputFiles(sroot, gitBranch);
+//    auto sroot(root);
+    return initOutputFiles(root, gitBranch);
 }
 
 std::string inputOutput::initOutputFiles(std::string &root, const std::string &gitBranch)//root is laptop path to check
@@ -70,7 +70,20 @@ std::string inputOutput::initOutputFiles(std::string &root, const std::string &g
             + "-"
             + gitBranch;
 
+    auto p2 = boost::filesystem::path(root);//path defined at top of this file
+    if (boost::filesystem::exists(p2))
+    {
+        root += "/" + uniqueString + "/";
+        auto p3 = boost::filesystem::path(root);//path defined at top of this file
+        if (false == boost::filesystem::exists(p3))
+        {
+            boost::filesystem::create_directory(p3);
+        }
+    }
+    else
+    {
         root = "./";
+    }
     std::cout<<"Writing data to: "<<root<<std::endl;
     froot.assign(root);
     setSimulationNumber(0);

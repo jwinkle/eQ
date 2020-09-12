@@ -69,120 +69,6 @@ bool signalReceived()
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-class jsonRecording
-{
-private:
-    using jsonHSL = std::vector<std::vector<double>>;
-
-public:
-    jsonRecording(int whichNode, int whichSim)
-        : nodeID(whichNode), simNumber(whichSim) {}
-//    void init(std::shared_ptr<Simulation> pSim, long timeStamp)
-    void init(std::shared_ptr<Simulation> pSim, long timeStamp, std::string cTime)
-    {
-        compileTime = cTime;
-        sim=pSim;
-        timeSinceEpoch=timeStamp;
-        clear();
-        //16July.2020:  changed to v00_02
-        jfile["jsonSimVersion"] =  "v00_02";//needs to match  a spec. document
-        jfile["timeSinceEpoch"] =  timeStamp;
-        jfile["nodeID"]         =  nodeID;
-        jfile["simNumber"]      =  simNumber;
-        //data format:  "cells" is an array; each entry is 2 arrays: 1. an array for ID  2. an array for data
-        jfile["cellDataFormat"] =  {{"id", "strainType"}, {"x", "y", "angle", "length", "spring", "vargs"}};
-    }
-    void recordFrame(double simTime)
-    {
-        thisFrame.clear();
-        thisFrame["simTime"]        = simTime;
-        thisFrame["divisions"]      = sim->ABM->divisionList;
-        thisFrame["cells"]          = getCellData();
-        thisFrame["externalHSL"]    = getHSLData();
-        jframes.push_back(thisFrame);
-        sim->ABM->divisionList.clear();
-    }
-    json& getCellData()
-    {
-        jcells.clear();
-        std::shared_ptr<Ecoli> cell;
-        //TRAVERSE LIST OF CELLS: (uses C++ STL forward list data structure)
-        sim->ABM->cellList.beginIteration();
-        while(++(sim->ABM->cellList >> cell))
-        {
-            std::vector<size_t> cellID ={
-                size_t(cell->getCellID())
-              , cell->params.strain->getStrainType()
-            };
-
-            std::vector<double> cellData ={
-                  cell->getCenter_x()
-                , cell->getCenter_y()
-                , cell->getAngle()
-                , cell->getLengthMicrons()
-                , cell->getSpringCompression()
-//                , eQ::proteinNumberToNanoMolar(cell->strain->getProteinNumber(Strain::concentrations::FP),  cell->getLengthMicrons())
-            };
-
-            if(sim->HSL_signaling)
-            {
-                for(auto &hsl : cell->strain->getHSLvec())
-                {
-                    cellData.push_back(
-                                eQ::Cell::moleculeNumberToNanoMolar(hsl,  cell->getLengthMicrons()));
-                }
-            }
-            jcells.push_back({cellID, cellData});
-        }
-        return jcells;
-    }
-    jsonHSL& getHSLData()
-    {
-        if(sim->HSL_signaling)
-        {
-            for(size_t grid(0); grid < sim->numHSLGrids; ++grid)
-            {
-                sim->hslVector[grid].clear();
-                for(auto dof: sim->hslLookup[grid])
-                {
-                    sim->hslVector[grid].push_back(sim->ABM->hslSolutionVector[grid]->operator[](dof));
-                }
-            }
-        }
-        return sim->hslVector;//may be empty if no signaling
-    }
-    void finalize()
-    {
-        jfile["frames"] = jframes;
-        jfile["parameters"] = eQ::data::parameters;
-//        std::cout<<std::setw(4)<<jfile<<std::endl;
-        std::ofstream logFile;
-        std::string fname =
-                compileTime
-                +"-" + std::to_string(nodeID)
-                +"_" + std::to_string(simNumber)
-                + "-jsonData" + ".json";
-        logFile.open(fname, std::ios::trunc);
-//        logFile<<std::setw(4)<<jfile<<std::endl;
-        logFile<<jfile<<std::endl;
-        logFile.flush();
-        logFile.close();
-        std::cout<<"_jsonData data written to file: "<<fname<<std::endl;
-    }
-    void clear()
-    {
-        jfile.clear();
-        jframes.clear();
-    }
-private:
-    int nodeID, simNumber;
-    json jfile, jframes, jcells, thisFrame;//, thisCell;
-    std::shared_ptr<Simulation> sim;
-    long timeSinceEpoch;
-    std::string compileTime;
-};
-
-
 // to run with two mpi nodes:
 // /usr/bin/mpirun -n 2 -display-allocation  ./eQ
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +121,7 @@ int main(int argc, char* argv[])
             return 0;
     }
 
-//    fileIO.initOutputFiles(std::string("./"), gitBranch);//pass path to write relative to root path
+    fileIO.initOutputFiles(std::string("./"), gitBranch);//pass path to write relative to root path
 
 //**************************************************************************//
 //              SET INITIAL SIMULATION PARAMETERS:

@@ -106,23 +106,17 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR} fenics)
 target_link_libraries(${PROJECT_NAME} libcp.a)
 
 
-# Target libraries
-set(Boost_LIBRARIES /project/cacds/apps/fenics/2019.1.0/lib)
-target_link_libraries(
-
-#	${PROJECT_NAME} dolfin petsc
+if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
+    set(FENICS_LIBRARIES /project/cacds/apps/fenics/2019.1.0/lib)
+    target_link_libraries(
         ${PROJECT_NAME} dolfin
-
-    /project/cacds/apps/fenics/2019.1.0/lib/libpetsc.so
-
-
-)
-
-
-
-# Target libraries
-target_link_libraries(
-    ${PROJECT_NAME} dolfin
-#     ${PROJECT_NAME} boost_system boost_filesystem
+#        ${FENICS_LIBRARIES}/boost_system.a
+        ${FENICS_LIBRARIES}/boost_filesystem.a
+        ${FENICS_LIBRARIES}/libpetsc.so
     )
-
+else()
+    target_link_libraries(
+        ${PROJECT_NAME} dolfin petsc
+        ${Boost_LIBRARIES} boost_system boost_filesystem
+    )
+endif()
