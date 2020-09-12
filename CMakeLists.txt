@@ -111,7 +111,7 @@ if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
     target_link_libraries(
         ${PROJECT_NAME} dolfin
 #        ${FENICS_LIBRARIES}/boost_system.a
-        ${FENICS_LIBRARIES}/boost_filesystem.a
+#        ${FENICS_LIBRARIES}/boost_filesystem.a
         ${FENICS_LIBRARIES}/libpetsc.so
     )
 else()

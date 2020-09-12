@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
             return 0;
     }
 
-    fileIO.initOutputFiles(std::string("./"), gitBranch);//pass path to write relative to root path
+//    fileIO.initOutputFiles(std::string("./"), gitBranch);//pass path to write relative to root path
 
 //**************************************************************************//
 //              SET INITIAL SIMULATION PARAMETERS:
