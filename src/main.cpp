@@ -3,12 +3,27 @@
 #include <version.h>
 
 #include "eQinit.h"
+#include "eQ.h"
+#include "eQmpi.h"
 
-#include "simulation.h"
+//#include "simulation.h"
+
 #include "inputOutput.h"
-#include "Strain.h"
+//#include "Strain.h"
+//#include "fHSL.h"
+//#include "./abm/eQabm.h"
+//#include "../diffuclass.h"
+#include <random>
+#include <cmath>
+#include <fstream>
+#include <csignal>
+#include <iostream>
+#include <chrono>
+#include <string>
+#include <thread>
+#include <vector>
 
-
+#include <petscsys.h>
 
 //auto-generated branch/hash in "version.h" file (see CMakeLists.txt)
 static std::string gitBranch    = std::string(GIT_BRANCH);
