@@ -8,16 +8,12 @@
 #include "inputOutput.h"
 #include "Strain.h"
 
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp> // used here for printing
 
 
 //auto-generated branch/hash in "version.h" file (see CMakeLists.txt)
 static std::string gitBranch    = std::string(GIT_BRANCH);
 static std::string gitHash      = std::string(GIT_COMMIT_HASH);
 
-static std::string abortPath = "./abort.txt";
-static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
 
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
@@ -66,11 +62,6 @@ bool signalReceived()
     if( (SIGINT == gSignalStatus) || (SIGTERM == gSignalStatus) )
     {
         std::cout << "SignalValue: " << gSignalStatus << '\n';
-        return true;
-    }
-    else if(boost::filesystem::exists(abortFlagBoost))
-    {
-        std::cout<<"file: "<<abortPath<<" exists...terminating..."<<std::endl;
         return true;
     }
     else return false;

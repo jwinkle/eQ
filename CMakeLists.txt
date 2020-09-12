@@ -32,7 +32,7 @@ if (HAVE_NO_MULTLINE)
 endif()
 
 if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
- set(CMAKE_CXX_FLAGS "-fopenmp ${CMAKE_CXX_FLAGS}")
+# set(CMAKE_CXX_FLAGS "-fopenmp ${CMAKE_CXX_FLAGS}")
 endif()
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
@@ -105,11 +105,24 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR} fenics)
 
 target_link_libraries(${PROJECT_NAME} libcp.a)
 
+
+# Target libraries
+set(Boost_LIBRARIES /project/cacds/apps/fenics/2019.1.0/lib)
+target_link_libraries(
+
+#	${PROJECT_NAME} dolfin petsc
+        ${PROJECT_NAME} dolfin
+
+    /project/cacds/apps/fenics/2019.1.0/lib/libpetsc.so
+
+
+)
+
+
+
 # Target libraries
 target_link_libraries(
-#	${PROJECT_NAME} dolfin mshr petsc
-    ${PROJECT_NAME} dolfin petsc
-    ${Boost_LIBRARIES} boost_system boost_filesystem
-#	/usr/lib/x86_64-linux-gnu/libboost_system.a
-#	/usr/lib/x86_64-linux-gnu/libboost_filesystem.a
+    ${PROJECT_NAME} dolfin
+#     ${PROJECT_NAME} boost_system boost_filesystem
     )
+
