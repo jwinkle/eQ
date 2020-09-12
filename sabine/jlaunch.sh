@@ -36,7 +36,7 @@ sbatch --array=$1-$2 ./winkle.job $3
 
 echo "sbatch job launched...reading squeue -u jjwinkle..."
 
-sleep 2
+sleep 3
 squeue -u jjwinkle -v
 
 echo "job directory contents:  ls -l ${BASE_DIR}"

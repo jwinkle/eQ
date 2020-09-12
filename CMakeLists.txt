@@ -48,6 +48,7 @@ link_directories(./lib)
 message("HEADERS = " ${HEADERS} )
 message("CMAKE_SOURCE_DIR = " ${CMAKE_SOURCE_DIR} )
 message("CMAKE_BINARY_DIR = " ${CMAKE_BINARY_DIR} )
+message("SABINE_COMPILE = " ${SABINE_COMPILE} )
 
 
 # see:  http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
