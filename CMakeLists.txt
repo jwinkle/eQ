@@ -97,7 +97,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC ${CPM_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR} fenics)
 
-target_link_libraries(${PROJECT_NAME} libcp.a)
+#target_link_libraries(${PROJECT_NAME} libcp.a)
 
 
 if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
