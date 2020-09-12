@@ -10,7 +10,9 @@ DATE_TIME_STRING=$(date +%F)_$(date +%H)-$(date +%M)-$(date +%S)
 
 
 # BASE_DIR="/project/josic/winkle/job/"
-BASE_DIR="./job/"
+
+# set the output directory here
+BASE_DIR="../../job/"
 JOB_DIR="${BASE_DIR}${TIME_SINCE_EPOCH}_${DATE_TIME_STRING}"
 
 ./jbuild.sh

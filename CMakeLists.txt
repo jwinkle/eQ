@@ -45,12 +45,6 @@ set(ABM_DIR ${SRC_DIR}/abm)
 
 link_directories(./lib)
 
-set(CPM_DIR ./Chipmunk-7.0.1/include)
-set(HEADERS
-    ${CPM_DIR}/chipmunk/chipmunk.h
-    ${CPM_DIR}/chipmunk/chipmunk_private.h)
-
-message("CPM_DIR = " ${CPM_DIR} )
 message("HEADERS = " ${HEADERS} )
 message("CMAKE_SOURCE_DIR = " ${CMAKE_SOURCE_DIR} )
 message("CMAKE_BINARY_DIR = " ${CMAKE_BINARY_DIR} )
