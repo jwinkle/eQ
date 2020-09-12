@@ -22,16 +22,17 @@
 
 module purge
 # module load FENICS
-# module load FENICS/2019.1.0-foss-2019b-Python-3.7.4
 
-module load fenics/2019.1.0-intel-2019-Python-3.8
+module load FENICS/2019.1.0-foss-2019b-Python-3.7.4
+
+# module load fenics/2019.1.0-intel-2019-Python-3.8
 
 echo "module list: $(module list)"
 echo "running: 
-    mpirun -v -n 3 -print-rank-map    -print-all-exitcodes  ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
+    mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
 "
 
-# mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
+mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
 
-mpirun -v -n 3 -print-rank-map    -print-all-exitcodes  ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
+# mpirun -v -n 3 -print-rank-map    -print-all-exitcodes  ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
 
