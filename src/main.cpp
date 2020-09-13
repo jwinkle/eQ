@@ -20,7 +20,7 @@ static std::string gitTag      = std::string(GIT_TAG);
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
 
-static std::string rootPath = "/media/winkle/SD200GB/eQData";
+static std::string rootPath = "/media/winkle/SD512GB/eQData";
 
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
@@ -493,18 +493,18 @@ int main(int argc, char* argv[])
 
 
         double trapFlowRate = 50.0;//um/sec
-        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
-        if(fileIO.isArrayCluster)
-        {
-            trapFlowRate = flowRateChanges[fileIO.slurmArrayIndex];
-        }
-
-//        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
 //        if(fileIO.isArrayCluster)
 //        {
-//            eQ::data::parameters["parBThreshold"]
-//                    = parBThresholds[fileIO.slurmArrayIndex];
+//            trapFlowRate = flowRateChanges[fileIO.slurmArrayIndex];
 //        }
+
+        double parBThresholds[] = {1200,1100,1000,900,800,700};
+        if(fileIO.isArrayCluster)
+        {
+            eQ::data::parameters["parBThreshold"]
+                    = parBThresholds[fileIO.slurmArrayIndex];
+        }
 //        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
 //        if(fileIO.isArrayCluster)
 //        {
