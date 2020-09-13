@@ -56,6 +56,7 @@ message("CPM_DIR = " ${CPM_DIR} )
 message("HEADERS = " ${HEADERS} )
 message("CMAKE_SOURCE_DIR = " ${CMAKE_SOURCE_DIR} )
 message("CMAKE_BINARY_DIR = " ${CMAKE_BINARY_DIR} )
+message("PETSC_DIR = " ${PETSC_DIR} )
 
 
 # see:  http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
@@ -120,11 +121,23 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR} fenics)
 
 target_link_libraries(${PROJECT_NAME} libcp.a)
 
-# Target libraries
+
+#if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
+#    set(Boost_LIBRARIES /project/cacds/apps/fenics/2019.1.0/lib)
+#endif()
 target_link_libraries(
-#	${PROJECT_NAME} dolfin mshr petsc
-	${PROJECT_NAME} dolfin petsc
-	${Boost_LIBRARIES} boost_system boost_filesystem
-#	/usr/lib/x86_64-linux-gnu/libboost_system.a
-#	/usr/lib/x86_64-linux-gnu/libboost_filesystem.a
+
+    ${PROJECT_NAME} dolfin petsc
+#	${PROJECT_NAME} dolfin
+
+#    /project/cacds/apps/fenics/2019.1.0/lib/libpetsc.so
+
+    ${Boost_LIBRARIES} boost_system boost_filesystem
+
+#	${Boost_LIBRARIES}/libboost_system.a
+#	${Boost_LIBRARIES}/libboost_filesystem.a
+
+#    /project/cacds/apps/fenics/2019.1.0/lib/libboost_system.a
+#    /project/cacds/apps/fenics/2019.1.0/lib/libboost_filesystem.a
+
 	)
