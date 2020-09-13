@@ -36,13 +36,14 @@ if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
  set(CMAKE_CXX_FLAGS "-fopenmp ${CMAKE_CXX_FLAGS}")
 endif()
 
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
 message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS} )
 
 
-set(SRC_DIR ./src)
-set(ABM_DIR ${SRC_DIR}/abm)
+set(SRC_DIR     ./src)
+set(ABM_DIR     ${SRC_DIR}/abm)
+set(SABINE_DIR  ./sabine)
 
 link_directories(./lib)
 
@@ -96,6 +97,8 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 add_executable(${PROJECT_NAME}
 
 	${HEADERS}
+    ${SABINE_DIR}/winkle.job
+    ${SABINE_DIR}/jbuild.sh
 
 	${SRC_DIR}/main.cpp
 	${SRC_DIR}/fHSL.cpp
