@@ -65,7 +65,7 @@ void signal_handler(int signal)
   gSignalStatus = signal;
 }
 bool signalReceived()
-{  
+{
     if( (SIGINT == gSignalStatus) || (SIGTERM == gSignalStatus) )
     {
         std::cout << "SignalValue: " << gSignalStatus << '\n';
@@ -481,8 +481,8 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
-        setSimulationTimeStep(0.025);//resets the timer object
-//        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.025);//resets the timer object
+        setSimulationTimeStep(0.05);//resets the timer object
 //        setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
