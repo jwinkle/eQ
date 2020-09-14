@@ -471,7 +471,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
-        eQ::data::parameters["parBThreshold"]           = 1100;
+//        eQ::data::parameters["parBThreshold"]           = 1100;
+        eQ::data::parameters["parBThreshold"]           = 1200;
 //        eQ::data::parameters["growthArrestThreshold"]   = 300;
         eQ::data::parameters["growthArrestThreshold"]   = 500;
         eQ::data::parameters["tetRThreshold"]           = 0.25;
@@ -482,8 +483,8 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
-        setSimulationTimeStep(0.025);//resets the timer object
-//        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.025);//resets the timer object
+        setSimulationTimeStep(0.05);//resets the timer object
 //        setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
@@ -494,7 +495,8 @@ int main(int argc, char* argv[])
 
 
 //        double trapFlowRate = 50.0;//um/sec
-        double trapFlowRate = 100.0;//um/sec
+//        double trapFlowRate = 100.0;//um/sec
+        double trapFlowRate = 25.0;//um/sec
 //        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
 //        if(fileIO.isArrayCluster)
 //        {
