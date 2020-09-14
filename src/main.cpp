@@ -496,7 +496,7 @@ int main(int argc, char* argv[])
 
 //        double trapFlowRate = 50.0;//um/sec
 //        double trapFlowRate = 100.0;//um/sec
-        double trapFlowRate = 25.0;//um/sec
+        double trapFlowRate = 250.0;//um/sec
 //        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
 //        if(fileIO.isArrayCluster)
 //        {
