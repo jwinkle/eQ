@@ -492,20 +492,20 @@ int main(int argc, char* argv[])
 //        simulationTimer.setSimulationTimeHours(80);
 
 
-//        double trapFlowRate = 50.0;//um/sec
-        double trapFlowRate = 100.0;//um/sec
-//        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
-//        if(fileIO.isArrayCluster)
-//        {
-//            trapFlowRate = flowRateChanges[fileIO.slurmArrayIndex];
-//        }
-
-        double parBThresholds[] = {1200,1100,1000,900,800,700};
+        double trapFlowRate = 50.0;//um/sec
+//        double trapFlowRate = 100.0;//um/sec
+        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
         if(fileIO.isArrayCluster)
         {
-            eQ::data::parameters["parBThreshold"]
-                    = parBThresholds[fileIO.slurmArrayIndex];
+            trapFlowRate = flowRateChanges[fileIO.slurmArrayIndex];
         }
+
+//        double parBThresholds[] = {1200,1100,1000,900,800,700};
+//        if(fileIO.isArrayCluster)
+//        {
+//            eQ::data::parameters["parBThreshold"]
+//                    = parBThresholds[fileIO.slurmArrayIndex];
+//        }
 //        double growthArrestThreshold[] = {1100,1000,900,800,700,600};
 //        if(fileIO.isArrayCluster)
 //        {

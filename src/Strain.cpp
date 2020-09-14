@@ -243,12 +243,12 @@ void parB_MotherStrain::init ()
 }
 double parB_MotherStrain::growthRateScaling()
 {
-    return 1; //no grg
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
-        return (tHSL[C14] > growthArrestThreshold);
+        return (tHSL[C14] > growthArrestThreshold) ? 0 : 1;
     }
     else return 1;
+//    return 1; //no grg
 //    return (tHSL[C14] > growthArrestThreshold) && (tPROTEIN[_lacI] < lacIThreshold)
 //    return (tHSL[C14] > growthArrestThreshold)
 //            ? 0 : 1;
