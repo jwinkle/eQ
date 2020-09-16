@@ -30,7 +30,7 @@ echo "module list: $(module list)"
 echo "running: 
     mpirun -v -n 3 -print-rank-map    -print-all-exitcodes  ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
 "
-
+hostname
 # mpirun -v -display-allocation --bind-to core -display-map -report-bindings ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1
 
 mpirun -v -n 3 -print-rank-map    -print-all-exitcodes  ./eQ sabine.rcdc.uh.edu "${SLURM_ARRAY_TASK_ID}" $1

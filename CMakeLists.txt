@@ -42,6 +42,7 @@ message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS} )
 
 set(SRC_DIR ./src)
 set(ABM_DIR ${SRC_DIR}/abm)
+set(SABINE_DIR  ./sabine)
 
 link_directories(./lib)
 
@@ -90,6 +91,8 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 add_executable(${PROJECT_NAME}
 
     ${HEADERS}
+    ${SABINE_DIR}/winkle.job
+    ${SABINE_DIR}/jbuild.sh
 
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/inputOutput.cpp
