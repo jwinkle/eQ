@@ -37,12 +37,14 @@ if(SABINE_COMPILE)  #17August, 2020  usage: "cmake -D SABINE_COMPILE=1 .."
 endif()
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
 message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS} )
 
 
-set(SRC_DIR ./src)
-set(ABM_DIR ${SRC_DIR}/abm)
+set(SRC_DIR     ./src)
+set(ABM_DIR     ${SRC_DIR}/abm)
+set(SABINE_DIR  ./sabine)
 
 link_directories(./lib)
 
@@ -55,6 +57,7 @@ message("CPM_DIR = " ${CPM_DIR} )
 message("HEADERS = " ${HEADERS} )
 message("CMAKE_SOURCE_DIR = " ${CMAKE_SOURCE_DIR} )
 message("CMAKE_BINARY_DIR = " ${CMAKE_BINARY_DIR} )
+message("PETSC_DIR = " ${PETSC_DIR} )
 
 
 # see:  http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
@@ -95,7 +98,9 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 # Executable
 add_executable(${PROJECT_NAME}
 
-	${HEADERS}
+    ${HEADERS}
+    ${SABINE_DIR}/winkle.job
+    ${SABINE_DIR}/jbuild.sh
 
 	${SRC_DIR}/main.cpp
 	${SRC_DIR}/fHSL.cpp
