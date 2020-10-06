@@ -20,7 +20,7 @@ static std::string gitTag      = std::string(GIT_TAG);
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
 
-static std::string rootPath = "/media/winkle/SD200GB/eQData";
+static std::string rootPath = "/media/winkle/SD512GB/eQData";
 
 using event_t       = eQ::simulationTiming::triggerEvent;
 using params_t      = eQ::data::parametersType;
