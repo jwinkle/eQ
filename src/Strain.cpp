@@ -5,7 +5,71 @@
 std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasionStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> synchronousOscillator::inductionFlags     = {synchronousOscillator::NUM_INDUCTIONFLAGS, false};
 
+std::vector<double>
+synchronousOscillator::computeProteins
+    (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+{
+    if( inductionFlags[INDUCTION] )
+    {//set all cells:
+//        params.baseData->meanDivisionLength
+//                = double( eQ::data::parameters["mutantAspectRatioScale"])
+//                                           * double( eQ::data::parameters["defaultAspectRatioFactor"])
+//                                           * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    }
+
+    if(eHSL.empty()) return {};//error with no HSL, return empty vector
+
+    //===========================================================================
+    //===========================================================================
+
+    computeConcentrations(eHSL, membraneRate, lengthMicrons);
+
+    double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
+    double delta = double(eQ::data::parameters["hslLeakProduction"]);
+    double HK = 300;
+    double hn = 2;
+//    double AK = 10;
+    double AKd = 300;
+    double gamma_dil = (log(2)/20.0);
+    double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
+
+    ratio_H_tau = pow(tHSL[C4HSL]/HK, hn);
+//    ratio_A     = iPROTEIN[AIIA]/AK;
+    ratio_AKd   = iPROTEIN[AIIA]/AKd;
+
+    deltaHSL[C4HSL]  = params.dt * (
+                delta + alpha * ratio_H_tau/(1 + ratio_H_tau)
+                -  20 * ratio_AKd/(1 + ratio_AKd) * iHSL[C4HSL])
+                - dHSL[C4HSL];                                  //MEMBRANE DIFFUSION
+
+    deltaPROTEIN[AIIA]  = params.dt * (
+              0.25*(alpha * ratio_H_tau/(1 + ratio_H_tau))  //scale converts to 1/4
+            - gamma_deg * iPROTEIN[AIIA]                  //set above
+    );
+
+    conc[A] = iPROTEIN[AIIA];//copy for data recording
+
+//            ratio_I_tau = pow(I_tau/params->K.H, params->nH);//change to match that of C4
+//            //C14 synthase:
+//            delta[S] = dt * (
+//                      (params->eta.S0 + params->eta.S1 * ratio_I_tau)/(1.0 + ratio_I_tau)
+//                    - degradationProtein * conc[S] );
+//            delta[I] = dt * (//C14HSL
+//                    params->phi * conc[S]									//PRODUCTION
+//                    - degradationHSL * conc[I] )							//DEGRADATION+DILUTION
+//                    - dC14HSL;                                               //MEMBRANE DIFFUSION
+            //hard code the receiver Prhl K50 for now:
+            //C14 production from sender strain "priming signal" (want high sensitivity and output)
+
+//            delta[FP] = params.dt * (
+//                                gamma_d * ratio_H_tau/(1.0 + ratio_H_tau)
+//                        );
+
+    pushConcentrations();
+    return dHSL;
+}
 
 std::vector<double>
 sendRecvStrain::computeProteins

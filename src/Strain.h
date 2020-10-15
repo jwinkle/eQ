@@ -161,6 +161,7 @@ public:
 	
 	//THE FOLLOWING NEED NOT BE RE-INITIALIZED:
     double	ratio_H_tau, ratio_L_tau, ratio_I_tau;
+    double  ratio_A, ratio_AKd;
 	double 	totalProtein, totalHSL;
     double 	delta[NUM_CONCENTRATIONS];
 	double  dC4HSL, dC14HSL;
@@ -349,7 +350,6 @@ public:
         }
     }
 };
-
 class sendRecvStrain : public Strain
 {
 private:
@@ -387,6 +387,48 @@ public:
     //calls default copy constructor for derived class:
     std::shared_ptr<Strain>
         clone() const override {return std::make_shared<sendRecvStrain>(*this);}  // requires C++ 14
+    std::vector<double>
+        computeProteins(
+            const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
+};
+class synchronousOscillator : public Strain
+{
+private:
+    enum  qProteins
+    {
+        FP = 0,
+        AIIA,
+        NUM_QUEUES
+    };
+public:
+    enum hslTypes
+    {
+        C4HSL   = 0,
+        C14HSL  = 1,
+        NUM_HSLTYPES
+    };
+    enum inductionFlag
+    {
+        INDUCTION,
+        NUM_INDUCTIONFLAGS
+    };
+
+    static std::vector<bool> inductionFlags;
+
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
+
+    //CONSTRUCTOR: (called for initial seed cells only)
+//	sendRecvStrain(eQ::Cell::strainType strainType, const double timestep, const double nodesPerMicron, const size_t numHSL)
+//        : Strain(strainType, nullptr, timestep, nodesPerMicron)
+    synchronousOscillator(const Strain::Params &p)
+        : Strain(p)
+    {
+        initializeDataStructures(params.numHSL, qProteins::NUM_QUEUES);
+        inductionFlags.assign(NUM_INDUCTIONFLAGS, false);
+    }
+    //calls default copy constructor for derived class:
+    std::shared_ptr<Strain>
+        clone() const override {return std::make_shared<synchronousOscillator>(*this);}  // requires C++ 14
     std::vector<double>
         computeProteins(
             const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
