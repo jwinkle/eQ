@@ -473,7 +473,7 @@ int main(int argc, char* argv[])
         setSimulationTimeStep(0.1);//resets the timer object
 //        setSimulationTimeStep(0.05);//resets the timer object
 
-        simulationTimer.setSimulationTimeHours(30);
+        simulationTimer.setSimulationTimeHours(10);
 
         using sim_t = std::shared_ptr<Simulation>;
         struct changeFlowRate : public event_t
@@ -518,23 +518,30 @@ int main(int argc, char* argv[])
 
 //        double trapFlowRate = 1;//um/sec
 //        double trapFlowRate = 25;//um/sec
-        double trapFlowRate = 300;//um/sec
-        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
-        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);//converted to mins
-        size_t              flowRateChangeT0 = eQ::simulationTiming::HOURS(3);//converted to mins
-        eQ::data::parameters["flowRateChanges"]     =  flowRateChanges;
-        eQ::data::parameters["flowRateDeltaT"]      =  flowRateDeltaT;
-        eQ::data::parameters["flowRateT0Hours"]     =  flowRateChangeT0;
+        double trapFlowRate = 100;//um/sec
+//        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
+//        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);//converted to mins
+//        size_t              flowRateChangeT0 = eQ::simulationTiming::HOURS(3);//converted to mins
+//        eQ::data::parameters["flowRateChanges"]     =  flowRateChanges;
+//        eQ::data::parameters["flowRateDeltaT"]      =  flowRateDeltaT;
+//        eQ::data::parameters["flowRateT0Hours"]     =  flowRateChangeT0;
 
 //        event_t::list.push_back(std::make_shared<changeFlowRate>(simulation, simulationTimer, flowRateChangeT0,
 //                                                                 flowRateChanges, flowRateDeltaT, checkAdvectionDiffusionStability));
+
+         double flowRateArray[] = {10,20,30,100,200,300};//um/sec
+         if(fileIO.isArrayCluster)
+         {
+             trapFlowRate
+                     = flowRateArray[fileIO.slurmArrayIndex];
+         }
 
 
         //target max HSL in bulk:
         double hslPeakValue = 1.0e4;//set from Danino SI, will translate to ~23000 =~ 2500/.1
         //for oscillator:  set to 1nM leaky production:
-        eQ::data::parameters["hslLeakProduction"]     =  10.0;
-        eQ::data::parameters["gammaDegradationScale"]     =  10.0;
+        eQ::data::parameters["hslLeakProduction"]           =  10.0;
+        eQ::data::parameters["gammaDegradationScale"]       =  10.0;
 
         numSimulations = 1;
     //    numSimulations = 2;
@@ -678,7 +685,8 @@ int main(int argc, char* argv[])
                         //DATA RECORDING SETUP:
 //****************************************************************************************
         eQ::data::parameters["nodesPerMicronData"]      = 1;
-        eQ::data::parameters["recordingInterval"]       = 10;//minutes between snapshots
+//        eQ::data::parameters["recordingInterval"]       = 10;//minutes between snapshots
+        eQ::data::parameters["recordingInterval"]       = 1;//minutes between snapshots
 
         if(eQ::data::isControllerNode)
         {
