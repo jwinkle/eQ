@@ -46,7 +46,7 @@ synchronousOscillator::computeProteins
 
     deltaPROTEIN[AIIA]  = params.dt * (
               0.25*(alpha * ratio_H_tau/(1 + ratio_H_tau))  //scale converts to 1/4
-//            - gamma_deg * iPROTEIN[AIIA]                  //set above
+            - gamma_deg * iPROTEIN[AIIA]                  //set above
     );
 
     conc[A] = iPROTEIN[AIIA];//copy for data recording

@@ -541,7 +541,7 @@ int main(int argc, char* argv[])
         double hslPeakValue = 1.0e4;//set from Danino SI, will translate to ~23000 =~ 2500/.1
         //for oscillator:  set to 1nM leaky production:
         eQ::data::parameters["hslLeakProduction"]           =  10.0;
-        eQ::data::parameters["gammaDegradationScale"]       =  10.0;
+        eQ::data::parameters["gammaDegradationScale"]       =  5.0;
 
         numSimulations = 1;
     //    numSimulations = 2;
