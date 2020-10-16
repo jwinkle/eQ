@@ -15,7 +15,8 @@
 //auto-generated branch/hash in "version.h" file (see CMakeLists.txt)
 static std::string gitBranch    = std::string(GIT_BRANCH);
 static std::string gitHash      = std::string(GIT_COMMIT_HASH);
-static std::string gitTag      = std::string(GIT_TAG);
+static std::string gitTag       = std::string(GIT_TAG);
+static std::string gitMessage   = std::string(GIT_COMMIT_MESSAGE);
 
 static std::string abortPath = "./abort.txt";
 static auto abortFlagBoost = boost::filesystem::path(abortPath);   // p reads clearer than argv[1] in the following code
@@ -466,6 +467,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
+        eQ::data::parameters["GIT_COMMIT_MESSAGE"]   = gitMessage;
 
         eQ::data::parameters["simType"]         = "GENETIC_CLOCKS";
         int numberOfDiffusionNodes              = 1;
