@@ -542,8 +542,8 @@ int main(int argc, char* argv[])
         //target max HSL in bulk:
         double hslPeakValue = 1.0e4;//set from Danino SI, will translate to ~23000 =~ 2500/.1
         //for oscillator:  set to 1nM leaky production:
-        eQ::data::parameters["hslLeakProduction"]           =  10.0;
-        eQ::data::parameters["gammaDegradationScale"]       =  5.0;
+        eQ::data::parameters["hslLeakProduction"]           =  1.0;
+        eQ::data::parameters["gammaDegradationScale"]       =  1.0;
 
         numSimulations = 1;
     //    numSimulations = 2;
@@ -713,6 +713,9 @@ int main(int argc, char* argv[])
 
                 params.dataFiles->push_back(eQ::data::record
                     {eQ::dataParameterType::PROTEIN, Strain::concentrations::A, std::string("aiiA.pvd"),
+                     std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
+                params.dataFiles->push_back(eQ::data::record
+                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::GFP, std::string("gfp.pvd"),
                      std::make_shared<eQ::data::tensor>(n,y,x,eQ::data::tensor::rank::SCALAR)});
 //                params.dataFiles->push_back(eQ::gridData
 //                    {eQ::dataParameterType::PROTEIN, Strain::concentrations::H, std::string("h.pvd"),
