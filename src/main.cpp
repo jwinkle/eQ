@@ -542,7 +542,7 @@ int main(int argc, char* argv[])
         //target max HSL in bulk:
         double hslPeakValue = 1.0e4;//set from Danino SI, will translate to ~23000 =~ 2500/.1
         //for oscillator:  set to 1nM leaky production:
-        eQ::data::parameters["hslLeakProduction"]           =  1.0e-3;
+        eQ::data::parameters["hslLeakProduction"]           =  0.1;
         eQ::data::parameters["gammaDegradationScale"]       =  1.0;
 
         numSimulations = 1;
