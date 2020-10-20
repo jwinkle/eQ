@@ -28,11 +28,11 @@ synchronousOscillator::computeProteins
 
     double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
     double delta = double(eQ::data::parameters["hslLeakProduction"]);
-    double HK = 300;
-    double hn = 2;
+    double HK = 300.;
+    double hn = 2.;
 //    double AK = 10;
-    double AKd = 300;
-    double gamma_dil = (log(2)/20.0);
+    double AKd = 300.;
+    double gamma_dil = (log(2.0)/20.0);
     double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 
     ratio_H_tau = pow(tHSL[C4HSL]/HK, hn);
@@ -40,16 +40,17 @@ synchronousOscillator::computeProteins
     ratio_AKd   = iPROTEIN[AIIA]/AKd;
 
     deltaHSL[C4HSL]  = params.dt * (
-                alpha * iPROTEIN[RHLI]
-                -  20 * ratio_AKd/(1 + ratio_AKd) * iHSL[C4HSL])
-                - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
+                        alpha * iPROTEIN[RHLI]
+                    -  15.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
+                    - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
     ;
     deltaPROTEIN[RHLI]  = params.dt * (
-                delta + gamma_dil * ratio_H_tau/(1 + ratio_H_tau)
+                        delta
+                    + gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
     );
     deltaPROTEIN[AIIA]  = params.dt * (
-              1.5*(alpha * ratio_H_tau/(1 + ratio_H_tau))
-            - gamma_deg * iPROTEIN[AIIA]                  //set above
+                        1.5*(alpha * ratio_H_tau/(1.0 + ratio_H_tau))
+                    - gamma_deg * iPROTEIN[AIIA]                  //set above
     );
     deltaPROTEIN[FP] = params.dt * (
                         gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
