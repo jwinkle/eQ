@@ -41,7 +41,7 @@ synchronousOscillator::computeProteins
 
     deltaHSL[C4HSL]  = params.dt * (
                         alpha * iPROTEIN[RHLI]
-                    -  15.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
+                    -  20.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
                     - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
     ;
     deltaPROTEIN[RHLI]  = params.dt * (
