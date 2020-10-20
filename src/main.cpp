@@ -520,7 +520,8 @@ int main(int argc, char* argv[])
 
 //        double trapFlowRate = 1;//um/sec
 //        double trapFlowRate = 25;//um/sec
-        double trapFlowRate = 100;//um/sec
+        double trapFlowRate = 50;//um/sec
+//        double trapFlowRate = 100;//um/sec
 //        std::vector<double> flowRateChanges  = {5, 10, 25, 50, 100, 250};//um/sec
 //        double              flowRateDeltaT   = eQ::simulationTiming::HOURS(1);//converted to mins
 //        size_t              flowRateChangeT0 = eQ::simulationTiming::HOURS(3);//converted to mins
