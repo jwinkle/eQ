@@ -39,19 +39,24 @@ synchronousOscillator::computeProteins
 //    ratio_A     = iPROTEIN[AIIA]/AK;
     ratio_AKd   = iPROTEIN[AIIA]/AKd;
 
+
+    deltaHSL[RHLI]  = params.dt * (
+                delta + gamma_dil * ratio_H_tau/(1 + ratio_H_tau)
+    );
     deltaHSL[C4HSL]  = params.dt * (
-                delta + alpha * ratio_H_tau/(1 + ratio_H_tau)
+                alpha * iPROTEIN[RHLI]
                 -  20 * ratio_AKd/(1 + ratio_AKd) * iHSL[C4HSL])
                 - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
     ;
     deltaPROTEIN[AIIA]  = params.dt * (
               1.5*(alpha * ratio_H_tau/(1 + ratio_H_tau))
-//            - gamma_deg * iPROTEIN[AIIA]                  //set above
+            - gamma_deg * iPROTEIN[AIIA]                  //set above
     );
     deltaPROTEIN[FP] = params.dt * (
                         gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
     );
 
+    conc[S]     = iPROTEIN[RHLI];//copy for data recording
     conc[A]     = iPROTEIN[AIIA];//copy for data recording
     conc[GFP]   = iPROTEIN[FP];//copy for data recording
 

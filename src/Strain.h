@@ -398,6 +398,7 @@ private:
     {
         FP = 0,
         AIIA,
+        RHLI,
         NUM_QUEUES
     };
 public:
