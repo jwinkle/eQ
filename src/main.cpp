@@ -467,7 +467,7 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_BRANCH"]          = gitBranch;
         eQ::data::parameters["_GIT_COMMIT_HASH"]     = gitHash;
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
-        eQ::data::parameters["GIT_COMMIT_MESSAGE"]   = gitMessage;
+        eQ::data::parameters["_GIT_COMMIT_MESSAGE"]  = gitMessage;
 
         eQ::data::parameters["simType"]         = "GENETIC_CLOCKS";
         int numberOfDiffusionNodes              = 1;
