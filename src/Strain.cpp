@@ -47,10 +47,10 @@ synchronousOscillator::computeProteins
 
     double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
     double delta = double(eQ::data::parameters["hslLeakProduction"]);
-    double HK = 400.;
+    double HK = 500.;
     double hn = 4.;
 //    double AK = 10;
-    double AKd = 400.;
+    double AKd = 500.;
     double gamma_dil = (log(2.0)/20.0);
     double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 
