@@ -410,10 +410,17 @@ public:
     };
     enum inductionFlag
     {
-        INDUCTION,
+        SET_INITIAL_SYNTHASE_CONC,
         NUM_INDUCTIONFLAGS
     };
 
+    struct Data
+    {
+        double trapWidthMicrons;
+        double centerSliceWidth;
+    };
+
+    static Data environmentData;
     static std::vector<bool> inductionFlags;
 
     static void setFlag(inductionFlag which) {inductionFlags[which] = true;}

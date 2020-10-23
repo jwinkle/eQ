@@ -478,44 +478,15 @@ int main(int argc, char* argv[])
 
         simulationTimer.setSimulationTimeHours(10);
 
-        using sim_t = std::shared_ptr<Simulation>;
-        struct changeFlowRate : public event_t
+        struct setInitialData : public event_t
         {
-            sim_t                   &simulation;
-            eQ::simulationTiming                &simulationTimer;
-            std::vector<double>                 changeRates;
-            double                              changeTime;
-            std::function<bool()>               checkStability;
-            size_t                              count;
-
-            changeFlowRate(std::shared_ptr<Simulation> &sim, eQ::simulationTiming &timer, double time,
-                           std::vector<double> rates, double deltaT, std::function<bool()> f)
-                : triggerEvent("changeFlowRate", time),
-                  simulation(sim), simulationTimer(timer), changeRates(rates), changeTime(deltaT), checkStability(f),
-                    count(0) {}
+            setInitialData(double time) : triggerEvent("setInitialData", time) {}
 
             bool operator()(double simTime) override
             {
-                if(count < changeRates.size())
-                {
-                    eQ::data::parameters["trapChannelLinearFlowRate"] = changeRates[count];//microns/sec;
-                    eQ::data::parameters["simulationFlowRate"] = changeRates[count] * 60.0/double(eQ::data::parameters["lengthScaling"]);//microns/sec * 60sec/min;
-                    ++count;
-                    checkStability();
-                    if(false == eQ::data::isControllerNode)
-                    {
-                        simulation->diffusionSolver->setRobinBoundaryConditions();
-                        simulation->diffusionSolver->updateRobinParameters();
-                        simulation->setBoundaryRate();
-                    }
-                }
-                if(count < changeRates.size())//check updated count if next event needed
-                {
-                    simulationTimer.updateFlag(event.first,  simTime + changeTime);
-                    return false;//timer still active (don't ignore)
-                }
-                else
-                    return true;//ignore
+                std::cout<<"triggered timer event at simTime:"<<simTime<<std::endl;
+                synchronousOscillator::inductionFlags[synchronousOscillator::SET_INITIAL_SYNTHASE_CONC] = true;
+                return true;//ignore timer
             }
         };
 
@@ -530,8 +501,7 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["flowRateDeltaT"]      =  flowRateDeltaT;
 //        eQ::data::parameters["flowRateT0Hours"]     =  flowRateChangeT0;
 
-//        event_t::list.push_back(std::make_shared<changeFlowRate>(simulation, simulationTimer, flowRateChangeT0,
-//                                                                 flowRateChanges, flowRateDeltaT, checkAdvectionDiffusionStability));
+        event_t::list.push_back(std::make_shared<setInitialData>(200));
 
          double flowRateArray[] = {10,20,30,100,200,300};//um/sec
          if(fileIO.isArrayCluster)
@@ -586,7 +556,8 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
 //        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
+//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 2000;
 
 
 
@@ -676,6 +647,8 @@ int main(int argc, char* argv[])
         //MODULUS:
 //        strainTypes.push_back(std::make_shared<MODULUSmodule>(dt, npm, numHSL));
 
+        synchronousOscillator::environmentData.trapWidthMicrons = size_t(eQ::data::parameters["simulationTrapWidthMicrons"]);
+        synchronousOscillator::environmentData.centerSliceWidth = 15;
 
         eQ::data::parameters["divisionCorrelationAlpha"] = 0.5;
 
@@ -925,10 +898,13 @@ int main(int argc, char* argv[])
 
     auto recordingIntervalMinutes = size_t(eQ::data::parameters["recordingInterval"]);
 
+    std::cout<<"SET_INITIAL_SYNTHASE_CONC = "<<synchronousOscillator::inductionFlags[synchronousOscillator::SET_INITIAL_SYNTHASE_CONC]<<std::endl;
     while(simulationTimer.stepTimer())
     {
 
+        simulationTimer.checkTimerFlags();
         simulation->stepSimulation(simulationTimer.simTime());//parallel chipmunk + HSL
+        synchronousOscillator::inductionFlags[synchronousOscillator::SET_INITIAL_SYNTHASE_CONC] = false;
 
         //NOTE:  DATA XFER BACK TO HSL WORKER NODES IS STILL OPEN HERE;
         //ALL NODES CONTINUE WITHOUT A BARRIER...
@@ -943,7 +919,7 @@ int main(int argc, char* argv[])
         if(simulationTimer.periodicTimeMinutes(10))
         {
             displayDataStep();
-            simulationTimer.checkTimerFlags();
+//            simulationTimer.checkTimerFlags();
             simulation->printOverWrites();
             simulation->resetTimers();
 

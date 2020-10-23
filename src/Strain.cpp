@@ -6,17 +6,36 @@ std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasi
 std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> synchronousOscillator::inductionFlags     = {synchronousOscillator::NUM_INDUCTIONFLAGS, false};
+synchronousOscillator::Data synchronousOscillator::environmentData;
 
 std::vector<double>
 synchronousOscillator::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
-    if( inductionFlags[INDUCTION] )
+    static bool setInitialValues = false;
+
+    if( inductionFlags[SET_INITIAL_SYNTHASE_CONC] )
     {//set all cells:
-//        params.baseData->meanDivisionLength
-//                = double( eQ::data::parameters["mutantAspectRatioScale"])
-//                                           * double( eQ::data::parameters["defaultAspectRatioFactor"])
-//                                           * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+        double xpos = params.baseData->x;
+        double leftBoundary = environmentData.trapWidthMicrons/2 - environmentData.centerSliceWidth;
+        double rightBoundary = environmentData.trapWidthMicrons/2 + environmentData.centerSliceWidth;
+//        std::cout<<"checking cell at: "<<xpos<<"  "<<leftBoundary<<", "<<rightBoundary<<std::endl;
+
+        if( (xpos > leftBoundary) && (xpos < rightBoundary) )
+        {
+            std::queue<double> q;
+            for(size_t j=0; j<queueDepth; j++) {q.push(1.0e3);}
+            HSL_tau.assign(HSL_tau.size(), q);
+            //set the synthase conc. to 1.0 (max)
+            iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(1.0, lengthMicrons);
+            std::cout<<"set synthase to 1 at: "<<xpos<<std::endl;
+        }
+        setInitialValues = true;
+    }
+    else if(!setInitialValues)
+    {
+        dHSL.assign(dHSL.size(), 0);
+        return dHSL;
     }
 
     if(eHSL.empty()) return {};//error with no HSL, return empty vector
@@ -28,10 +47,10 @@ synchronousOscillator::computeProteins
 
     double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
     double delta = double(eQ::data::parameters["hslLeakProduction"]);
-    double HK = 300.;
-    double hn = 2.;
+    double HK = 400.;
+    double hn = 4.;
 //    double AK = 10;
-    double AKd = 300.;
+    double AKd = 400.;
     double gamma_dil = (log(2.0)/20.0);
     double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 
@@ -49,7 +68,7 @@ synchronousOscillator::computeProteins
                     + gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
     );
     deltaPROTEIN[AIIA]  = params.dt * (
-                        1.5*(alpha * ratio_H_tau/(1.0 + ratio_H_tau))
+                        0.25*(alpha * ratio_H_tau/(1.0 + ratio_H_tau))
                     - gamma_deg * iPROTEIN[AIIA]                  //set above
     );
     deltaPROTEIN[FP] = params.dt * (
