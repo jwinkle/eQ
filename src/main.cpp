@@ -533,9 +533,9 @@ int main(int argc, char* argv[])
         eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
-//        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
+        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_UPDATE";
-        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
+//        eQ::data::parameters["boundaryType"]      = "MICROFLUIDIC_TRAP";
 
 
 //        double trapFlowRate = 0.0;//um/sec
