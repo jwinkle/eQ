@@ -50,7 +50,7 @@ synchronousOscillator::computeProteins
     double HK = 500.;
     double hn = 4.;
 //    double AK = 10;
-    double AKd = 500.;
+    double AKd = 300.;
     double gamma_dil = (log(2.0)/20.0);
     double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 

@@ -472,8 +472,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["simType"]         = "GENETIC_CLOCKS";
         int numberOfDiffusionNodes              = 1;
 
-        setSimulationTimeStep(0.1);//resets the timer object
-//        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.1);//resets the timer object
+        setSimulationTimeStep(0.05);//resets the timer object
 //        setSimulationTimeStep(0.025);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
@@ -503,7 +503,7 @@ int main(int argc, char* argv[])
 
         event_t::list.push_back(std::make_shared<setInitialData>(200));
 
-         double flowRateArray[] = {10,20,30,100,200,300};//um/sec
+         double flowRateArray[] = {10,20,50,100,200,500};//um/sec
          if(fileIO.isArrayCluster)
          {
              trapFlowRate
