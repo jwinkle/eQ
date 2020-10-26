@@ -503,7 +503,7 @@ int main(int argc, char* argv[])
 
         event_t::list.push_back(std::make_shared<setInitialData>(200));
 
-         double flowRateArray[] = {10,20,50,100,200,500};//um/sec
+         double flowRateArray[] = {10,30,60,100,300,600};//um/sec
          if(fileIO.isArrayCluster)
          {
              trapFlowRate

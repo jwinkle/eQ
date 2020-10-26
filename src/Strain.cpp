@@ -24,7 +24,7 @@ synchronousOscillator::computeProteins
         if( (xpos > leftBoundary) && (xpos < rightBoundary) )
         {
             std::queue<double> q;
-            for(size_t j=0; j<queueDepth; j++) {q.push(1.0e3);}
+            for(size_t j=0; j<queueDepth; j++) {q.push(1.0e2);}
             HSL_tau.assign(HSL_tau.size(), q);
             //set the synthase conc. to 1.0 (max)
             iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(1.0, lengthMicrons);
