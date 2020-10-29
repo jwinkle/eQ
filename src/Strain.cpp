@@ -23,12 +23,12 @@ synchronousOscillator::computeProteins
 
         if( (xpos > leftBoundary) && (xpos < rightBoundary) )
         {
-            double hslValue = 1000;
+            double hslValue = 500;
             std::queue<double> q;
             for(size_t j=0; j<queueDepth; j++) {q.push(hslValue);}
             HSL_tau.assign(HSL_tau.size(), q);
-            //set the synthase conc. to 1.0 (max)
-//            iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(1.0, lengthMicrons);
+            //set the synthase conc. to .1
+            iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(0.1, lengthMicrons);
             std::cout<<"set HSL queue to "<<hslValue<<" at: "<<xpos<<std::endl;
         }
         setInitialValues = true;
@@ -48,10 +48,10 @@ synchronousOscillator::computeProteins
 
     double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
     double delta = double(eQ::data::parameters["hslLeakProduction"]);
-    double HK = 500.;
+    double HK = 1000.;
     double hn = 4.;
 //    double AK = 10;
-    double AKd = 300.;
+    double AKd = 1000.;
     double gamma_dil = (log(2.0)/20.0);
     double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 
@@ -61,7 +61,7 @@ synchronousOscillator::computeProteins
 
     deltaHSL[C4HSL]  = params.dt * (
                         alpha * iPROTEIN[RHLI]
-                    -  20.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
+                    -  10.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
                     - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
     ;
     deltaPROTEIN[RHLI]  = params.dt * (
