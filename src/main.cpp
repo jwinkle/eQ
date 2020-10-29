@@ -556,8 +556,7 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
 //        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
-//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 2000;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 2000;
 
 
 
