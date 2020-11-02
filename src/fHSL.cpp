@@ -541,7 +541,14 @@ void fenicsInterface::createHSL()
                 shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, bottomData, bottomWall));
             }
         }
-        //NEUMANN:  do nothing...
+        else if(0.0 == thisData[1])
+        {//NEUMANN:  do nothing...
+        }
+        else
+        {//ROBIN:
+            data.s_right     = std::make_shared<dolfin::Constant>(0.0);
+            data.r_right     = std::make_shared<dolfin::Constant>(rightRate);
+        }
     }
     else
     {

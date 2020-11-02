@@ -14,30 +14,30 @@ synchronousOscillator::computeProteins
 {
     static bool setInitialValues = false;
 
-    if( inductionFlags[SET_INITIAL_SYNTHASE_CONC] )
-    {//set all cells:
-        double xpos = params.baseData->x;
-        double leftBoundary = environmentData.trapWidthMicrons/2 - environmentData.centerSliceWidth;
-        double rightBoundary = environmentData.trapWidthMicrons/2 + environmentData.centerSliceWidth;
-//        std::cout<<"checking cell at: "<<xpos<<"  "<<leftBoundary<<", "<<rightBoundary<<std::endl;
+//    if( inductionFlags[SET_INITIAL_SYNTHASE_CONC] )
+//    {//set all cells:
+//        double xpos = params.baseData->x;
+//        double leftBoundary = environmentData.trapWidthMicrons/2 - environmentData.centerSliceWidth;
+//        double rightBoundary = environmentData.trapWidthMicrons/2 + environmentData.centerSliceWidth;
+////        std::cout<<"checking cell at: "<<xpos<<"  "<<leftBoundary<<", "<<rightBoundary<<std::endl;
 
-        if( (xpos > leftBoundary) && (xpos < rightBoundary) )
-        {
-            double hslValue = 500;
-            std::queue<double> q;
-            for(size_t j=0; j<queueDepth; j++) {q.push(hslValue);}
-            HSL_tau.assign(HSL_tau.size(), q);
-            //set the synthase conc. to .1
-            iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(0.1, lengthMicrons);
-            std::cout<<"set HSL queue to "<<hslValue<<" at: "<<xpos<<std::endl;
-        }
-        setInitialValues = true;
-    }
-    else if(!setInitialValues)
-    {
-        dHSL.assign(dHSL.size(), 0);
-        return dHSL;
-    }
+//        if( (xpos > leftBoundary) && (xpos < rightBoundary) )
+//        {
+//            double hslValue = 500;
+//            std::queue<double> q;
+//            for(size_t j=0; j<queueDepth; j++) {q.push(hslValue);}
+//            HSL_tau.assign(HSL_tau.size(), q);
+//            //set the synthase conc. to .1
+//            iPROTEIN[RHLI] = eQ::Cell::nanoMolarToMoleculeNumber(0.1, lengthMicrons);
+//            std::cout<<"set HSL queue to "<<hslValue<<" at: "<<xpos<<std::endl;
+//        }
+//        setInitialValues = true;
+//    }
+//    else if(!setInitialValues)
+//    {
+//        dHSL.assign(dHSL.size(), 0);
+//        return dHSL;
+//    }
 
     if(eHSL.empty()) return {};//error with no HSL, return empty vector
 

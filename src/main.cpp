@@ -417,6 +417,16 @@ int main(int argc, char* argv[])
                         << wall::TOP
                         << wall::BOTTOM;
             }
+            else if("THREEWALLED" == eQ::data::parameters["trapType"])
+            {
+                bcs << type::NEUMANN_0
+                        << wall::TOP
+                        << wall::LEFT
+                        << wall::RIGHT;
+
+                bcs << type::ROBIN
+                        << wall::BOTTOM;
+            }
             else
             {
                 //Robin BC for left/right walls: u'/u = 1/length = b/a
@@ -501,7 +511,7 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["flowRateDeltaT"]      =  flowRateDeltaT;
 //        eQ::data::parameters["flowRateT0Hours"]     =  flowRateChangeT0;
 
-        event_t::list.push_back(std::make_shared<setInitialData>(200));
+//        event_t::list.push_back(std::make_shared<setInitialData>(200));
 
          double flowRateArray[] = {10,30,60,100,300,600};//um/sec
          if(fileIO.isArrayCluster)
@@ -530,7 +540,8 @@ int main(int argc, char* argv[])
 
         eQ::data::parameters["modelType"]         = "OFF_LATTICE_ABM";
 //        eQ::data::parameters["trapType"]          = "NOWALLED";
-        eQ::data::parameters["trapType"]      = "TWOWALLED";
+//        eQ::data::parameters["trapType"]      = "TWOWALLED";
+        eQ::data::parameters["trapType"]      = "THREEWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
@@ -555,8 +566,7 @@ int main(int argc, char* argv[])
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 2000;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 100;
 
 
 
