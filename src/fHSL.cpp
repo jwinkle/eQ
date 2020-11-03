@@ -99,7 +99,10 @@ void fenicsInterface::stepDiffusion()
 {
     //note: trap top and bottom boundary conditions are in the solution to the prevous advection/diffusion solution of the channel
 
-    if( ("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"]) && ("H_TRAP" != eQ::data::parameters["trapType"]) )
+    if( ("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"])
+            &&  ("H_TRAP" != eQ::data::parameters["trapType"])
+            &&  ("THREEWALLED" != eQ::data::parameters["trapType"])
+      )
     {
         //now compute new flux into the channel boundaries and scale to channel volume element:
         computeBoundaryFlux();
@@ -436,6 +439,7 @@ void fenicsInterface::createHSL()
 
     //SUBDOMAIN CLASS INSTANTIATIONS:
     auto dbc_openWalled     = std::make_shared<DirichletBoundary_openWalls>();
+    //depracated for fast Robin condition (need to mark bottom boundary rather than set as dirichlet):
     auto dbc_threeWalled    = std::make_shared<DirichletBoundary_threeWalls>();
     auto dbc_twoWalled      = std::make_shared<DirichletBoundary_twoWalls>(myParams.trapHeightMicrons, myParams.trapWidthMicrons);
     auto dbc_oneWall        = std::make_shared<DirichletBoundary_oneWall>(myParams.trapHeightMicrons, myParams.trapWidthMicrons);
@@ -446,16 +450,24 @@ void fenicsInterface::createHSL()
 
     if("MICROFLUIDIC_TRAP" == eQ::data::parameters["boundaryType"])
     {
+        data.meshFunction = std::make_shared<MeshFunction<size_t>>(shell->mesh, shell->mesh->topology().dim()-1, 0);
+
         if("H_TRAP" == eQ::data::parameters["trapType"])
         {   //reset the rates to channel velocity for H-trap (left/right boundaries are narrow, transverse flow)
             //note: should be set with Robin BC set in "boundaries" parameters
             leftRate = channelFlowVelocity;
             rightRate = channelFlowVelocity;
         }
+        if("THREEWALLED" == eQ::data::parameters["trapType"])
+        {
+            bottomRate = channelFlowVelocity;
+            bottomWall->mark(*data.meshFunction, 1);
+        }
 
-        data.meshFunction = std::make_shared<MeshFunction<size_t>>(shell->mesh, shell->mesh->topology().dim()-1, 0);
+        //always set left, right walls
         leftWall->mark(*data.meshFunction, 1);
         rightWall->mark(*data.meshFunction, 2);
+
 
 //not sure that this works:
 //        leftWall->mark_facets(*shell->mesh, 0);//translates to ds(0) in .ufl code
@@ -464,6 +476,7 @@ void fenicsInterface::createHSL()
         shell->dbc.clear();
 
         //DECODE THE BOUNDARY CONDITIONS:
+        //Note:  Dirichlet BC will over-ride the meshFunction marking, for any wall done above
 
         //LEFT WALL:
         std::vector<double> thisData;
@@ -474,7 +487,7 @@ void fenicsInterface::createHSL()
             shell->dbc.push_back(std::make_shared<dolfin::DirichletBC>(shell->V, leftData, leftWall));
         }
         else if(0.0 == thisData[1])
-        {//NEUMANN, SET TO BV:
+        {//NEUMANN, SET TO BV (sets Robin rate to 0):
             //ONLY SET HOMOGENEOUS NEUMANN...
             data.s_left     = std::make_shared<dolfin::Constant>(0.0);
             data.r_left     = std::make_shared<dolfin::Constant>(0.0);

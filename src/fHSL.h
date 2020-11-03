@@ -52,6 +52,9 @@ struct fenicsVariables
         std::shared_ptr<dolfin::Constant> r_left;//Robin "rate" (effective units=length^-1...1/distance from trap boundary to Robin boundary value location)
         std::shared_ptr<dolfin::Constant> s_right;//Robin boundary value
         std::shared_ptr<dolfin::Constant> r_right;//Robin "rate" (effective units=length^-1...1/distance from trap boundary to Robin boundary value location)
+        //for "side trap" with three reflecting walls, and one open to the flow
+        std::shared_ptr<dolfin::Constant> s_bottom;
+        std::shared_ptr<dolfin::Constant> r_bottom;
 
         std::shared_ptr<MeshFunction<size_t>> meshFunction;
         std::shared_ptr<MeshFunction<size_t>> meshFunctionChannel;
@@ -436,6 +439,7 @@ private:
 
     double rightRate = 0.0;
     double leftRate = 0.0;
+    double bottomRate = 0.0;
 
     bool    lateralNeumann = false;
 

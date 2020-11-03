@@ -50,7 +50,8 @@ link_directories(./lib)
 set(CPM_DIR ./Chipmunk-7.0.1/include)
 set(HEADERS
 	${CPM_DIR}/chipmunk/chipmunk.h
-	${CPM_DIR}/chipmunk/chipmunk_private.h)
+    ${CPM_DIR}/chipmunk/chipmunk_private.h
+)
 
 message("CPM_DIR = " ${CPM_DIR} )
 message("HEADERS = " ${HEADERS} )
@@ -100,11 +101,20 @@ configure_file(
 include_directories(${CMAKE_BINARY_DIR}/generated)
 
 
+#AUX_SOURCE_DIRECTORY(${UFL_DIR} fenicsFiles)
+set(UFL_DIR  fenics)
+
+file(GLOB ufls  "${UFL_DIR}/*.ufl")
+message("{UFL_DIR} = " ${UFL_DIR} )
+message("{ufls} = " ${ufls} )
+
 
 # Executable
 add_executable(${PROJECT_NAME}
 
     ${HEADERS}
+    ${ufls}
+
     ${SABINE_DIR}/winkle.job
     ${SABINE_DIR}/jbuild.sh
 

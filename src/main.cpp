@@ -485,7 +485,7 @@ int main(int argc, char* argv[])
 //        setSimulationTimeStep(0.1);//resets the timer object
 //        setSimulationTimeStep(0.05);//resets the timer object
         setSimulationTimeStep(0.01);//resets the timer object
-//        setSimulationTimeStep(0.025);//resets the timer object
+//        setSimulationTimeStep(0.001);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
 

@@ -114,17 +114,20 @@ cpmTrap::cpmTrap(const cpmTrap::Params &p)
                                 staticBody, cpv(0.0, h), cpv(w, h), TRAP_BORDER_WIDTH));
                     trap.push_back(shape);
             }
-           //  //CODE TO ADD "BUMPS" TO THE TOP OF THE TRAP:
-           //  // #define TRAPBUMPS
-           //  #define NUMBUMPS 30
-           // int tw = 2*width;
-           // for(int i=0;i<tw/NUMBUMPS;i++)
-           // {
-           //     shape = cpSpaceAddShape(
-           //                 space, cpCircleShapeNew(
-           //                     staticBody, TRAP_BORDER_WIDTH/2.0, cpv(-w + NUMBUMPS*i, -h+TRAP_BORDER_WIDTH)));
-           //         trap[trapSegments++] = shape;
-           // }
+           //CODE TO ADD "BUMPS" TO THE TOP OF THE TRAP:
+            if("THREEWALLED" != eQ::data::parameters["trapType"])
+            {
+                // #define TRAPBUMPS
+                #define NUMBUMPS 30
+               int tw = 2*w;
+               for(int i=0;i<tw/NUMBUMPS;i++)
+               {
+                   shape = cpSpaceAddShape(
+                               myParams.space, cpCircleShapeNew(
+                                   staticBody, TRAP_BORDER_WIDTH/2.0, cpv(-w + NUMBUMPS*i, -h+TRAP_BORDER_WIDTH)));
+                   trap.push_back(shape);
+               }
+            }
          }
     }
     else{}//NO-WALLS CASE

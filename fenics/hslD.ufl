@@ -24,6 +24,8 @@ r1 = Constant(triangle) #rate
 s1 = Constant(triangle) #external concentration
 r2 = Constant(triangle) #rate
 s2 = Constant(triangle) #external concentration
+r3 = Constant(triangle) #rate
+s3 = Constant(triangle) #external concentration
 
 ds = Measure('ds')
 # ds = Measure('exterior_facet')
@@ -40,6 +42,8 @@ F = (u-u0)*v*dx \
 		+ dt*r1*(u - s1)*v*ds(1) \
 \
 		+ dt*r2*(u - s2)*v*ds(2) \
+\
+        + dt*r3*(u - s3)*v*ds(3) \
 
 # F = (u-u0)*v*dx - dt*f*v*dx + dt*dot(D*grad(u), grad(v))*dx 
  
