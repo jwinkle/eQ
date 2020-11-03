@@ -46,32 +46,45 @@ synchronousOscillator::computeProteins
 
     computeConcentrations(eHSL, membraneRate, lengthMicrons);
 
-    double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
-    double delta = double(eQ::data::parameters["hslLeakProduction"]);
-    double HK = 1000.;
-    double hn = 4.;
-//    double AK = 10;
-    double AKd = 1000.;
-    double gamma_dil = (log(2.0)/20.0);
-    double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
+//    double alpha = double(eQ::data::parameters["hslProductionRate_C4"]);
+//    double delta = double(eQ::data::parameters["hslLeakProduction"]);
+//    double HK = 1000.;
+//    double hn = 4.;
+////    double AK = 10;
+//    double AKd = 1000.;
+//    double gamma_dil = (log(2.0)/20.0);
+//    double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
+
+    double alpha = 2.5e3;
+    double delta = 1e-3;
+    double HK = 320;//HSL is 100x from Danino
+    double hn = 2;
+    double AK = 10;
+    double IK = 10;
+    double AKH = 100;
+    double gamma_dil = (log(2)/20);
+//    double gamma_deg = gamma_dil * double(eQ::data::parameters["gammaDegradationScale"]);
 
     ratio_H_tau = pow(tHSL[C4HSL]/HK, hn);
-//    ratio_A     = iPROTEIN[AIIA]/AK;
-    ratio_AKd   = iPROTEIN[AIIA]/AKd;
+    ratio_AKH   = iPROTEIN[AIIA]/AKH;
+    ratio_AK    = iPROTEIN[AIIA]/AK;
+    ratio_IK    = iPROTEIN[RHLI]/IK;
 
-    deltaHSL[C4HSL]  = params.dt * (
-                        alpha * iPROTEIN[RHLI]
-                    -  10.0 * ratio_AKd/(1.0 + ratio_AKd) * iHSL[C4HSL])
-                    - dHSL[C4HSL]                                  //MEMBRANE DIFFUSION
-    ;
-    deltaPROTEIN[RHLI]  = params.dt * (
-                        delta
-                    + gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
-    );
     deltaPROTEIN[AIIA]  = params.dt * (
-                        0.25*(alpha * ratio_H_tau/(1.0 + ratio_H_tau))
-                    - gamma_deg * iPROTEIN[AIIA]                  //set above
+                        delta
+                    +   alpha * ratio_H_tau/(1 + ratio_H_tau)
+                    -   45 * ratio_AK/(1 + ratio_AK + ratio_IK)
     );
+    deltaPROTEIN[RHLI]  = params.dt * 4 *(
+                        delta
+                    +   alpha * ratio_H_tau/(1 + ratio_H_tau)
+                    -   72 * ratio_IK/(1 + ratio_AK + ratio_IK)
+    );
+    deltaHSL[C4HSL]  = params.dt * (
+                        6 * iPROTEIN[RHLI]/(1 + iPROTEIN[RHLI])
+                    -  iHSL[C4HSL] * ratio_AKH/(1.0 + ratio_AKH) )
+                    - dHSL[C4HSL]
+    ;
     deltaPROTEIN[FP] = params.dt * (
                         gamma_dil * ratio_H_tau/(1.0 + ratio_H_tau)
     );
@@ -80,21 +93,6 @@ synchronousOscillator::computeProteins
     conc[A]     = iPROTEIN[AIIA];//copy for data recording
     conc[GFP]   = iPROTEIN[FP];//copy for data recording
 
-//            ratio_I_tau = pow(I_tau/params->K.H, params->nH);//change to match that of C4
-//            //C14 synthase:
-//            delta[S] = dt * (
-//                      (params->eta.S0 + params->eta.S1 * ratio_I_tau)/(1.0 + ratio_I_tau)
-//                    - degradationProtein * conc[S] );
-//            delta[I] = dt * (//C14HSL
-//                    params->phi * conc[S]									//PRODUCTION
-//                    - degradationHSL * conc[I] )							//DEGRADATION+DILUTION
-//                    - dC14HSL;                                               //MEMBRANE DIFFUSION
-            //hard code the receiver Prhl K50 for now:
-            //C14 production from sender strain "priming signal" (want high sensitivity and output)
-
-//            delta[FP] = params.dt * (
-//                                gamma_d * ratio_H_tau/(1.0 + ratio_H_tau)
-//                        );
 
     pushConcentrations();
     return dHSL;

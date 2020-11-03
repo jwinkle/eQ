@@ -161,7 +161,7 @@ public:
 	
 	//THE FOLLOWING NEED NOT BE RE-INITIALIZED:
     double	ratio_H_tau, ratio_L_tau, ratio_I_tau;
-    double  ratio_A, ratio_AKd;
+    double  ratio_A, ratio_AKH, ratio_AK, ratio_IK;
 	double 	totalProtein, totalHSL;
     double 	delta[NUM_CONCENTRATIONS];
 	double  dC4HSL, dC14HSL;

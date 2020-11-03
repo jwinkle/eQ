@@ -483,7 +483,8 @@ int main(int argc, char* argv[])
         int numberOfDiffusionNodes              = 1;
 
 //        setSimulationTimeStep(0.1);//resets the timer object
-        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.05);//resets the timer object
+        setSimulationTimeStep(0.01);//resets the timer object
 //        setSimulationTimeStep(0.025);//resets the timer object
 
         simulationTimer.setSimulationTimeHours(10);
@@ -560,8 +561,8 @@ int main(int argc, char* argv[])
 //        double trapFlowRate = 250.0;
 
 //        eQ::data::parameters["lengthScaling"] = 1.0;//150mins
-//        eQ::data::parameters["lengthScaling"] = 2.0;//150mins
-        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
+        eQ::data::parameters["lengthScaling"] = 2.5;//150mins
+//        eQ::data::parameters["lengthScaling"] = 5.0;//150mins
 //        eQ::data::parameters["lengthScaling"] = 4.0;//150mins
 
 
