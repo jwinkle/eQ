@@ -472,7 +472,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
 
-        eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
+//        eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
+        eQ::data::parameters["mutantAspectRatioScale"] = 0.7;
 
         eQ::data::parameters["simType"]       = "ASPECTRATIO_OSCILLATOR";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
@@ -600,8 +601,8 @@ int main(int argc, char* argv[])
         eQ::data::parameters["PETSC_SIMULATION"]  =  false;
 
         eQ::data::parameters["modelType"]         = "OFF_LATTICE_ABM";
-//        eQ::data::parameters["trapType"]          = "NOWALLED";
-        eQ::data::parameters["trapType"]      = "TWOWALLED";
+        eQ::data::parameters["trapType"]          = "NOWALLED";
+//        eQ::data::parameters["trapType"]      = "TWOWALLED";
 //        eQ::data::parameters["trapType"]      = "H_TRAP";
 
 //        eQ::data::parameters["boundaryType"]  = "DIRICHLET_0";
@@ -626,8 +627,8 @@ int main(int argc, char* argv[])
 
 
         eQ::data::parameters["physicalTrapHeight_Y_Microns"]    = 100;
-//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
-        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
+        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 500;
+//        eQ::data::parameters["physicalTrapWidth_X_Microns"]     = 1000;
 
 
 
