@@ -472,16 +472,16 @@ int main(int argc, char* argv[])
         eQ::data::parameters["_GIT_TAG"]             = gitTag;
 
 
-//        eQ::data::parameters["mutantAspectRatioScale"] = 0.65;
-        eQ::data::parameters["mutantAspectRatioScale"] = 0.7;
+        eQ::data::parameters["mutantAspectRatioScale"] = 0.6;
+//        eQ::data::parameters["mutantAspectRatioScale"] = 0.7;
 
         eQ::data::parameters["simType"]       = "ASPECTRATIO_OSCILLATOR";
 //        eQ::data::parameters["simType"]       = "INDUCED_DYNAMIC_ASPECTRATIO";
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
-//        setSimulationTimeStep(0.05);//resets the timer object
-        setSimulationTimeStep(0.1);//resets the timer object
+        setSimulationTimeStep(0.05);//resets the timer object
+//        setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
 //        simulationTimer.setSimulationTimeHours(40);
@@ -547,7 +547,9 @@ int main(int argc, char* argv[])
                 return true;//ignore
             }
         };
-        event_t::list.push_back(std::make_shared<AspectRatioInduction>());
+        //set flag from start, skip induction for oscillator
+        aspectRatioInvasionStrain::setFlag(aspectRatioInvasionStrain::ASPECTRATIO_INDUCTION);
+//        event_t::list.push_back(std::make_shared<AspectRatioInduction>());
         event_t::list.push_back(std::make_shared<AspectRatioFixation>(simulation, world, simulationTimer));
 
         //scale factors are relative to "WT" division length of ecoli, defined in Cell.h:
@@ -581,7 +583,7 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 0.6;
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 1.0;
-        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
+        eQ::data::parameters["aspectRatioThresholdHSL"]      = 350.0;
 //        eQ::data::parameters["aspectRatioThresholdHSL"]      = 100.0;
 //        eQ::data::parameters["aspectRatioThresholdHSL"]      = 150.0;
 
