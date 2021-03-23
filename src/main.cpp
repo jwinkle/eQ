@@ -581,9 +581,9 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 0.6;
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 1.0;
-//        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
+        eQ::data::parameters["aspectRatioThresholdHSL"]      = 200.0;
 //        eQ::data::parameters["aspectRatioThresholdHSL"]      = 100.0;
-        eQ::data::parameters["aspectRatioThresholdHSL"]      = 150.0;
+//        eQ::data::parameters["aspectRatioThresholdHSL"]      = 150.0;
 
 
         //target max HSL in bulk:
