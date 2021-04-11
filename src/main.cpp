@@ -480,13 +480,15 @@ int main(int argc, char* argv[])
 //        eQ::data::parameters["simType"]         = "STATIC_ASPECTRATIO";
         int numberOfDiffusionNodes              = 2;
 
+//        setSimulationTimeStep(0.01);//resets the timer object
         setSimulationTimeStep(0.05);//resets the timer object
 //        setSimulationTimeStep(0.1);//resets the timer object
 
 //        simulationTimer.setSimulationTimeHours(10);
 //        simulationTimer.setSimulationTimeHours(40);
 //        simulationTimer.setSimulationTimeHours(60);
-        simulationTimer.setSimulationTimeHours(80);
+//        simulationTimer.setSimulationTimeHours(80);
+        simulationTimer.setSimulationTimeHours(100);
 
         using sim_t = std::shared_ptr<Simulation>;
         struct AspectRatioFixation : public event_t
@@ -583,7 +585,7 @@ int main(int argc, char* argv[])
 
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 0.6;
 //        eQ::data::parameters["mutantAspectRatioScale"]       = 1.0;
-        eQ::data::parameters["aspectRatioThresholdHSL"]      = 350.0;
+        eQ::data::parameters["aspectRatioThresholdHSL"]      = 300.0;
 //        eQ::data::parameters["aspectRatioThresholdHSL"]      = 100.0;
 //        eQ::data::parameters["aspectRatioThresholdHSL"]      = 150.0;
 

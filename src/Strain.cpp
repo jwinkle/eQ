@@ -179,6 +179,7 @@ aspectRatioOscillator::computeProteins
     const size_t    Ain = hslType::C14HSL;
     const size_t    Rin = hslType::C4HSL;
 
+    const double    nH = 8.0;
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
@@ -188,7 +189,7 @@ aspectRatioOscillator::computeProteins
 //        deltaHSL[3] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
 //                - dHSL[3];
 //        //LacI
-        double ratio_Hin        = pow(iHSL[Ain]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Ain]/pHinThresh, nH);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[3]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
@@ -209,14 +210,14 @@ aspectRatioOscillator::computeProteins
 //        deltaHSL[1] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
 //                - dHSL[1];
         //LacI
-        double ratio_Hin        = pow(iHSL[Rin]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Rin]/pHinThresh, nH);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[1]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
 
         //priming signal output to other strain:
-        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        double ratio_L = pow(conc[L]/placThresh, nH);
         deltaHSL[Ain] = params.dt * (double(eQ::data::parameters["hslProductionRate_C14"]))
                 *  1.0/(1.0 + ratio_L)
                 - dHSL[Ain];
