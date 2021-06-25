@@ -14,6 +14,9 @@ cmake_policy(SET CMP0004 NEW)
 # DOLFIN_CMAKE_CONFIG_PATH)
 find_package(DOLFIN REQUIRED)
 find_package(Boost REQUIRED)
+# find_package(PETSc REQUIRED)
+
+# /usr/local/petsc-32/
 
 include(${DOLFIN_USE_FILE})
 
@@ -109,8 +112,9 @@ target_link_libraries(${PROJECT_NAME} libcp.a)
 # Target libraries
 target_link_libraries(
 #	${PROJECT_NAME} dolfin mshr petsc
-	${PROJECT_NAME} dolfin petsc
-	${Boost_LIBRARIES} boost_system boost_filesystem
+# ${PROJECT_NAME} dolfin petsc
+${PROJECT_NAME} dolfin 
+${Boost_LIBRARIES} boost_system boost_filesystem
 #	/usr/lib/x86_64-linux-gnu/libboost_system.a
 #	/usr/lib/x86_64-linux-gnu/libboost_filesystem.a
 	)
