@@ -147,7 +147,7 @@ See an explanation here:  https://frightanic.com/computers/docker-default-contai
 #### III. CLONE THE eQ REPOSITORY INTO THE DOCKER/FENICS IMAGE
 * Here, the ```CLI``` was used and ```bash``` was run, which gives the different prompt used below.
 * Clone the eQ github repository by running: ``` git clone https://github.com/jwinkle/eQ.git```, as below
-* ```cd``` into the eQ folder, then update the permissions to the shell script ```chmod +x eQsetup1.sh```
+* ```cd``` into the eQ folder, then update (if necessary) the permissions to the shell script ```chmod +x eQsetup1.sh```
 ``` bash
 root@e85404d46ca8:/home/fenics/shared# pwd
 /home/fenics/shared
