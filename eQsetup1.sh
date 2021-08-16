@@ -1,3 +1,4 @@
+#!/bin/bash
 
 git clone https://github.com/slembcke/Chipmunk2D.git
 cd Chipmunk*
@@ -18,4 +19,5 @@ cd build
 cmake ..
 make
 
-./eQ test
+# ./eQ test
+/usr/bin/mpirun -n 2 -display-allocation  ./eQ test
