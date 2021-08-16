@@ -5,6 +5,7 @@
 std::vector<bool> aspectRatioInvasionStrain::inductionFlags = {aspectRatioInvasionStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> sendRecvStrain::inductionFlags            = {sendRecvStrain::NUM_INDUCTIONFLAGS, false};
 std::vector<bool> MODULUSmodule::inductionFlags             = {MODULUSmodule::NUM_INDUCTIONFLAGS, false};
+std::vector<bool> aspectRatioOscillator::inductionFlags     = {aspectRatioOscillator::NUM_INDUCTIONFLAGS, false};
 
 
 std::vector<double>
@@ -81,49 +82,74 @@ std::vector<double>
 aspectRatioInvasionStrain::computeProteins
     (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
 {
+    double dummy = membraneRate.size() * eHSL.size() * lengthMicrons;
+    dummy *= dummy;//removes "unused variable" wornings
     //===========================================================================
     //STATIC_ASPECTRATIO
     //===========================================================================
 
-    return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
+    if("STATIC_ASPECTRATIO" == eQ::data::parameters["simType"])
+    {
+        if( inductionFlags[ASPECTRATIO_INDUCTION] )
+        {
+            params.baseData->meanDivisionLength
+                    = double( eQ::data::parameters["mutantAspectRatioScale"])
+                                               * double( eQ::data::parameters["defaultAspectRatioFactor"])
+                                               * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    //        params.baseData->divisionLength
+    //                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        }
+
+    }
     //===========================================================================
     //INDUCED_DYNAMIC_ASPECTRATIO
     //===========================================================================
-    if( inductionFlags[ASPECTRATIO_INDUCTION] && (eQ::Cell::strainType::ACTIVATOR == getStrainType()) )
+    else if("INDUCED_DYNAMIC_ASPECTRATIO" == eQ::data::parameters["simType"])
     {
-        params.baseData->meanDivisionLength
-                = double( eQ::data::parameters["mutantAspectRatioScale"])
-                                           * double( eQ::data::parameters["defaultAspectRatioFactor"])
-                                           * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
-//        params.baseData->divisionLength
-//                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        if( inductionFlags[ASPECTRATIO_INDUCTION] && (eQ::Cell::strainType::ACTIVATOR == getStrainType()) )
+        {
+            params.baseData->meanDivisionLength
+                    = double( eQ::data::parameters["mutantAspectRatioScale"])
+                                               * double( eQ::data::parameters["defaultAspectRatioFactor"])
+                                               * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
+    //        params.baseData->divisionLength
+    //                = params.baseData->meanDivisionLength;//set to divde at this length immediately
+        }
     }
 
-    if(eHSL.empty()) return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
+    return std::vector<double>(eHSL.size(), 0.0);//no gene circuit to update, return empty vector
+}
+std::vector<double>
+aspectRatioOscillator::computeProteins
+    (const std::vector<double> &eHSL, const std::vector<double> &membraneRate, const double lengthMicrons)
+{
 
-    //===========================================================================
-    //ASPECTRATIO_INVASION
-    //===========================================================================
-    double aspectRatioThresh = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
-    double aspectRatioScaling = double( eQ::data::parameters["defaultAspectRatioFactor"]);
+    double aspectRatioThresh    = double( eQ::data::parameters["aspectRatioThresholdHSL"]);
+    double aspectRatioScaling   = double( eQ::data::parameters["defaultAspectRatioFactor"]);
+    double mutantScaling        = double(eQ::data::parameters["mutantAspectRatioScale"]);
 
     static bool flagCheck=false;
 
-    if(inductionFlags[ASPECTRATIO_INDUCTION])
-    {
+//    if(inductionFlags[ASPECTRATIO_INDUCTION])
+//    {
         double hslValue = (eQ::Cell::strainType::REPRESSOR == getStrainType())
                 ? getDelayedHSL(Strain::hsl::C4) : getDelayedHSL(Strain::hsl::C14);
 
         if(hslValue > aspectRatioThresh)
         {
-            aspectRatioScaling *= double(eQ::data::parameters["mutantAspectRatioScale"]);
+            aspectRatioScaling *= mutantScaling;
             if(!flagCheck)
             {
                 flagCheck = true;
-                std::cout<<"\t hit aspect ratio flag...changing to: "<<aspectRatioScaling<<std::endl;
+                std::cout<<std::endl;
+                std::cout<<"\t hit aspect ratio flag...changing to: "
+                        <<aspectRatioScaling
+                       <<" with strain: "<<getStrainType()
+                       <<std::endl;
+                std::cout<<std::endl;
             }
         }
-    }
+//    }
 
 
     params.baseData->meanDivisionLength = aspectRatioScaling * eQ::Cell::DEFAULT_DIVISION_LENGTH_MICRONS;
@@ -153,6 +179,7 @@ aspectRatioInvasionStrain::computeProteins
     const size_t    Ain = hslType::C14HSL;
     const size_t    Rin = hslType::C4HSL;
 
+    const double    nH = 8.0;
 
     if(eQ::Cell::strainType::ACTIVATOR == params.whichType)
     {
@@ -162,7 +189,7 @@ aspectRatioInvasionStrain::computeProteins
 //        deltaHSL[3] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
 //                - dHSL[3];
 //        //LacI
-        double ratio_Hin        = pow(iHSL[Ain]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Ain]/pHinThresh, nH);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[3]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
@@ -183,14 +210,14 @@ aspectRatioInvasionStrain::computeProteins
 //        deltaHSL[1] = dt * responseScale * (double(eQ::parameters["hslProductionRate_C14"]) * ratio_Hcontrol/(1.0 + ratio_Hcontrol))
 //                - dHSL[1];
         //LacI
-        double ratio_Hin        = pow(iHSL[Rin]/pHinThresh, 10.0);
+        double ratio_Hin        = pow(iHSL[Rin]/pHinThresh, nH);
         delta[L] = params.dt * (gamma_d * ratio_Hin/(1.0 + ratio_Hin));
 //        double ratio_Hlac = pow(tHSL[1]/pLacControlThresh, 10.0);  //want just sensitive enough to switch on to ensure switching off
 //        delta[L] = dt * (gamma_d * ratio_Hlac/(1.0 + ratio_Hlac));
 
 
         //priming signal output to other strain:
-        double ratio_L = pow(conc[L]/placThresh, 10.0);
+        double ratio_L = pow(conc[L]/placThresh, nH);
         deltaHSL[Ain] = params.dt * (double(eQ::data::parameters["hslProductionRate_C14"]))
                 *  1.0/(1.0 + ratio_L)
                 - dHSL[Ain];

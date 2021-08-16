@@ -413,7 +413,7 @@ public:
         NUM_INDUCTIONFLAGS
     };
 
-    static std::vector<bool> inductionFlags; //there is no conflict with "inductionFlags" typename here, apparently due to the static scop
+    static std::vector<bool> inductionFlags;
 
     static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
 
@@ -435,6 +435,40 @@ public:
     std::vector<double>
         computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
 
+};
+class aspectRatioOscillator : public Strain
+{
+private:
+    enum  qProteins
+    {
+        ftsZ = 0,
+        NUM_QUEUES
+    };
+public:
+    enum hslType
+    {
+        C4HSL   = 0,
+        C14HSL  = 1,
+        NUM_HSLTYPES
+    };
+    enum inductionFlag
+    {
+        ASPECTRATIO_INDUCTION,
+        NUM_INDUCTIONFLAGS
+    };
+    static std::vector<bool> inductionFlags;
+    static void setFlag(inductionFlag which) {inductionFlags[which] = true;}
+
+    aspectRatioOscillator(const Strain::Params &p) : Strain(p)
+    {
+        initializeDataStructures(params.numHSL, qProteins::NUM_QUEUES);
+        inductionFlags.assign(NUM_INDUCTIONFLAGS, false);
+    }
+    //calls default copy constructor for derived class:
+    std::shared_ptr<Strain>
+        clone() const override {return std::make_shared<aspectRatioOscillator>(*this);}  // requires C++ 14
+    std::vector<double>
+        computeProteins(const std::vector<double> &eHSL, const std::vector<double> &membraneD, const double lengthMicrons) override;
 };
 class MODULUSmodule : public Strain
 {

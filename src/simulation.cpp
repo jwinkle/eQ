@@ -327,13 +327,19 @@ void Simulation::create_HSLgrid()
         std::cout<<"\n\tController:  Transfering initial data from/to HSL nodes via MPI RECV/SEND..."<<std::endl<<std::endl;
 
         //set diffusion tensor to identity matrix (will be updated every time step, so just default values here):
-        D11Grid.assign(globalNodes, 1.0);
-        D22Grid.assign(globalNodes, 1.0);
-        D12Grid.assign(globalNodes, 0.0);
+        //init the grid to isotropic diffusion: (these grids copy directly to the .ufl file tensor)
+        //note:  these are 1D vectors using standard translation for (i,j) entries using the eQ helper functions
+        D11Grid.assign(globalNodes, 1.0);//diagonal scaling
+        D22Grid.assign(globalNodes, 1.0);//diagonal scaling
+        D12Grid.assign(globalNodes, 0.0);//symmetric, off-diagonal scaling
+
 
         //added an hsl array to record to json file:
         hslVector.assign(numHSLGrids, std::vector<double>(globalNodes, 0.0));
+        hslChannelTop.assign(numHSLGrids, std::vector<double>(nodesForChannels, 0.0));
+        hslChannelBottom.assign(numHSLGrids, std::vector<double>(nodesForChannels, 0.0));
         hslLookup.assign(numHSLGrids, std::vector<eQ::nodeType>(globalNodes, 0));
+
 
         MPI_Barrier(world);
         for(auto &node : mpiHSL)
@@ -398,13 +404,18 @@ void Simulation::init_ABM(int numSeedCells, std::vector<std::shared_ptr<Strain>>
     //ONLY THE CONTROLLER OWNS THE ABM MODEL:
     if(isControllerNode)
     {
-        if("RANDOM" == eQ::data::parameters["cellInitType"])
-        {
-            ABM->initCells(eQabm::initType::RANDOM, numSeedCells, strains);
-        }
-        else
+        if("BANDED" == eQ::data::parameters["cellInitType"])
         {
             ABM->initCells(eQabm::initType::BANDED, numSeedCells, strains);
+        }
+        else if("THIRDS" == eQ::data::parameters["cellInitType"])
+        {
+            ABM->initCells(eQabm::initType::THIRDS, numSeedCells, strains);
+        }
+//        if("RANDOM" == eQ::data::parameters["cellInitType"])
+        else
+        {
+            ABM->initCells(eQabm::initType::RANDOM, numSeedCells, strains);
         }
         simulateABM = true;
     }
@@ -429,6 +440,8 @@ void Simulation::stepSimulation(double simTime)
             {
                 node >> eQ::mpi::method::IRECV;
                 node >> ABM->hslSolutionVector[node.index()];
+                node >> ABM->topChannelSolutionVector[node.index()];
+                node >> ABM->bottomChannelSolutionVector[node.index()];
             }
         }
 
@@ -490,6 +503,8 @@ void Simulation::stepSimulation(double simTime)
 
             mpiController << eQ::mpi::method::ISEND;
             mpiController << diffusionSolver->solution_vector;
+            mpiController << diffusionSolver->topChannelData;
+            mpiController << diffusionSolver->bottomChannelData;
 
             computeBoundaryWell();
 
@@ -498,7 +513,7 @@ void Simulation::stepSimulation(double simTime)
             MPI_Barrier(world);
 
             mpiController >> eQ::mpi::method::IRECV;
-            mpiController >> diffusionSolver->solution_vector;
+            mpiController >> diffusionSolver->solution_vectorModified;
 
             mpiController >> diffusionSolver->D11
                             >> diffusionSolver->D22
@@ -542,7 +557,7 @@ void Simulation::writeHSLFiles(double simTime)
 
         //print the l2 norm and boundary flux of the HSL:
 //        auto thisNorm = diffusionSolver->u->vector()->norm("l2");
-        auto flux = diffusionSolver->getBoundaryFlux();
+//        auto flux = diffusionSolver->getBoundaryFlux();
         std::cout<<"\t boundaryFlux assemble result: ("<<my_PE_num<<") "<<diffusionSolver->totalBoundaryFlux
 //                    <<"  u norm: "<<thisNorm
                    <<" well conc.: "<<boundaryWellConcentration

@@ -279,7 +279,6 @@ class simulationTiming
                     flag.second.ignore = flag.second.call->operator()(simTime());
                 }
             }
-
         }
 
         using params_t    = eQ::data::parametersType;
@@ -324,7 +323,7 @@ public:
     virtual void initDiffusion(eQ::diffusionSolver::params &) =0;// {}
     virtual void stepDiffusion() {}
 //    virtual void setBoundaryValues(const eQ::data::parametersType &bvals) =0;
-	virtual eQ::data::parametersType getBoundaryFlux(void) {}; //must at least define value of "totalFlux"
+//	virtual eQ::data::parametersType getBoundaryFlux(void) {}; //must at least define value of "totalFlux"
     virtual void writeDiffusionFiles(double timestamp) =0;
     virtual void finalize(void) {}
 };
