@@ -6,7 +6,7 @@ RUNNING OSCILLATOR FROM PLOS COMPUTATIONAL BIOLOGY PAPER (2021)
 2. from the PLosCompBio21 branch (where this file is located), run the following 3 scripts:
   - [approx. 3 minutes] `eQcompileBranch.sh`
   - [approx. 3 hours] `eQrunBranchN3.sh`
-  - [approx. 10 minutes] `eQdecodeDataMatlab.sh`
+  - [approx. 30 minutes] `eQdecodeDataMatlab.sh`
 3. summary:
   - the first re-builds the Fenics header files, runs cmake, and then compiles the eQ executable by running make.  
   - the second runs the ABM oscillator using 3 MPI nodes; generates data files for the ABM oscillator from PLoSCompBio (2021; ref here)
